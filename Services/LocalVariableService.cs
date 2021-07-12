@@ -10,17 +10,17 @@ namespace WebApiCSharp.Services
 {
     public class LocalVariableService : ServiceBase
     {
+        public static IMongoCollection<LocalVariable> LocalVarCollection = dbAOS.GetCollection<LocalVariable>("LocalVariables");
         public static List<LocalVariable> Get()
         {
             try
             {
                 // var connString = "mongodb://127.0.0.1:27017";
                 // MongoClient client = new MongoClient(connString);
-                // IMongoDatabase db = client.GetDatabase("AOS");
-                var colLocalVar = dbAOS.GetCollection<LocalVariable>("localVariables");
+                // IMongoDatabase db = client.GetDatabase("AOS"); 
                 //var cars2 = db.GetCollection<BsonDocument>("localVariables");
 
-                var c = colLocalVar.Find<LocalVariable>(c=> true).ToList();
+                var c = LocalVarCollection.Find<LocalVariable>(c=> true).ToList();
                 return c;
                 //   foreach(LocalVariable a in c.ToList())
                 //   {
@@ -47,11 +47,10 @@ namespace WebApiCSharp.Services
             {
                 // var connString = "mongodb://127.0.0.1:27017";
                 // MongoClient client = new MongoClient(connString);
-                // IMongoDatabase db = client.GetDatabase("AOS");
-                var colLocalVar = dbAOS.GetCollection<LocalVariable>("localVariables");
+                // IMongoDatabase db = client.GetDatabase("AOS"); 
                 //var cars2 = db.GetCollection<BsonDocument>("localVariables");
 
-                var c = colLocalVar.Find<LocalVariable>(c => c.Id == id).FirstOrDefault();
+                var c = LocalVarCollection.Find<LocalVariable>(c => c.Id == id).FirstOrDefault();
                 return c;
                 //   foreach(LocalVariable a in c.ToList())
                 //   {
@@ -75,10 +74,9 @@ namespace WebApiCSharp.Services
         public static LocalVariable Add(LocalVariable item)
         {
             try
-            {
-                var colLocalVar = dbAOS.GetCollection<LocalVariable>("localVariables");
+            { 
                 //var cars2 = db.GetCollection<BsonDocument>("localVariables");
-                colLocalVar.InsertOneAsync(item).GetAwaiter().GetResult();
+                LocalVarCollection.InsertOneAsync(item).GetAwaiter().GetResult();
                 return item;
             }
             catch (MongoWriteException mwx)
@@ -94,9 +92,8 @@ namespace WebApiCSharp.Services
         public static LocalVariable Update(LocalVariable item)
         {
             try
-            {
-                var colLocalVar = dbAOS.GetCollection<LocalVariable>("localVariables");
-                var replaceResult = colLocalVar.ReplaceOne(doc => doc.Id == item.Id, item);
+            { 
+                var replaceResult = LocalVarCollection.ReplaceOne(doc => doc.Id == item.Id, item);
                 if (replaceResult.IsAcknowledged)
                 {
                     return item;
@@ -117,9 +114,8 @@ namespace WebApiCSharp.Services
         }
 
         public static bool Delete(LocalVariable item)
-        {
-            var colLocalVar = dbAOS.GetCollection<LocalVariable>("localVariables");
-            var result = colLocalVar.DeleteOne(doc => doc.Id == item.Id);
+        { 
+            var result = LocalVarCollection.DeleteOne(doc => doc.Id == item.Id);
             return result.IsAcknowledged;
         }
     }
