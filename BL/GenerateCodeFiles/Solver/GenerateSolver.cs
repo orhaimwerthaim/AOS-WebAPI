@@ -9,64 +9,43 @@ namespace WebApiCSharp.GenerateCodeFiles
 {
     public class GenerateSolver
     {
-        private static string projectName = "";
+        private PLPsData plpsData; 
+        private string projectNameWithCapitalFirstLetter;
         private static Configuration conf;
         static GenerateSolver()
         {
-            conf = ConfigurationService.Get(); 
+            conf = ConfigurationService.Get();
         }
 
-        private static string PomcpFilePath{
-            get
-            {
-                return conf.SolverPath + "/src/solver/pomcp.cpp";
-            }
-            set { }
-        }
-        private static string ProjectExamplePath
-        {
-            get
-            {
-                return conf.SolverPath + "/examples/cpp_models/" + projectName;
-            }
-            set { }
-        }
+        private string PomcpFilePath;
+        private string EvaluatorFilePath;
+        private string ProjectExamplePath;
 
-        private static string ProjectExamplePathSrc
+        private string ProjectExamplePathSrc;
+        private string ProjectModelPrimitivesPath;
+        private string ProjectHeaderModelPrimitivesPath;
+        public GenerateSolver(PLPsData data)
         {
-            get
-            {
-                return conf.SolverPath + "/examples/cpp_models/" + projectName + "/src";
-            }
-            set { }
-        }
-        private static string ProjectModelPrimitivesPath
-        {
-            get
-            {
-                return conf.SolverPath + "/src/model_primitives/" + projectName;
-            }
-            set { }
-        }
-        private static string ProjectHeaderModelPrimitivesPath
-        {
-            get
-            {
-                return conf.SolverPath + "/include/despot/model_primitives/" + projectName;
-            }
-            set { }
-        }
-        public static void Run()
-        {
-            projectName = "icaps2";
+            plpsData = data;
+            projectNameWithCapitalFirstLetter = char.ToUpper(plpsData.ProjectName[0]) + plpsData.ProjectName.Substring(1);
+
+            ProjectHeaderModelPrimitivesPath = conf.SolverPath + "/include/despot/model_primitives/" + plpsData.ProjectName;
+            ProjectModelPrimitivesPath = conf.SolverPath + "/src/model_primitives/" + plpsData.ProjectName;
+            ProjectExamplePathSrc = conf.SolverPath + "/examples/cpp_models/" + plpsData.ProjectName + "/src";
+            ProjectExamplePath=conf.SolverPath + "/examples/cpp_models/" + plpsData.ProjectName;
+            EvaluatorFilePath=conf.SolverPath + "/src/evaluator.cpp";
+            PomcpFilePath=conf.SolverPath + "/src/solver/pomcp.cpp";
+
             CleanAndGenerateDirecotories();
-            
+
             AddCMakeFiles();
 
-            GenerateCodeFilesUtils.WriteTextFile(PomcpFilePath, SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath,conf.SolverGraphPDF_Depth));
+            GenerateCodeFilesUtils.WriteTextFile(PomcpFilePath, SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath, conf.SolverGraphPDF_Depth));
+            GenerateCodeFilesUtils.WriteTextFile(EvaluatorFilePath, SolverFileTemplate.GetEvaluatorFile(plpsData.ProjectName));
+
         }
 
-        private static void DeleteAndCreateDirectory(string dirPath)
+        private void DeleteAndCreateDirectory(string dirPath)
         {
             if (Directory.Exists(dirPath))
             {
@@ -74,7 +53,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             }
             Directory.CreateDirectory(dirPath);
         }
-        private static void CleanAndGenerateDirecotories()
+        private void CleanAndGenerateDirecotories()
         {
             DeleteAndCreateDirectory(ProjectExamplePath);
             Directory.CreateDirectory(ProjectExamplePathSrc);
@@ -83,12 +62,12 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         }
 
-        private static void AddCMakeFiles()
+        private void AddCMakeFiles()
         {
             GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePath + "/Makefile", SolverFileTemplate.GetProjectExample_MakeFile());
-            GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePath + "/CMakeLists.txt", SolverFileTemplate.GetProjectExample_CMakeLists(projectName));
+            GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePath + "/CMakeLists.txt", SolverFileTemplate.GetProjectExample_CMakeLists(plpsData.ProjectName));
 
-            GenerateCodeFilesUtils.WriteTextFile(conf.SolverPath + "/CMakeLists.txt", SolverFileTemplate.GetBasePath_CMakeLists(projectName));
+            GenerateCodeFilesUtils.WriteTextFile(conf.SolverPath + "/CMakeLists.txt", SolverFileTemplate.GetBasePath_CMakeLists(plpsData.ProjectName));
 
 
         }

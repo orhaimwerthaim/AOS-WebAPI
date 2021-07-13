@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.IO;
 using System.Diagnostics;
 using System.Text;
-using MongoDB.Bson;  
+using MongoDB.Bson;
 using WebApiCSharp.GenerateCodeFiles;
 
 namespace WebApiCSharp.BL
@@ -13,7 +13,7 @@ namespace WebApiCSharp.BL
 
     public class InitializeProjectBL
     {
-        enum PlpType{Environment,EnvironmentGlue,PLP,Glue} 
+        enum PlpType { Environment, EnvironmentGlue, PLP, Glue }
         private static StringBuilder buildOutput = null;
         private static StringBuilder buildErrors = null;
 
@@ -74,22 +74,24 @@ namespace WebApiCSharp.BL
             errorMessages = new List<string>();
             JsonElement root = plp.RootElement;
             JsonElement studentsElement;
-            if (!root.TryGetProperty("plpMain", out studentsElement))
+            if (!root.TryGetProperty("PlpMain", out studentsElement))
             {
-                errorMessages.Add("no 'plpMain' element");
+                errorMessages.Add("no 'PlpMain' element");
             }
 
             return errorMessages.Count == 0;
         }
 
-        
+
         public static List<String> InitializeProject(string pLPsDirectoryPath)
         {
             List<String> errors = LoadPLPs(pLPsDirectoryPath);
-            if(errors.Count > 0)
-                return errors;
+            if (errors.Count > 0) return errors;
 
-            GenerateSolver.Run();
+            PLPsData plpData = new PLPsData(out errors);
+            if (errors.Count > 0) return errors;
+
+            GenerateSolver generateSolver = new GenerateSolver(plpData);
 
 
             return errors;
@@ -97,9 +99,7 @@ namespace WebApiCSharp.BL
         public static List<String> LoadPLPs(string pLPsDirectoryPath)
         {
             PLPsService.DeleteAll();
-            List<BsonDocument> plps = new List<BsonDocument>();
             List<String> errorMessages = new List<string>();
-            string projectName = null;
 
             if (!Directory.Exists(pLPsDirectoryPath))
             {
@@ -127,16 +127,7 @@ namespace WebApiCSharp.BL
                             errorMessages.AddRange(plpParseErrors);
                             return errorMessages;
                         }
-                       BsonDocument bPLP = PLPsService.Add(plp);
-                        if (projectName == null)
-                        {
-                            projectName = bPLP["plpMain"]["project"].ToString();
-                        }
-                        if (projectName != bPLP["plpMain"]["project"].ToString())
-                        {
-                            errorMessages.Add("The PLPs directory '" + pLPsDirectoryPath + "', contains PLPs from different project ('" + projectName + "','" + bPLP["plpMain"]["project"].ToString() + "')!");
-                            return errorMessages;
-                        }
+                        BsonDocument bPLP = PLPsService.Add(plp);
                     }
                 }
                 catch (Exception e)

@@ -1,6 +1,6 @@
-using System; 
+using System;
 using MongoDB.Driver;
-using MongoDB.Bson;  
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
 using WebApiCSharp.Models;
@@ -13,13 +13,13 @@ namespace WebApiCSharp.Services
     public class PLPsService : ServiceBase
     {
         public static IMongoCollection<BsonDocument> PLPsCollection = dbAOS.GetCollection<BsonDocument>("PLPs");
-        public static List<BsonDocument> Get()
+        public static List<BsonDocument> GetAll()
         {
             try
-            { 
+            {
 
-                var c = PLPsCollection.Find<BsonDocument>(c=> true).ToList();
-                return c; 
+                var c = PLPsCollection.Find<BsonDocument>(c => true).ToList();
+                return c;
             }
             catch (Exception ex)
             {
@@ -31,9 +31,9 @@ namespace WebApiCSharp.Services
         public static BsonDocument Get(int id)
         {
             try
-            {  
+            {
                 var c = PLPsCollection.Find<BsonDocument>(c => true).FirstOrDefault();
-                return c; 
+                return c;
             }
             catch (Exception ex)
             {
@@ -56,18 +56,18 @@ namespace WebApiCSharp.Services
                     writer.Flush();
                     jsonText = Encoding.UTF8.GetString(stream.ToArray());
                 }
-                if(jsonText == null)
+                if (jsonText == null)
                 {
                     throw new Exception("Cannot convert json to string");
                 }
                 BsonDocument document = MongoDB.Bson.Serialization.BsonSerializer.Deserialize<BsonDocument>(jsonText);
 
-                string a = document["plpMain"]["project"].ToString();
-                string b = document["plpMain"]["type"].ToString();
-                string c = document["plpMain"]["name"].ToString();
-                PLPsCollection.ReplaceOne(doc => doc["plpMain"]["project"].Equals(document["plpMain"]["project"]) &&
-                 doc["plpMain"]["name"].Equals(document["plpMain"]["name"]) &&
-                 doc["plpMain"]["type"].Equals(document["plpMain"]["type"]), document, new ReplaceOptions{ IsUpsert=true});
+                string a = document["PlpMain"]["Project"].ToString();
+                string b = document["PlpMain"]["Type"].ToString();
+                string c = document["PlpMain"]["Name"].ToString();
+                PLPsCollection.ReplaceOne(doc => doc["PlpMain"]["Project"].Equals(document["PlpMain"]["Project"]) &&
+                 doc["PlpMain"]["Name"].Equals(document["PlpMain"]["Name"]) &&
+                 doc["PlpMain"]["Type"].Equals(document["PlpMain"]["Type"]), document, new ReplaceOptions { IsUpsert = true });
                 return document;
 
             }
@@ -102,7 +102,8 @@ namespace WebApiCSharp.Services
                     // mwx.WriteError.Message contains the duplicate key error message
                 }
                 return null;
-            }*/return null;
+            }*/
+            return null;
         }
 
         public static bool DeleteAll()

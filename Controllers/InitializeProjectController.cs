@@ -34,7 +34,7 @@ namespace WebApiCSharp.Controllers
             List<string> errors = InitializeProjectBL.InitializeProject(initProj.PLPsDirectoryPath);
             if(errors.Count > 0)
             {
-                return BadRequest(errors);
+                return BadRequest(new {Errors = errors});
             }
             return CreatedAtAction(nameof(Create), initProj);
         }
