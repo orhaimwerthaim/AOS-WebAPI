@@ -1406,10 +1406,10 @@ int main(int argc, char* argv[]) {
                 switch (dist.Type)
                 {
                     case DistributionType.Normal:
-						result += "    static std::normal_distribution<> "+dist.C_VariableName+";" + Environment.NewLine;
+						result += "    static std::normal_distribution<> "+dist.C_VariableName+"; //" + dist.FunctionDescription + Environment.NewLine;
                         break;
                     case DistributionType.Discrete:
-						result += "    static std::discrete_distribution<> "+dist.C_VariableName+";" + Environment.NewLine;
+						result += "    static std::discrete_distribution<> "+dist.C_VariableName+"; //" + dist.FunctionDescription + Environment.NewLine;
                         break;
                     case DistributionType.Uniform:
                         throw new NotImplementedException("Uniform distribution is not supported yet, remove '" + dist.FunctionDescription + "'!");
@@ -1534,6 +1534,102 @@ private:
 };
 } // namespace despot
  ";
+            return file;
+        }
+	
+		
+		/*
+		class NavigateActionDescription: public ActionDescription
+{
+    public: 
+        tLocation oDesiredLocation;
+        std::string strLink_oDesiredLocation;
+        NavigateActionDescription(int _oDesiredLocation_Index);
+        virtual void SetActionParametersByState("+data.ProjectNameWithCapitalLetter+@"State *state, std::vector<std::string> indexes);
+        virtual std::string GetActionParametersJson_ForActionExecution();
+        virtual std::string GetActionParametersJson_ForActionRegistration();
+        NavigateActionDescription(){};
+};
+		*/
+		private static string GetClassesGetActionManagerHeader(PLPsData data)
+		{
+            string result = "";
+
+			foreach(string plpName in data.PLPs.Keys)
+			{
+                PLP plp = data.PLPs[plpName];
+                if(plp.GlobalVariableModuleParameters.Count > 0)
+				{
+                    result += @"class "+GenerateFilesUtils.ToUpperFirstLetter(plpName)+@"ActionDescription: public ActionDescription
+{
+    public:
+";
+                    foreach(GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
+					{
+                        result += "        " + param.Type + " " + param.Name + ";" + Environment.NewLine;
+                    }
+					foreach(GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
+					{
+                        result += "        std::string strLink_" + param.Name + ";" + Environment.NewLine;
+                    }
+
+                    result += "        "+GenerateFilesUtils.ToUpperFirstLetter(plpName)+"ActionDescription(";
+                    string parameters = "";
+                    foreach(GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
+					{
+                        parameters += (parameters.Length == 0) ? "" : ", ";
+                        parameters += "int _"+param.Name+"_Index";
+                    }
+                    result += parameters + ");" + Environment.NewLine;
+
+                    result += @"        virtual void SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes);
+        virtual std::string GetActionParametersJson_ForActionExecution();
+        virtual std::string GetActionParametersJson_ForActionRegistration();
+        " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription(){};
+};
+
+";
+                }
+			}
+
+            return result;
+        }
+		
+		
+		public static string GetActionManagerHeaderFile(PLPsData data)
+		{
+            string file = @"#ifndef ACTION_MANAGER_H
+#define ACTION_MANAGER_H
+
+#include ""state.h""
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
+#include <vector>
+#include <utility>
+#include <string>
+namespace despot { 
+
+
+    class ActionDescription
+    {
+    public:
+        int actionId;
+        ActionType actionType;
+        virtual void SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes);
+        virtual std::string GetActionParametersJson_ForActionExecution() { return """"; };
+        virtual std::string GetActionParametersJson_ForActionRegistration() { return """"; };
+        
+    };
+
+" + GetClassesGetActionManagerHeader(data) + @"
+
+class ActionManager {
+public:
+	static std::vector<ActionDescription*> actions;
+    static void Init(" + data.ProjectNameWithCapitalLetter + @"State* state);
+};
+}
+#endif //ACTION_MANAGER_H
+";
             return file;
         }
 	}

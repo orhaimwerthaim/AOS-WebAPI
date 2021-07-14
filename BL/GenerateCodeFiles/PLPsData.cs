@@ -205,8 +205,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 MaxReward = 0;
             }
         }
-
-
+ 
         private List<string> AddPLPSetProjectName(BsonDocument plp)
         {
             List<string> errors = new List<string>();
@@ -215,7 +214,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 tempPlpName = plp["PlpMain"]["Name"].ToString();
                 tempPlpType = plp["PlpMain"]["Type"].ToString();
                 ProjectName = plp["PlpMain"]["Project"].ToString();
-                ProjectNameWithCapitalLetter = char.ToUpper(ProjectName[0]) + ProjectName.Substring(1);
+                ProjectNameWithCapitalLetter = GenerateFilesUtils.ToUpperFirstLetter(ProjectName);
             }
 
             if (!plp["PlpMain"]["Project"].ToString().Equals(ProjectName))
