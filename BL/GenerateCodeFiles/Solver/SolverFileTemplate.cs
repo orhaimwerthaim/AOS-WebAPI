@@ -1,4 +1,5 @@
 using MongoDB.Bson;
+using System;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
 using WebApiCSharp.Services;
@@ -1356,5 +1357,184 @@ void POMDPEvaluator::UpdateTimePerMove(double step_time) {
             return file;
         }
 	
+		public static string GetGlobalsFile(PLPsData data)
+		{
+            string file = @"struct globals
+{
+    static constexpr double MAX_IMMEDIATE_REWARD = "+data.MaxReward+@";
+    static constexpr double MIN_IMMEDIATE_REWARD = "+data.MinReward+@";
+    static constexpr int NUM_OF_ACTIONS = "+data.NumberOfActions+@"; 
+};
+";
+            return file;
+        }
+	
+		public static string GetMainFile(PLPsData data)
+		{
+            string file = @"#include <despot/simple_tui.h>
+#include """+data.ProjectName+@".h""
+
+using namespace despot;
+
+class TUI: public SimpleTUI {
+public:
+  TUI() {
+  }
+
+  DSPOMDP* InitializeModel(option::Option* options) {
+    DSPOMDP* model = new "+data.ProjectNameWithCapitalLetter+@"();
+    return model;
+   }
+
+  void InitializeDefaultParameters() {
+     Globals::config.num_scenarios = 100;
+  }
+};
+
+int main(int argc, char* argv[]) {
+  return TUI().run(argc, argv);
+}
+";
+            return file;
+        }
+
+        private static string GetModelHeaderFileDistributionVariableDefinition(PLPsData data)
+		{
+            string result = "";
+			foreach(DistributionSample dist in data.DistributionSamples.Values)
+			{
+                switch (dist.Type)
+                {
+                    case DistributionType.Normal:
+						result += "    static std::normal_distribution<> "+dist.C_VariableName+";" + Environment.NewLine;
+                        break;
+                    case DistributionType.Discrete:
+						result += "    static std::discrete_distribution<> "+dist.C_VariableName+";" + Environment.NewLine;
+                        break;
+                    case DistributionType.Uniform:
+                        throw new NotImplementedException("Uniform distribution is not supported yet, remove '" + dist.FunctionDescription + "'!");
+                }
+            }
+            return result;
+        }
+        public static string GetModelHeaderFile(PLPsData data)
+		{
+            string file = @"
+#include ""globals.h""
+#include <despot/core/pomdp.h>
+#include <despot/solver/pomcp.h> 
+#include <random>
+#include <string>
+#include <despot/model_primitives/"+data.ProjectName+@"/enum_map_"+data.ProjectName+@".h> 
+#include <despot/model_primitives/"+data.ProjectName+@"/state.h> 
+namespace despot {
+
+/* ==============================================================================
+ * "+data.ProjectNameWithCapitalLetter+@"State class
+ * ==============================================================================*/
+
+class "+data.ProjectNameWithCapitalLetter+@"State;
+class AOSUtils
+{
+	public:
+	static bool Bernoulli(double);
+};
+
+class ActionDescription; 
+
+class Prints
+{
+	public:
+	static std::string PrintLocation(tDiscreteLocation);
+	static std::string PrintActionDescription(ActionDescription*);
+	static std::string PrintActionType(ActionType);
+	static std::string PrintState("+data.ProjectNameWithCapitalLetter+@"State state);
+	static std::string PrintObs(int action, int obs);
+};
+
+
+
+/* ==============================================================================
+ * "+data.ProjectNameWithCapitalLetter+@" and PocmanBelief class
+ * ==============================================================================*/
+class "+data.ProjectNameWithCapitalLetter+@";
+class "+data.ProjectNameWithCapitalLetter+@"Belief: public ParticleBelief {
+protected:
+	const "+data.ProjectNameWithCapitalLetter+@"* "+data.ProjectName+@"_;
+public:
+	static int num_particles; 
+	"+data.ProjectNameWithCapitalLetter+@"Belief(std::vector<State*> particles, const DSPOMDP* model, Belief* prior =
+		NULL);
+	void Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates);
+};
+
+/* ==============================================================================
+ * "+data.ProjectNameWithCapitalLetter+@" 
+ * ==============================================================================*/
+/**
+ * The implementation is adapted from that included in the POMCP software.
+ */
+
+class "+data.ProjectNameWithCapitalLetter+@": public DSPOMDP {
+public:
+	virtual std::string PrintObs(int action, OBS_TYPE obs) const;
+	virtual std::string PrintStateStr(const State &state) const;
+	virtual std::string GetActionDescription(int) const;
+	void UpdateStateByRealModuleObservation(State &state, int actionId, OBS_TYPE &observation) const;
+	virtual bool Step(State &state, double rand_num, int actionId, double &reward,
+					  OBS_TYPE &observation) const;
+	int NumActions() const;
+	virtual double ObsProb(OBS_TYPE obs, const State& state, int actionId) const;
+
+	virtual State* CreateStartState(std::string type = ""DEFAULT"") const;
+	virtual Belief* InitialBelief(const State* start,
+		std::string type = ""PARTICLE"") const;
+
+	inline double GetMaxReward() const {
+		return globals::MAX_IMMEDIATE_REWARD;
+	}
+	 
+
+	inline ValuedAction GetMinRewardAction() const {
+		return ValuedAction(0, globals::MIN_IMMEDIATE_REWARD);
+	}
+	 
+	POMCPPrior* CreatePOMCPPrior(std::string name = ""DEFAULT"") const;
+
+	virtual void PrintState(const State& state, std::ostream& out = std::cout) const;
+	
+
+	
+	virtual void PrintObs(const State& state, OBS_TYPE observation,
+		std::ostream& out = std::cout) const;
+	void PrintBelief(const Belief& belief, std::ostream& out = std::cout) const;
+	virtual void PrintAction(int actionId, std::ostream& out = std::cout) const;
+
+	State* Allocate(int state_id, double weight) const;
+	virtual State* Copy(const State* particle) const;
+	virtual void Free(State* particle) const;
+	int NumActiveParticles() const;
+
+
+public:
+	"+data.ProjectNameWithCapitalLetter+@"(); 
+
+private:
+	void CheckPreconditions(const "+data.ProjectNameWithCapitalLetter+@"State& farstate, double &reward, bool &meetPrecondition, int actionId) const;
+	void SampleModuleExecutionTime(const "+data.ProjectNameWithCapitalLetter+@"State& state, double rand_num, int actionId, int &moduleExecutionTime) const;
+	void ExtrinsicChangesDynamicModel(const "+data.ProjectNameWithCapitalLetter+@"State& initState, "+data.ProjectNameWithCapitalLetter+@"State& afterExState, double rand_num, int actionId, double& reward,
+		const int &moduleExecutionTime) const;
+	void ModuleDynamicModel(const "+data.ProjectNameWithCapitalLetter+@"State &initState, const "+data.ProjectNameWithCapitalLetter+@"State &afterExState, "+data.ProjectNameWithCapitalLetter+@"State &nextState, double rand_num, int actionId, double &reward,
+								 OBS_TYPE &observation, const int &moduleExecutionTime) const;
+	bool ProcessSpecialStates(const "+data.ProjectNameWithCapitalLetter+@"State &state, double &reward) const;
+
+	mutable MemoryPool<"+data.ProjectNameWithCapitalLetter+@"State> memory_pool_;
+	static std::default_random_engine generator;
+" + GetModelHeaderFileDistributionVariableDefinition(data) +@"
+};
+} // namespace despot
+ ";
+            return file;
+        }
 	}
 }

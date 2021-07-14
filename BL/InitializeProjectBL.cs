@@ -7,12 +7,14 @@ using System.Diagnostics;
 using System.Text;
 using MongoDB.Bson;
 using WebApiCSharp.GenerateCodeFiles;
+using WebApiCSharp.Models;
 
 namespace WebApiCSharp.BL
 {
 
     public class InitializeProjectBL
     {
+        private static Configuration configuration{ get; set; }
         enum PlpType { Environment, EnvironmentGlue, PLP, Glue }
         private static StringBuilder buildOutput = null;
         private static StringBuilder buildErrors = null;
@@ -29,12 +31,17 @@ namespace WebApiCSharp.BL
                     buildErrors.Append(Environment.NewLine + outLine.Data);
             }
         }
+        
+        static InitializeProjectBL()
+        {
+            configuration = ConfigurationService.Get();
+        }
         private static void BuildAosSolver()
         {
             // Get the path that stores favorite links.
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
-                WorkingDirectory = "/home/or/Projects/AOS-Solver",
+                WorkingDirectory = configuration.SolverPath,// "/home/or/Projects/AOS-Solver",
                 FileName = "/opt/cmake-3.19.8-Linux-x86_64/bin/cmake",
                 Arguments = "--build /home/or/Projects/AOS-Solver/build --config Debug --target all -j 14 --"
             };

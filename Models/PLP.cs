@@ -19,8 +19,7 @@ namespace WebApiCSharp.Models
 
           public List<string> EnumResponse{ get; set; }
 
-          public string ResponseType{ get; set; }
-          public List<string> ModuleResponses{ get; set; }
+          public string ResponseType{ get; set; } 
 
           public List<ResponseRule> ResponseRules{ get; set; }
 
@@ -38,6 +37,7 @@ namespace WebApiCSharp.Models
             ModuleExecutionTimeDynamicModel = new List<Assignment>();
             DynamicModel_VariableAssignments = new List<Assignment>();
             ResponseRules = new List<ResponseRule>();
+            EnumResponse = new List<string>(); 
         }
 
     }
@@ -87,7 +87,12 @@ namespace WebApiCSharp.Models
         public string AssignmentName;
         public string AssignmentCode;
 
-        public TempVarType tempVariable;
+        public TempVarType TempVariable;
+
+        public Assignment()
+        {
+            TempVariable = new TempVarType();
+        }
 
 
     }
@@ -97,5 +102,10 @@ namespace WebApiCSharp.Models
         public string Type;
         public string EnumName;
         public List<string> EnumValues;
+
+        public TempVarType()
+        {
+            EnumValues = new List<string>();
+        }
     }
 }

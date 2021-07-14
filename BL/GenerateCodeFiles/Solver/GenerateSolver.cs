@@ -35,6 +35,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             ProjectExamplePath=conf.SolverPath + "/examples/cpp_models/" + plpsData.ProjectName;
             EvaluatorFilePath=conf.SolverPath + "/src/evaluator.cpp";
             PomcpFilePath=conf.SolverPath + "/src/solver/pomcp.cpp";
+ 
 
             CleanAndGenerateDirecotories();
 
@@ -42,6 +43,12 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             GenerateCodeFilesUtils.WriteTextFile(PomcpFilePath, SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath, conf.SolverGraphPDF_Depth));
             GenerateCodeFilesUtils.WriteTextFile(EvaluatorFilePath, SolverFileTemplate.GetEvaluatorFile(plpsData.ProjectName));
+
+            GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/globals.h", SolverFileTemplate.GetGlobalsFile(data));
+            GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/main.cpp", SolverFileTemplate.GetMainFile(data));
+
+
+            GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/"+data.ProjectName+".h", SolverFileTemplate.GetModelHeaderFile(data));
 
         }
 
