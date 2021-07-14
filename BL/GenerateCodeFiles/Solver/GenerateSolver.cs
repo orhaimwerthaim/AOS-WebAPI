@@ -50,6 +50,8 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/"+data.ProjectName+".h", SolverFileTemplate.GetModelHeaderFile(data));
 
+            GenerateCodeFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/actionManager.h", SolverFileTemplate.GetActionManagerHeaderFile(data));
+
         }
 
         private void DeleteAndCreateDirectory(string dirPath)
