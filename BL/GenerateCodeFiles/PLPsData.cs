@@ -39,7 +39,9 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public const string PLP_TYPE_NAME_PLP = "PLP";
 
-        public const string ANY_VALUE_TYPE_NAME = "AnyValue";
+        public const string ANY_VALUE_TYPE_NAME = "anyValue";
+
+        public const string ENUM_VARIABLE_TYPE_NAME = "enum";
         public const string MODULE_EXECUTION_TIME_VARIABLE_NAME = "__moduleExecutionTime";
         public const string MODULE_REWARD_VARIABLE_NAME = "__reward";
 
@@ -205,7 +207,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 MaxReward = 0;
             }
         }
- 
+
         private List<string> AddPLPSetProjectName(BsonDocument plp)
         {
             List<string> errors = new List<string>();
@@ -375,7 +377,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 BsonDocument doc = bVal.AsBsonDocument;
                 switch (doc["Type"].ToString())
                 {
-                    case "enum":
+                    case ENUM_VARIABLE_TYPE_NAME:
                         EnumVarTypePLP enu = new EnumVarTypePLP();
 
                         enu.TypeName = doc["TypeName"].ToString();
@@ -393,6 +395,8 @@ namespace WebApiCSharp.GenerateCodeFiles
                             oVar.Name = docVar["Name"].ToString();
                             oVar.Type = docVar["Type"].ToString();
                             oVar.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
+
+                            oVar.ConstantWhenInActionParameter = docVar.Contains("ConstantWhenInActionParameter") ? docVar["ConstantWhenInActionParameter"].AsBoolean : false;
                             comp.Variables.Add(oVar);
                         }
                         GlobalCompoundTypes.Add(comp);
@@ -532,11 +536,11 @@ namespace WebApiCSharp.GenerateCodeFiles
                         errors.Add(plpDescription + ", 'TempVarType', field 'Type' is mandatory (when 'TempVarType' is defined)!");
                     }
 
-                    if (oTemp.Type != "enum" && oTemp.Type != "bool" && oTemp.Type != "int")
+                    if (oTemp.Type != ENUM_VARIABLE_TYPE_NAME && oTemp.Type != "bool" && oTemp.Type != "int")
                     {
                         errors.Add(plpDescription + ", 'TempVarType', valid values for field 'Type' are: 'enum','int' or 'bool'!");
                     }
-                    if (oTemp.Type == "enum")
+                    if (oTemp.Type == ENUM_VARIABLE_TYPE_NAME)
                     {
                         oTemp.EnumName = GetBsonStringField(docTemp, "EnumName");
                         if (oTemp.EnumName == null)
@@ -585,11 +589,11 @@ namespace WebApiCSharp.GenerateCodeFiles
                         errors.Add(plpDescription + ", 'TempVarType', field 'Type' is mandatory (when 'TempVarType' is defined)!");
                     }
 
-                    if (oTemp.Type != "enum" && oTemp.Type != "bool" && oTemp.Type != "int")
+                    if (oTemp.Type != ENUM_VARIABLE_TYPE_NAME && oTemp.Type != "bool" && oTemp.Type != "int")
                     {
                         errors.Add(plpDescription + ", 'TempVarType', valid values for field 'Type' are: 'enum','int' or 'bool'!");
                     }
-                    if (oTemp.Type == "enum")
+                    if (oTemp.Type == ENUM_VARIABLE_TYPE_NAME)
                     {
                         oTemp.EnumName = GetBsonStringField(docTemp, "EnumName");
                         if (oTemp.EnumName == null)
@@ -647,6 +651,8 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string Name;
         public string Type;
         public string Default;
+
+        public bool ConstantWhenInActionParameter;
     }
 
     public class GlobalVariableDeclaration

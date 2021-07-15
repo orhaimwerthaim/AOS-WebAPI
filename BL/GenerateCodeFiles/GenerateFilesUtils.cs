@@ -12,10 +12,15 @@ using System.Linq;
 namespace WebApiCSharp.GenerateCodeFiles
 {
     public class GenerateFilesUtils
-    { 
+    {
         public static string ToUpperFirstLetter(string str)
         {
             return char.ToUpper(str[0]) + str.Substring(1);
+        }
+
+        public static string GetIndentationStr(int numOfIndentations, int indentSize = 4, string str="", bool withNewLine = true)
+        {
+            return (new string(' ', numOfIndentations * indentSize))+str + Environment.NewLine;
         }
     }
 }

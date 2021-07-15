@@ -6,6 +6,7 @@ using WebApiCSharp.Services;
 using WebApiCSharp.Models;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 namespace WebApiCSharp.GenerateCodeFiles
 {
     public class SolverFileTemplate
@@ -922,14 +923,14 @@ void POMCP::GenerateDotGraphVnode(VNode* vnode, int& currentNodeID, stringstream
 ";
             return file;
         }
-    
-		public static string GetEvaluatorFile(string projectName)
-		{
+
+        public static string GetEvaluatorFile(string projectName)
+        {
             string file = @"#include <despot/evaluator.h>
 #include <despot/util/mongoDB_Bridge.h>
-#include <despot/model_primitives/"+projectName+@"/enum_map_"+projectName+@".h>
-#include <despot/model_primitives/"+projectName+@"/actionManager.h>
-#include <despot/model_primitives/"+projectName+@"/state.h>
+#include <despot/model_primitives/" + projectName + @"/enum_map_" + projectName + @".h>
+#include <despot/model_primitives/" + projectName + @"/actionManager.h>
+#include <despot/model_primitives/" + projectName + @"/state.h>
 #include <nlohmann/json.hpp>
 using namespace std;
 
@@ -1297,14 +1298,14 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 		ActionType acType(actDesc.actionType);
 		std::string actionParameters = actDesc.GetActionParametersJson_ForActionExecution();
 		
-		std::string actionName = enum_map_"+projectName+@"::vecActionTypeEnumToString[acType];
+		std::string actionName = enum_map_" + projectName + @"::vecActionTypeEnumToString[acType];
 	  
 		bsoncxx::oid actionId = MongoDB_Bridge::SendActionToExecution(actDesc.actionId, actionName, actionParameters);
 
 		std::string obsStr = """";
 		updates = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
-		obs = enum_map_"+projectName+@"::vecStringToResponseEnum[obsStr];
+		obs = enum_map_" + projectName + @"::vecStringToResponseEnum[obsStr];
 		return false;
 	}
 }
@@ -1356,23 +1357,23 @@ void POMDPEvaluator::UpdateTimePerMove(double step_time) {
 ";
             return file;
         }
-	
-		public static string GetGlobalsFile(PLPsData data)
-		{
+
+        public static string GetGlobalsFile(PLPsData data)
+        {
             string file = @"struct globals
 {
-    static constexpr double MAX_IMMEDIATE_REWARD = "+data.MaxReward+@";
-    static constexpr double MIN_IMMEDIATE_REWARD = "+data.MinReward+@";
-    static constexpr int NUM_OF_ACTIONS = "+data.NumberOfActions+@"; 
+    static constexpr double MAX_IMMEDIATE_REWARD = " + data.MaxReward + @";
+    static constexpr double MIN_IMMEDIATE_REWARD = " + data.MinReward + @";
+    static constexpr int NUM_OF_ACTIONS = " + data.NumberOfActions + @"; 
 };
 ";
             return file;
         }
-	
-		public static string GetMainFile(PLPsData data)
-		{
+
+        public static string GetMainFile(PLPsData data)
+        {
             string file = @"#include <despot/simple_tui.h>
-#include """+data.ProjectName+@".h""
+#include """ + data.ProjectName + @".h""
 
 using namespace despot;
 
@@ -1382,7 +1383,7 @@ public:
   }
 
   DSPOMDP* InitializeModel(option::Option* options) {
-    DSPOMDP* model = new "+data.ProjectNameWithCapitalLetter+@"();
+    DSPOMDP* model = new " + data.ProjectNameWithCapitalLetter + @"();
     return model;
    }
 
@@ -1399,17 +1400,17 @@ int main(int argc, char* argv[]) {
         }
 
         private static string GetModelHeaderFileDistributionVariableDefinition(PLPsData data)
-		{
+        {
             string result = "";
-			foreach(DistributionSample dist in data.DistributionSamples.Values)
-			{
+            foreach (DistributionSample dist in data.DistributionSamples.Values)
+            {
                 switch (dist.Type)
                 {
                     case DistributionType.Normal:
-						result += "    static std::normal_distribution<> "+dist.C_VariableName+"; //" + dist.FunctionDescription + Environment.NewLine;
+                        result += "    static std::normal_distribution<> " + dist.C_VariableName + "; //" + dist.FunctionDescription + Environment.NewLine;
                         break;
                     case DistributionType.Discrete:
-						result += "    static std::discrete_distribution<> "+dist.C_VariableName+"; //" + dist.FunctionDescription + Environment.NewLine;
+                        result += "    static std::discrete_distribution<> " + dist.C_VariableName + "; //" + dist.FunctionDescription + Environment.NewLine;
                         break;
                     case DistributionType.Uniform:
                         throw new NotImplementedException("Uniform distribution is not supported yet, remove '" + dist.FunctionDescription + "'!");
@@ -1418,22 +1419,22 @@ int main(int argc, char* argv[]) {
             return result;
         }
         public static string GetModelHeaderFile(PLPsData data)
-		{
+        {
             string file = @"
 #include ""globals.h""
 #include <despot/core/pomdp.h>
 #include <despot/solver/pomcp.h> 
 #include <random>
 #include <string>
-#include <despot/model_primitives/"+data.ProjectName+@"/enum_map_"+data.ProjectName+@".h> 
-#include <despot/model_primitives/"+data.ProjectName+@"/state.h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
 namespace despot {
 
 /* ==============================================================================
- * "+data.ProjectNameWithCapitalLetter+@"State class
+ * " + data.ProjectNameWithCapitalLetter + @"State class
  * ==============================================================================*/
 
-class "+data.ProjectNameWithCapitalLetter+@"State;
+class " + data.ProjectNameWithCapitalLetter + @"State;
 class AOSUtils
 {
 	public:
@@ -1448,34 +1449,34 @@ class Prints
 	static std::string PrintLocation(tDiscreteLocation);
 	static std::string PrintActionDescription(ActionDescription*);
 	static std::string PrintActionType(ActionType);
-	static std::string PrintState("+data.ProjectNameWithCapitalLetter+@"State state);
+	static std::string PrintState(" + data.ProjectNameWithCapitalLetter + @"State state);
 	static std::string PrintObs(int action, int obs);
 };
 
 
 
 /* ==============================================================================
- * "+data.ProjectNameWithCapitalLetter+@" and PocmanBelief class
+ * " + data.ProjectNameWithCapitalLetter + @" and PocmanBelief class
  * ==============================================================================*/
-class "+data.ProjectNameWithCapitalLetter+@";
-class "+data.ProjectNameWithCapitalLetter+@"Belief: public ParticleBelief {
+class " + data.ProjectNameWithCapitalLetter + @";
+class " + data.ProjectNameWithCapitalLetter + @"Belief: public ParticleBelief {
 protected:
-	const "+data.ProjectNameWithCapitalLetter+@"* "+data.ProjectName+@"_;
+	const " + data.ProjectNameWithCapitalLetter + @"* " + data.ProjectName + @"_;
 public:
 	static int num_particles; 
-	"+data.ProjectNameWithCapitalLetter+@"Belief(std::vector<State*> particles, const DSPOMDP* model, Belief* prior =
+	" + data.ProjectNameWithCapitalLetter + @"Belief(std::vector<State*> particles, const DSPOMDP* model, Belief* prior =
 		NULL);
 	void Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates);
 };
 
 /* ==============================================================================
- * "+data.ProjectNameWithCapitalLetter+@" 
+ * " + data.ProjectNameWithCapitalLetter + @" 
  * ==============================================================================*/
 /**
  * The implementation is adapted from that included in the POMCP software.
  */
 
-class "+data.ProjectNameWithCapitalLetter+@": public DSPOMDP {
+class " + data.ProjectNameWithCapitalLetter + @": public DSPOMDP {
 public:
 	virtual std::string PrintObs(int action, OBS_TYPE obs) const;
 	virtual std::string PrintStateStr(const State &state) const;
@@ -1517,68 +1518,58 @@ public:
 
 
 public:
-	"+data.ProjectNameWithCapitalLetter+@"(); 
+	" + data.ProjectNameWithCapitalLetter + @"(); 
 
 private:
-	void CheckPreconditions(const "+data.ProjectNameWithCapitalLetter+@"State& farstate, double &reward, bool &meetPrecondition, int actionId) const;
-	void SampleModuleExecutionTime(const "+data.ProjectNameWithCapitalLetter+@"State& state, double rand_num, int actionId, int &moduleExecutionTime) const;
-	void ExtrinsicChangesDynamicModel(const "+data.ProjectNameWithCapitalLetter+@"State& initState, "+data.ProjectNameWithCapitalLetter+@"State& afterExState, double rand_num, int actionId, double& reward,
+	void CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + @"State& farstate, double &reward, bool &meetPrecondition, int actionId) const;
+	void SampleModuleExecutionTime(const " + data.ProjectNameWithCapitalLetter + @"State& state, double rand_num, int actionId, int &moduleExecutionTime) const;
+	void ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& initState, " + data.ProjectNameWithCapitalLetter + @"State& afterExState, double rand_num, int actionId, double& reward,
 		const int &moduleExecutionTime) const;
-	void ModuleDynamicModel(const "+data.ProjectNameWithCapitalLetter+@"State &initState, const "+data.ProjectNameWithCapitalLetter+@"State &afterExState, "+data.ProjectNameWithCapitalLetter+@"State &nextState, double rand_num, int actionId, double &reward,
+	void ModuleDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State &initState, const " + data.ProjectNameWithCapitalLetter + @"State &afterExState, " + data.ProjectNameWithCapitalLetter + @"State &nextState, double rand_num, int actionId, double &reward,
 								 OBS_TYPE &observation, const int &moduleExecutionTime) const;
-	bool ProcessSpecialStates(const "+data.ProjectNameWithCapitalLetter+@"State &state, double &reward) const;
+	bool ProcessSpecialStates(const " + data.ProjectNameWithCapitalLetter + @"State &state, double &reward) const;
 
-	mutable MemoryPool<"+data.ProjectNameWithCapitalLetter+@"State> memory_pool_;
+	mutable MemoryPool<" + data.ProjectNameWithCapitalLetter + @"State> memory_pool_;
 	static std::default_random_engine generator;
-" + GetModelHeaderFileDistributionVariableDefinition(data) +@"
+" + GetModelHeaderFileDistributionVariableDefinition(data) + @"
 };
 } // namespace despot
  ";
             return file;
         }
-	
-		
-		/*
-		class NavigateActionDescription: public ActionDescription
-{
-    public: 
-        tLocation oDesiredLocation;
-        std::string strLink_oDesiredLocation;
-        NavigateActionDescription(int _oDesiredLocation_Index);
-        virtual void SetActionParametersByState("+data.ProjectNameWithCapitalLetter+@"State *state, std::vector<std::string> indexes);
-        virtual std::string GetActionParametersJson_ForActionExecution();
-        virtual std::string GetActionParametersJson_ForActionRegistration();
-        NavigateActionDescription(){};
-};
-		*/
-		private static string GetClassesGetActionManagerHeader(PLPsData data)
-		{
+
+
+
+
+
+        private static string GetClassesGetActionManagerHeader(PLPsData data)
+        {
             string result = "";
 
-			foreach(string plpName in data.PLPs.Keys)
-			{
+            foreach (string plpName in data.PLPs.Keys)
+            {
                 PLP plp = data.PLPs[plpName];
-                if(plp.GlobalVariableModuleParameters.Count > 0)
-				{
-                    result += @"class "+GenerateFilesUtils.ToUpperFirstLetter(plpName)+@"ActionDescription: public ActionDescription
+                if (plp.GlobalVariableModuleParameters.Count > 0)
+                {
+                    result += @"class " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription: public ActionDescription
 {
     public:
 ";
-                    foreach(GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
-					{
+                    foreach (GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
+                    {
                         result += "        " + param.Type + " " + param.Name + ";" + Environment.NewLine;
                     }
-					foreach(GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
-					{
+                    foreach (GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
+                    {
                         result += "        std::string strLink_" + param.Name + ";" + Environment.NewLine;
                     }
 
-                    result += "        "+GenerateFilesUtils.ToUpperFirstLetter(plpName)+"ActionDescription(";
+                    result += "        " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + "ActionDescription(";
                     string parameters = "";
-                    foreach(GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
-					{
+                    foreach (GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
+                    {
                         parameters += (parameters.Length == 0) ? "" : ", ";
-                        parameters += "int _"+param.Name+"_Index";
+                        parameters += "int _" + param.Name + "_Index";
                     }
                     result += parameters + ");" + Environment.NewLine;
 
@@ -1590,14 +1581,13 @@ private:
 
 ";
                 }
-			}
+            }
 
             return result;
         }
-		
-		
-		public static string GetActionManagerHeaderFile(PLPsData data)
-		{
+
+        public static string GetActionManagerHeaderFile(PLPsData data)
+        {
             string file = @"#ifndef ACTION_MANAGER_H
 #define ACTION_MANAGER_H
 
@@ -1632,5 +1622,609 @@ public:
 ";
             return file;
         }
+
+        private static string GetResponseModuleAndTempEnumsList(PLPsData data, out List<string> responseModuleAndTempEnums)
+        {
+            responseModuleAndTempEnums = new List<string>();
+            string result = @"
+  enum " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums
+  {
+";
+            string sFullEnumName = "";
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                sFullEnumName = plp.Name + "_moduleResponse";
+                result += "	  " + sFullEnumName + "," + Environment.NewLine;
+                foreach (string sEnumResponse in plp.EnumResponse)
+                {
+                    sFullEnumName = plp.Name + "_" + sEnumResponse;
+                    responseModuleAndTempEnums.Add(sFullEnumName);
+                    result += "	  " + sFullEnumName + "," + Environment.NewLine;
+                }
+
+                foreach (var assign in plp.DynamicModel_VariableAssignments)
+                {
+                    if (assign.TempVariable.Type == PLPsData.ENUM_VARIABLE_TYPE_NAME)
+                    {
+                        sFullEnumName = plp.Name + "_" + assign.TempVariable.EnumName;
+                        result += "	  " + sFullEnumName + "," + Environment.NewLine;
+                        foreach (string sEnumVal in assign.TempVariable.EnumValues)
+                        {
+                            sFullEnumName = plp.Name + "_" + sEnumVal;
+                            result += "	  " + plp.Name + "_" + sEnumVal + "," + Environment.NewLine;
+                            responseModuleAndTempEnums.Add(sFullEnumName);
+                        }
+                    }
+                }
+            }
+
+            result += @"
+	  illegalActionObs = 100000
+  };
+";
+
+            return result;
+        }
+
+        private static string GetActionTypeEnum(PLPsData data)
+        {
+            string result = @"
+  enum ActionType
+{
+";
+            int i = 0;
+            foreach (string plpName in data.PLPs.Keys)
+            {
+                result += "    " + plpName + "Action" + (i == data.PLPs.Count - 1 ? "" : ",") + Environment.NewLine;
+                i++;
+            }
+
+            result += @"	
+};
+";
+            return result;
+        }
+
+        private static string GetCreateMapResponseEnumToString(PLPsData data, List<string> responseModuleAndTempEnums)
+        {
+            string result = @"	  static map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums,std::string> CreateMapResponseEnumToString()
+	  {
+          map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums,std::string> m;" + Environment.NewLine;
+            foreach (string sEnum in responseModuleAndTempEnums)
+            {
+                result += "          m[" + sEnum + "] = \"" + sEnum + "\";" + Environment.NewLine;
+            }
+            result += @"          return m;
+        }
+";
+
+            return result;
+        }
+
+        private static string GetCreateMapActionTypeEnumToString(PLPsData data)
+        {
+            string result = @"
+		static map<ActionType,std::string> CreateMapActionTypeEnumToString()
+	  {
+          map<ActionType,std::string> m;" + Environment.NewLine;
+
+            foreach (string plpName in data.PLPs.Keys)
+            {
+                result += "          m[" + plpName + "Action] = \"" + plpName + "\";" + Environment.NewLine;
+            }
+            result += @"
+          return m;
+        }
+";
+            return result;
+        }
+
+
+        public static string GetEnumMapHeaderFile(PLPsData data)
+        {
+            List<string> _responseModuleAndTempEnums;
+            string file = @"#ifndef ENUM_MAP_" + data.ProjectName.ToUpper() + @"_H
+#define ENUM_MAP_" + data.ProjectName.ToUpper() + @"_H
+
+#include <map>
+
+#include ""state.h""
+#include <vector>
+#include <utility>
+#include <string>
+using namespace std;
+namespace despot
+{
+" + GetActionTypeEnum(data) + @"
+
+" + GetResponseModuleAndTempEnumsList(data, out _responseModuleAndTempEnums) + @"
+
+  struct enum_map_" + data.ProjectName + @"
+  {
+" + GetCreateMapResponseEnumToString(data, _responseModuleAndTempEnums) + @"
+		static map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> CreateMapStringToEnum(map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums,std::string> vecResponseEnumToString)
+	  {
+          map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> m;
+		  map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums,std::string>::iterator it;
+		  for (it = vecResponseEnumToString.begin(); it != vecResponseEnumToString.end(); it++)
+			{
+				m[it->second] = it->first;
+			}
+
+          return m;
+        }
+
+" + GetCreateMapActionTypeEnumToString(data) + @"
+    static map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums,std::string> vecResponseEnumToString;
+	static map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> vecStringToResponseEnum;
+	static map<ActionType,std::string> vecActionTypeEnumToString;
+	static void Init();
+  };
+
+} // namespace despot
+#endif /* ENUM_MAP_" + data.ProjectName.ToUpper() + @"_H */
+
+ 
+";
+            return file;
+        }
+
+
+        private static string GetGetStateVarTypesHeaderCompoundTypes(PLPsData data)
+        {
+            string result = "";
+            foreach (CompoundVarTypePLP complType in data.GlobalCompoundTypes)
+            {
+                result += Environment.NewLine;
+                result += @"
+	struct " + complType.TypeName + @"
+	{
+";
+                for (int i = 0; i < complType.Variables.Count; i++)
+                {
+                    CompoundVarTypePLP_Variable oComVar = complType.Variables[i];
+                    result += "		" + oComVar.Type + " " + oComVar.Name + ";" + Environment.NewLine;
+                }
+                result += @"		" + complType.TypeName + @"(); 
+	};
+
+";
+            }
+            return result;
+        }
+        private static string GetGetStateVarTypesHeaderEnumTypes(PLPsData data)
+        {
+            string result = "";
+            foreach (EnumVarTypePLP enumlVar in data.GlobalEnumTypes)
+            {
+                result += Environment.NewLine;
+                result += @"
+	enum " + enumlVar.TypeName + @"
+	{
+";
+                for (int i = 0; i < enumlVar.Values.Count; i++)
+                {
+                    result += "		" + enumlVar.Values[i] + (i == enumlVar.Values.Count - 1 ? "" : ",") + Environment.NewLine;
+                }
+                result += @"	};
+";
+            }
+            return result;
+        }
+        public static string GetStateVarTypesHeaderFile(PLPsData data)
+        {
+            string file = @"#ifndef VAR_TYPES_H
+#define VAR_TYPES_H
+
+#include <string>
+#include <iostream> 
+
+namespace despot
+{
+	typedef bool anyValue;
+
+" + GetGetStateVarTypesHeaderEnumTypes(data) + @"
+
+" + GetGetStateVarTypesHeaderCompoundTypes(data) + @"
+
+ 
+} // namespace despot
+#endif //VAR_TYPES_H";
+            return file;
+        }
+
+        private static string GetVariableDeclarationsForStateHeaderFile(PLPsData data)
+        {
+            string result = "";
+            foreach (EnumVarTypePLP oEnumType in data.GlobalEnumTypes)
+            {
+                result += "    std::vector<" + oEnumType.TypeName + "> " + oEnumType.TypeName + "Objects;" + Environment.NewLine;
+            }
+
+            HashSet<string> paramTypes = new HashSet<string>();
+            foreach (GlobalVariableDeclaration oVarDec in data.GlobalVariableDeclarations)
+            {
+
+                if (oVarDec.IsActionParameter)
+                {
+                    paramTypes.Add(oVarDec.Type);
+                }
+            }
+            foreach (string paramType in paramTypes)
+            {
+                result += "    std::map<std::string, " + paramType + "> " + paramType + "ObjectsForActions;" + Environment.NewLine;
+            }
+
+            bool HasAnyValue = false;
+            foreach (GlobalVariableDeclaration oVarDec in data.GlobalVariableDeclarations)
+            {
+                HasAnyValue = oVarDec.Type == PLPsData.ANY_VALUE_TYPE_NAME ? true : HasAnyValue;
+                result += "    " + oVarDec.Type + " " + oVarDec.Name + ";" + Environment.NewLine;
+            }
+            result += "    std::map<std::string, anyValue*> anyValueUpdateDic;" + Environment.NewLine;
+            return result;
+        }
+
+        public static string GetStateHeaderFile(PLPsData data)
+        {
+            string file = @"#ifndef STATE_H
+#define STATE_H
+#include <vector>
+#include <despot/core/pomdp.h> 
+#include ""state_var_types.h""
+namespace despot
+{
+
+
+class " + data.ProjectNameWithCapitalLetter + @"State : public State {
+public:
+" + GetVariableDeclarationsForStateHeaderFile(data) + @"
+
+	public:
+		static void SetAnyValueLinks(" + data.ProjectNameWithCapitalLetter + @"State *state);
+		
+};
+}
+#endif //STATE_H";
+            return file;
+        }
+
+
+
+
+        /*
+
+
+                     std::string NavigateActionDescription::GetActionParametersJson_ForActionRegistration()
+                     {
+                         json j;
+                         j[""oDesiredLocation->discrete_location""] = oDesiredLocation.discrete_location;
+                         std::string str(j.dump().c_str());
+                         return str;
+                     }
+                     */
+        private static string GetClassesFunctionDefinitionForActionManagerCPP(PLPsData data)
+        {
+            string result = "";
+
+
+            foreach (string plpName in data.PLPs.Keys)
+            {
+                PLP plp = data.PLPs[plpName];
+                if (plp.GlobalVariableModuleParameters.Count > 0)
+                {
+                    //PLPActionDescription::SetActionParametersByState()
+                    result += @"void " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription::SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes)
+{
+";
+                    for (int i = 0; plp.GlobalVariableModuleParameters.Count > i; i++)
+                    {
+                        GlobalVariableModuleParameter param = plp.GlobalVariableModuleParameters[i];
+                        result += "    strLink_" + param.Name + " = indexes[" + i + "];" + Environment.NewLine;
+                        result += "    " + param.Name + " = (state->" + param.Type + "ObjectsForActions[indexes[" + i + "]]);" + Environment.NewLine;
+                    }
+                    result += "}" + Environment.NewLine;
+                    //------------------------------------------------------------------------------------------------------------------------------------
+
+                    //PLPActionDescription::GetActionParametersJson_ForActionExecution()
+                    result += @"std::string " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription::GetActionParametersJson_ForActionExecution()
+{  
+    json j;
+";
+                    for (int i = 0; plp.GlobalVariableModuleParameters.Count > i; i++)
+                    {
+                        GlobalVariableModuleParameter param = plp.GlobalVariableModuleParameters[i];
+                        result += "    j[\"ParameterLinks\"][\"" + param.Name + "\"] = strLink_" + param.Name + ";" + Environment.NewLine;
+
+                        List<CompoundVarTypePLP> lTemp = data.GlobalCompoundTypes.Where(x => x.TypeName == param.Type).ToList();
+                        bool IsNotCompund = lTemp.Count == 0;
+                        if (IsNotCompund)
+                        {
+                            result += "    j[\"ParameterValues\"][\"" + param.Name + "\"] = " + param.Name + ";" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            CompoundVarTypePLP oType = lTemp[0];
+                            foreach (var oVar in oType.Variables)
+                            {
+                                result += "    j[\"ParameterValues\"][\"" + param.Name + "\"][\"" + oVar.Name + "\"] = " + param.Name + "." + oVar.Name + ";" + Environment.NewLine;
+                            }
+                        }
+                    }
+
+                    result += @"
+    std::string str(j.dump().c_str());
+    return str;
+}" + Environment.NewLine;
+                    //------------------------------------------------------------------------------------------------------------------------------------
+
+                    //PLPActionDescription::GetActionParametersJson_ForActionRegistration()
+                    result += @"std::string " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription::GetActionParametersJson_ForActionRegistration()
+{
+    json j;" + Environment.NewLine;
+
+                    for (int i = 0; plp.GlobalVariableModuleParameters.Count > i; i++)
+                    {
+                        GlobalVariableModuleParameter param = plp.GlobalVariableModuleParameters[i];
+
+                        List<CompoundVarTypePLP> lTemp = data.GlobalCompoundTypes.Where(x => x.TypeName == param.Type).ToList();
+                        bool IsNotCompund = lTemp.Count == 0;
+                        if (IsNotCompund)
+                        {
+                            result += "    j[\"" + param.Name + "\"] = " + param.Name + ";" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            CompoundVarTypePLP oType = lTemp[0];
+                            foreach (var oVar in oType.Variables)
+                            {
+                                if (oVar.ConstantWhenInActionParameter)
+                                {
+                                    result += "    j[\"" + param.Name + "->" + oVar.Name + "\"] = " + param.Name + "." + oVar.Name + ";" + Environment.NewLine;
+                                }
+                            }
+                        }
+                    }
+
+                    result += @"
+    std::string str(j.dump().c_str());
+    return str;
+}";
+
+
+                }
+            }
+
+
+            return result;
+        }
+        public static string GetActionManagerCPpFile(PLPsData data)
+        {
+            string file = @"
+#include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>
+#include <despot/util/mongoDB_Bridge.h>
+#include <nlohmann/json.hpp> 
+
+// for convenience
+using json = nlohmann::json;
+//#include ""actionManager.h""
+#include <vector>
+#include <utility>
+#include <string>
+namespace despot { 
+    void ActionDescription::SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes){}
+    std::vector<ActionDescription*> ActionManager::actions;
+
+
+" + GetClassesFunctionDefinitionForActionManagerCPP(data) + @"
+
+void ActionManager::Init(" + data.ProjectNameWithCapitalLetter + @"State* state)
+{
+	
+	int id = 0;
+" + GetAddingActionForActionManagerCPP(data) + @"
+
+	for(int j=0;j< ActionManager::actions.size();j++)
+	{
+        MongoDB_Bridge::RegisterAction(ActionManager::actions[j]->actionId, enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[ActionManager::actions[j]->actionType], ActionManager::actions[j]->GetActionParametersJson_ForActionRegistration());
+    }
+}
+}";
+            return file;
+        }
+
+        private static string GetAddingActionForActionManagerCPP(PLPsData data)
+        {
+            string result = "";
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                if (plp.GlobalVariableModuleParameters.Count == 0)
+                {
+                    result += "    ActionDescription *" + plp.Name + " = new ActionDescription;" + Environment.NewLine;
+                    result += "    " + plp.Name + "->actionType = " + plp.Name + "Action;" + Environment.NewLine;
+                    result += "    " + plp.Name + "->actionId = id++;" + Environment.NewLine;
+
+                    result += "    ActionManager::actions.push_back(" + plp.Name + ");" + Environment.NewLine + Environment.NewLine;
+                }
+                else
+                {
+                    int totalActionNumber = 1;
+                    KeyValuePair<GlobalVariableModuleParameter, int>[] parameters = new KeyValuePair<GlobalVariableModuleParameter, int>[plp.GlobalVariableModuleParameters.Count];
+                    for (int i = 0; plp.GlobalVariableModuleParameters.Count > i; i++)
+                    {
+                        GlobalVariableModuleParameter oParam = plp.GlobalVariableModuleParameters[i];
+                        int cardinality = data.GlobalVariableDeclarations.Where(x => x.IsActionParameter && x.Type.Equals(oParam.Type)).Count();
+                        totalActionNumber *= cardinality;
+                        parameters[i] = new KeyValuePair<GlobalVariableModuleParameter, int>(oParam, cardinality);
+
+                    }
+                    result += "    " + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription* " + plp.Name + "Actions = new " + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription[" + totalActionNumber + "];" + Environment.NewLine;
+                    result += "    std::vector<std::string> indexes;" + Environment.NewLine;
+                    result += "    int i = 0;" + Environment.NewLine;
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        GlobalVariableModuleParameter oPar = parameters[i].Key;
+                        string it = "it" + (i + 1).ToString();
+                        result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "map<std::string, " + oPar.Type + ">::iterator " + it + ";");
+                        result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "for (" + it + " = state->" + oPar.Type + "ObjectsForActions.begin(); " + it + " != state->" + oPar.Type + "ObjectsForActions.end(); " + it + "++)");
+                        result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "{");
+                        result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "indexes.push_back(" + it + "->first);");
+
+                        if (i == parameters.Length - 1)
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription &" + plp.Name + "Action = " + plp.Name + "Actions[i];");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, plp.Name + "Action.SetActionParametersByState(state, indexes);");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, plp.Name + "Action.actionId = id++;");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, plp.Name + "Action.actionType = " + plp.Name + "Action;");
+
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "ActionManager::actions.push_back(&" + plp.Name + "Action);");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "i++;");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "indexes.pop_back();");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "}");
+                        }
+                    }
+                }
+            }
+            return result;
+
+        }
+
+        public static string GetEnumMapCppFile(PLPsData data)
+        {
+            string file = @"
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
+using namespace std;
+namespace despot
+{ 
+	map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums, std::string> enum_map_" + data.ProjectName + @"::vecResponseEnumToString;
+	map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> enum_map_" + data.ProjectName + @"::vecStringToResponseEnum ;
+	map<ActionType,std::string> enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString;
+
+	void enum_map_" + data.ProjectName + @"::Init()
+	{
+		if(enum_map_" + data.ProjectName + @"::vecResponseEnumToString.size() > 0)
+			return; 
+
+		enum_map_" + data.ProjectName + @"::vecResponseEnumToString = enum_map_" + data.ProjectName + @"::CreateMapResponseEnumToString();
+	 enum_map_" + data.ProjectName + @"::vecStringToResponseEnum = enum_map_" + data.ProjectName + @"::CreateMapStringToEnum(enum_map_" + data.ProjectName + @"::vecResponseEnumToString);
+	enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString = enum_map_" + data.ProjectName + @"::CreateMapActionTypeEnumToString();
 	}
+} // namespace despot
+";
+            return file;
+        }
+
+        private static string GetStateVarTypesCppConstructors(PLPsData data)
+        {
+            string result = "";
+
+            foreach (CompoundVarTypePLP oCompType in data.GlobalCompoundTypes)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, oCompType.TypeName + "::" + oCompType.TypeName + "()");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+
+                foreach (CompoundVarTypePLP_Variable oCompVar in oCompType.Variables)
+                {
+                    if (oCompVar.Type == PLPsData.ANY_VALUE_TYPE_NAME)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, oCompVar.Name + " = false;");
+                    }
+                    else if (oCompVar.Default != null)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, oCompVar.Name + " = " + oCompVar.Default + ";");
+                    }
+                }
+
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "}") + Environment.NewLine;
+            }
+            return result;
+        }
+        public static string GetStateVarTypesCppFile(PLPsData data)
+        {
+            string file = @"#include <string>
+#include <cstdlib>
+#include <cmath>
+#include <cassert>
+#include <despot/model_primitives/" + data.ProjectName + @"/state_var_types.h> 
+
+
+using namespace std;
+
+namespace despot {
+	
+
+" + GetStateVarTypesCppConstructors(data) + @"
+
+}// namespace despot
+";
+            return file;
+        }
+
+        private static HashSet<string> GetAnyValueVarNames(PLPsData data)
+        {
+            HashSet<string> varNames = new HashSet<string>();
+            foreach (GlobalVariableDeclaration gVar in data.GlobalVariableDeclarations)
+            {
+
+                if (gVar.Type == PLPsData.ANY_VALUE_TYPE_NAME)
+                {
+                    varNames.Add("state." + gVar.Name);
+                }
+                else
+                {
+                    foreach (CompoundVarTypePLP oCompType in data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(gVar.Type)))
+                    {
+                        GetCompoundTypeAnyValues(oCompType, "state." + gVar.Name + ".", varNames, data);
+                    }
+                }
+            }
+            return varNames;
+        }
+
+        private static void GetCompoundTypeAnyValues(CompoundVarTypePLP oCompType, string baseName, HashSet<string> varNames, PLPsData data)
+        {
+            foreach (CompoundVarTypePLP_Variable oVar in oCompType.Variables)
+            {
+                if (oVar.Type.Equals(PLPsData.ANY_VALUE_TYPE_NAME))
+                {
+                    varNames.Add(baseName + oVar.Name);
+                }
+                foreach (CompoundVarTypePLP ocCompType in data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oVar.Type)))
+                {
+                    GetCompoundTypeAnyValues(ocCompType, baseName + "." + oVar.Name + ".", varNames, data);
+                }
+            }
+        }
+        private static string GetStateCppUpdateDicInit(PLPsData data)
+        {
+            string result = "";
+            HashSet<string> names = GetAnyValueVarNames(data);
+
+            foreach (string name in names)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "state->anyValueUpdateDic[\"" + name + "\"] = &(" + name.Replace("state.", "state->") + ");");
+            }
+            return result;
+        }
+
+        public static string GetStateCppFile(PLPsData data)
+        {
+            string file = @"#include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
+namespace despot {
+	
+
+" + GetStateVarTypesCppConstructors(data) + @"
+
+
+
+		void " + data.ProjectNameWithCapitalLetter + @"State::SetAnyValueLinks(" + data.ProjectNameWithCapitalLetter + @"State *state)
+		{
+" + GetStateCppUpdateDicInit(data) + @"
+		}
+}// namespace despot";
+            return file;
+        }
+    }
+
+
 }
