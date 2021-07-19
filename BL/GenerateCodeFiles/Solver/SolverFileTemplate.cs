@@ -1694,6 +1694,7 @@ public:
             {
                 result += "          m[" + sEnum + "] = \"" + sEnum + "\";" + Environment.NewLine;
             }
+            result += "          m[illegalActionObs] = \"IllegalActionObs\";" + Environment.NewLine;
             result += @"          return m;
         }
 ";
@@ -2207,6 +2208,7 @@ namespace despot {
             return result;
         }
 
+
         public static string GetStateCppFile(PLPsData data)
         {
             string file = @"#include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
@@ -2222,6 +2224,665 @@ namespace despot {
 " + GetStateCppUpdateDicInit(data) + @"
 		}
 }// namespace despot";
+            return file;
+        }
+
+
+
+
+        private static string GetPrintStateFunction(PLPsData data)
+        {
+            string result = GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::PrintState(" + data.ProjectNameWithCapitalLetter + @"State state)");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "stringstream ss;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"STATE: \";");
+            foreach (GlobalVariableDeclaration oStateVar in data.GlobalVariableDeclarations)
+            {
+                if (data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oStateVar.Type)).Count() == 0)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + oStateVar.Name + ":\";");
+                    if (data.GlobalEnumTypes.Where(x => x.TypeName.Equals(oStateVar.Type)).Count() > 0)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  Prints::Print" + oStateVar.Type + "(state." + oStateVar.Name + ");");
+                    }
+                    else
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  state." + oStateVar.Name + ";");
+                    }
+                }
+            }
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "return ss.str();");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}" + Environment.NewLine);
+            return result;
+        }
+        private static string GetPrintActionDescriptionFunction(PLPsData data)
+        {
+            string result = GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::PrintActionDescription(ActionDescription* act)");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "stringstream ss;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"ID:\" << act->actionId;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \",\" << PrintActionType(act->actionType);");
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                if (plp.GlobalVariableModuleParameters.Count > 0)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "if(act->actionType == " + plp.Name + "Action)");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
+
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription *" + plp.Name +
+                        "A = static_cast<" + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription *>(act);");
+                    foreach (GlobalVariableModuleParameter oVar in plp.GlobalVariableModuleParameters)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "//TODO:: add print for action fields (if realy needed?)");
+                        //result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << Prints::PrintLocation(("+oVar.Type+")"+plp.Name+"A->"+oVar.+" oDesiredLocation.discrete_location);");
+                    }
+
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "}" + Environment.NewLine);
+                }
+            }
+
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "return ss.str();");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            return result;
+        }
+
+        /*
+        std::string Prints::PrintActionType(ActionType actType)
+        {	
+            switch (actType)
+                {
+                case pickAction:
+                    return ""pickAction"";
+                case placeAction:
+                    return ""placeAction"";
+                case observeAction:
+                    return ""observeAction"";
+                case navigateAction:
+                    return ""navigateAction""; 
+                }
+        }
+        */
+        private static string GetPrintActionType(PLPsData data)
+        {
+            string result = @"";
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::PrintActionType(ActionType actType)");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "switch (actType)");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
+            foreach (string plpName in data.PLPs.Keys)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "case " + plpName + "Action:");
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "return \"" + plpName + "Action\";");
+            }
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            return result;
+        }
+        private static string GetGlobalVarEnumsPrintFunctions(PLPsData data)
+        {
+            string result = "";
+            foreach (EnumVarTypePLP enumType in data.GlobalEnumTypes)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::Print" + enumType.TypeName + "(" + enumType.TypeName + " enumT)");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "switch (enumT)");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
+                foreach (string val in enumType.Values)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "case " + val + ":");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "return \"" + val + "\";");
+                }
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "}" + Environment.NewLine);
+            }
+            return result;
+        }
+
+        /*
+        State* " + data.ProjectNameWithCapitalLetter + @"::CreateStartState(string tyep) const {
+          " + data.ProjectNameWithCapitalLetter + @"State* startState = memory_pool_.Allocate();
+          " + data.ProjectNameWithCapitalLetter + @"State& state = *startState;
+          startState->cupDiscreteGeneralLocation = eCorridor;
+          startState->handEmpty = true;
+
+          state.locationOutside_lab211 = tLocation();
+          state.locationAuditorium = tLocation();
+          state.locationCorridor = tLocation();
+          state.locationNear_elevator1 = tLocation();
+
+          state.locationOutside_lab211.discrete_location = eOutside_lab211;
+          state.locationOutside_lab211.actual_location = true;
+          state.locationAuditorium.discrete_location = eAuditorium; state.locationAuditorium.actual_location = true;
+          state.locationNear_elevator1.discrete_location = eNear_elevator1; state.locationNear_elevator1.actual_location = true;
+          state.locationCorridor.discrete_location = eCorridor; state.locationCorridor.actual_location = true;
+
+          startState->tDiscreteLocationObjects.push_back(eCorridor);
+          startState->tDiscreteLocationObjects.push_back(eOutside_lab211);
+          startState->tDiscreteLocationObjects.push_back(eNear_elevator1);
+          startState->tDiscreteLocationObjects.push_back(eAuditorium);
+
+          startState->tLocationObjectsForActions[""state.locationOutside_lab211""] = (state.locationOutside_lab211);
+          startState->tLocationObjectsForActions[""state.locationAuditorium""]=(state.locationAuditorium);
+          startState->tLocationObjectsForActions[""state.locationNear_elevator1""]=(state.locationNear_elevator1);
+          startState->tLocationObjectsForActions[""state.locationCorridor""]=(state.locationCorridor);
+
+          state.robotGenerallocation = state.locationNear_elevator1.discrete_location;
+          state.cupAccurateLocation = false;
+          //generated from environment file line: state.cupDiscreteGeneralLocation = AOS.SampleDiscrete(tDiscreteLocation,{0.6, 0.4,0,0});
+          state.cupDiscreteGeneralLocation = state.tDiscreteLocationObjects[discrete_dist1(generator)];
+
+
+          if (ActionManager::actions.size() == 0)
+          {
+              ActionManager::Init(const_cast <" + data.ProjectNameWithCapitalLetter + @"State*> (startState));
+          }
+          return startState;
+      }
+        */
+
+        private static string HandleCodeLine(PLPsData data, string codeLine, string fromFile)
+        {
+            bool environmentFileCode = fromFile == PLPsData.PLP_TYPE_NAME_ENVIRONMENT;
+            string code = codeLine;
+            code = HandleC_Code_IsInitializedAOS_str(code);
+            foreach (string lowLevelConstantName in data.LocalVariableConstants.Select(x => x.Name))
+            {
+                code = code.Replace(lowLevelConstantName, "true");//lowLevelConstants are assigned as true regarding the global varible level 
+            }
+            foreach (DistributionSample dist in data.DistributionSamples.Values)
+            {
+                string replacementCode = "";
+                switch (dist.Type)
+                {
+                    case DistributionType.Discrete:
+                        if (environmentFileCode)
+                        {
+                            replacementCode = "state." + dist.Parameters[0] + "Objects[" + dist.C_VariableName + "(generator)];";
+                        }
+                        else
+                        {
+
+
+                            replacementCode = "(" + data.ProjectNameWithCapitalLetter + "ResponseModuleAndTempEnums)(" + dist.FromFile + "_" + dist.Parameters[0] + " + 1 + " + data.ProjectNameWithCapitalLetter + "::" + dist.C_VariableName + "(" + data.ProjectNameWithCapitalLetter + "::generator))";
+                        }
+                        break;
+                    case DistributionType.Normal:
+                        replacementCode = data.ProjectNameWithCapitalLetter + "::" + dist.C_VariableName + "(" + data.ProjectNameWithCapitalLetter + "::generator)";
+                        break;
+                }
+
+                code = code.Replace(dist.FunctionDescription, replacementCode);
+            }
+            return code;
+        }
+
+        private static string GetModelCppCreatStartStateFunction(PLPsData data)
+        {
+            string result = "";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "State* " + data.ProjectNameWithCapitalLetter + "::CreateStartState(string tyep) const {");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, data.ProjectNameWithCapitalLetter + "State* startState = memory_pool_.Allocate();");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, data.ProjectNameWithCapitalLetter + "State& state = *startState;");
+
+            foreach (GlobalVariableDeclaration oVar in data.GlobalVariableDeclarations)
+            {
+                bool isCompundType = data.GlobalCompoundTypes.Any(x => x.TypeName.Equals(oVar.Type));
+                if (oVar.Type == PLPsData.ANY_VALUE_TYPE_NAME)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = false;");
+                }
+                if (isCompundType)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + oVar.Type + "();");
+                }
+                if (oVar.Default != null)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + HandleCodeLine(data, oVar.Default, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                }
+                if (oVar.DefaultCode != null)
+                {
+                    foreach (string codeLine in oVar.DefaultCode.Split(";"))
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                    }
+                }
+            }
+
+            foreach (Assignment assign in data.InitialBeliefAssignments)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, assign.AssignmentCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT));
+            }
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "if (ActionManager::actions.size() == 0)");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionManager::Init(const_cast <" + data.ProjectNameWithCapitalLetter + @"State*> (startState));");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "return startState;");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "}" + Environment.NewLine);
+            return result;
+        }
+
+
+
+        private static string HandleC_Code_IsInitializedAOS_str(string codeLine)
+        {
+            string code = codeLine;
+            string functionSign = "AOS.IsInitialized";
+            bool found = false;
+            do
+            {
+                int startIndex = code.IndexOf(functionSign);
+                found = startIndex > -1;
+                if (found)
+                {
+                    int closeIndex = code.IndexOf(")", startIndex);
+                    string start = code.Substring(0, startIndex);
+                    string end = code.Substring(closeIndex + 1);
+                    string variableName = code.Substring(startIndex, closeIndex - startIndex).Replace(functionSign, "").Replace("(", "").Replace(")", "");
+                    code = start + "(" + variableName + " == true)" + end;
+                }
+            } while (found);
+            return code;
+        }
+        private static string GetCheckPreconditionsForModelCpp(PLPsData data)
+        {
+            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + "State& state, double &reward, bool &meetPrecondition, int actionId) const");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "meetPrecondition = false;");
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(actType == " + plp.Name + "Action)");
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "{");
+
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "if(" + HandleCodeLine(data, plp.Preconditions_GlobalVariableConditionCode, plp.Name) + " && " + HandleCodeLine(data, plp.Preconditions_PlannerAssistancePreconditions, plp.Name) + ")");
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "{");
+                result += GenerateFilesUtils.GetIndentationStr(5, 4, "meetPrecondition = true;");
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "}");
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "else");
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "{");
+                result += GenerateFilesUtils.GetIndentationStr(5, 4, "reward += " + plp.Preconditions_ViolatingPreconditionPenalty + ";");
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "}");
+
+
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "}");
+            }
+
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+
+
+            return result;
+        }
+        private static string GetModelCppFileDistributionVariableDefinition(PLPsData data)
+        {
+            double temp;
+            string result = "";
+            foreach (DistributionSample dist in data.DistributionSamples.Values)
+            {
+                switch (dist.Type)
+                {
+                    case DistributionType.Normal:
+                        //std::normal_distribution<double> Icaps::normal_dist1(40000,10000); 
+
+
+                        result += GenerateFilesUtils.GetIndentationStr(0, 4, "std::normal_distribution<double>  " +
+                            data.ProjectNameWithCapitalLetter + "::" + dist.C_VariableName +
+                                "(" + String.Join(",", dist.Parameters) + "); //" + dist.FunctionDescription);
+                        break;
+                    case DistributionType.Discrete:
+                        //std::discrete_distribution<> Icaps::discrete_dist1{0.6, 0.4,0,0};
+                        result += GenerateFilesUtils.GetIndentationStr(0, 4, "std::discrete_distribution<> " + data.ProjectNameWithCapitalLetter + "::" + dist.C_VariableName + "{" + String.Join(",", dist.Parameters.Where(x => double.TryParse(x, out temp))) + "}; //" + dist.FunctionDescription);
+                        break;
+                    case DistributionType.Uniform:
+                        throw new NotImplementedException("Uniform distribution is not supported yet, remove '" + dist.FunctionDescription + "'!");
+                }
+            }
+            return result;
+        }
+        /*
+        bool " + data.ProjectNameWithCapitalLetter + @"::ProcessSpecialStates(const " + data.ProjectNameWithCapitalLetter + @"State &state, double &reward) const
+        {
+            bool isFinalState = false;
+            if (state.robotGenerallocation == eNear_elevator1 && state.cupDiscreteGeneralLocation == eAuditorium)
+            {
+                reward += 5000;
+                isFinalState = true;
+            }
+            return isFinalState;
+        }
+
+        //p is between 0 to 1
+        bool AOSUtils::Bernoulli(double p)
+        {
+            int randInt = rand() % 100 + 1;
+            return (p * 100) >= randInt;
+        }
+        */
+        private static string GetProcessSpecialStatesFunction(PLPsData data)
+        {
+            string result = "";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "bool " + data.ProjectNameWithCapitalLetter + "::ProcessSpecialStates(const " + data.ProjectNameWithCapitalLetter + "State &state, double &reward) const");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "bool isFinalState = false;");
+            foreach (SpecialState spState in data.SpecialStates)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "if (" + HandleCodeLine(data, spState.StateConditionCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ")");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "reward += " + spState.Reward + ";");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "isFinalState = " + spState.IsGoalState + ";");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            }
+
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "return isFinalState;");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
+
+            return result;
+        }
+
+        private static string GetModuleDynamicModelFunction(PLPsData data)
+        {
+            string result = "";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::ModuleDynamicModel(const " +
+                data.ProjectNameWithCapitalLetter + "State &state, const " + data.ProjectNameWithCapitalLetter + @"State &state_, " +
+                data.ProjectNameWithCapitalLetter + "State &state__, double rand_num, int actionId, double &__reward, OBS_TYPE &observation, const int &__moduleExecutionTime) const");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
+
+
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "observation = -1;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "int startObs = observation;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "OBS_TYPE &__moduleResponse = observation;");
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(actType == " + plp.Name + "Action)");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+                foreach (Assignment assign in plp.DynamicModel_VariableAssignments)
+                {
+                    foreach (string codeLine in assign.AssignmentCode.Split(";"))
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, HandleCodeLine(data, codeLine, plp.Name) + ";");
+                    }
+                }
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            }
+
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(startObs == __moduleResponse)");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "stringstream ss;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "ss << \"Observation/__moduleResponse Not initialized!!! on action:\" << Prints::PrintActionDescription(ActionManager::actions[actionId]) << endl;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "loge << ss.str() << endl;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "throw 1;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
+            return result;
+        }
+        private static string GetExtrinsicChangesDynamicModelFunction(PLPsData data)
+        {
+            string result = "";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, double& reward, const int &__moduleExecutionTime)  const");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
+            foreach (Assignment assign in data.ExtrinsicChangesDynamicModel)
+            {
+                foreach (string codeLine in assign.AssignmentCode.Split(";"))
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                }
+            }
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
+            return result;
+        }
+
+        private static string GetSampleModuleExecutionTimeFunction(PLPsData data)
+        {
+            string result = "";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::SampleModuleExecutionTime(const " + data.ProjectNameWithCapitalLetter + "State& farstate, double rand_num, int actionId, int &__moduleExecutionTime) const");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(actType == " + plp.Name + "Action)");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+                foreach (Assignment assign in plp.ModuleExecutionTimeDynamicModel)
+                {
+                    foreach (string codeLine in assign.AssignmentCode.Split(";"))
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, HandleCodeLine(data, codeLine, plp.Name) + ";");
+                    }
+                }
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            }
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
+            return result;
+        }
+
+        public static string GetModelCppFile(PLPsData data)
+        {
+            string file = @"#include """ + data.ProjectName + @".h""
+#include <despot/core/pomdp.h> 
+#include <stdlib.h>
+#include <despot/solver/pomcp.h>
+#include <sstream>
+#include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
+
+using namespace std;
+
+namespace despot {
+
+
+
+/* ==============================================================================
+ *" + data.ProjectNameWithCapitalLetter + @"Belief class
+ * ==============================================================================*/
+int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = 5000;
+
+
+" + data.ProjectNameWithCapitalLetter + @"Belief::" + data.ProjectNameWithCapitalLetter + @"Belief(vector<State*> particles, const DSPOMDP* model,
+	Belief* prior) :
+	ParticleBelief(particles, model, prior),
+	" + data.ProjectName + @"_(static_cast<const " + data.ProjectNameWithCapitalLetter + @"*>(model)) {
+}
+ 
+" + GetGlobalVarEnumsPrintFunctions(data) + GetPrintActionDescriptionFunction(data) + @"
+
+std::string Prints::PrintObs(int action, int obs)
+{
+	" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums eObs = (" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs;
+	return enum_map_" + data.ProjectName + @"::vecResponseEnumToString[eObs]; 
+}
+" + GetPrintStateFunction(data) + @"
+	
+ 	std::string " + data.ProjectNameWithCapitalLetter + @"::GetActionDescription(int actionId) const
+	 {
+		 return Prints::PrintActionDescription(ActionManager::actions[actionId]);
+	 }
+
+" + GetPrintActionType(data) + @"
+
+
+void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates) {
+	history_.Add(actionId, obs);
+
+	vector<State*> updated;
+	double reward;
+	OBS_TYPE o;
+	int cur = 0, N = particles_.size(), trials = 0;
+	while (updated.size() < num_particles && trials < 10 * num_particles) {
+		State* particle = " + data.ProjectName + @"_->Copy(particles_[cur]);
+		bool terminal = " + data.ProjectName + @"_->Step(*particle, Random::RANDOM.NextDouble(),
+			actionId, reward, o);
+ 
+		if (!terminal && o == obs) 
+			{
+				" + data.ProjectNameWithCapitalLetter + @"State &" + data.ProjectName + @"_particle = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particle);
+				if(!Globals::IsInternalSimulation() && updates.size() > 0)
+				{
+					" + data.ProjectNameWithCapitalLetter + @"State::SetAnyValueLinks(&" + data.ProjectName + @"_particle);
+					map<std::string, bool>::iterator it;
+					for (it = updates.begin(); it != updates.end(); it++)
+					{
+						*(" + data.ProjectName + @"_particle.anyValueUpdateDic[it->first]) = it->second; 
+					} 
+				}
+				updated.push_back(particle);
+		} else {
+			" + data.ProjectName + @"_->Free(particle);
+		}
+
+		cur = (cur + 1) % N;
+
+		trials++;
+	}
+
+	for (int i = 0; i < particles_.size(); i++)
+		" + data.ProjectName + @"_->Free(particles_[i]);
+
+	particles_ = updated;
+
+	for (int i = 0; i < particles_.size(); i++)
+		particles_[i]->weight = 1.0 / particles_.size();
+}
+
+/* ==============================================================================
+ * " + data.ProjectNameWithCapitalLetter + @" class
+ * ==============================================================================*/
+
+" + data.ProjectNameWithCapitalLetter + @"::" + data.ProjectNameWithCapitalLetter + @"(){
+	
+}
+
+int " + data.ProjectNameWithCapitalLetter + @"::NumActions() const {
+	return ActionManager::actions.size();
+}
+
+double " + data.ProjectNameWithCapitalLetter + @"::ObsProb(OBS_TYPE obs, const State& state, int actionId) const {
+	return 0.9;
+}
+
+ 
+
+
+std::default_random_engine " + data.ProjectNameWithCapitalLetter + @"::generator;
+
+" + GetModelCppFileDistributionVariableDefinition(data) + Environment.NewLine + GetModelCppCreatStartStateFunction(data) + @"
+
+Belief* " + data.ProjectNameWithCapitalLetter + @"::InitialBelief(const State* start, string type) const {
+	int N = " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles;
+	vector<State*> particles(N);
+	for (int i = 0; i < N; i++) {
+		particles[i] = CreateStartState();
+		particles[i]->weight = 1.0 / N;
+	}
+
+	return new " + data.ProjectNameWithCapitalLetter + @"Belief(particles, this);
+}
+ 
+
+ 
+
+POMCPPrior* " + data.ProjectNameWithCapitalLetter + @"::CreatePOMCPPrior(string name) const { 
+		return new UniformPOMCPPrior(this);
+}
+
+void " + data.ProjectNameWithCapitalLetter + @"::PrintState(const State& state, ostream& ostr) const {
+	const " + data.ProjectNameWithCapitalLetter + @"State& farstate = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(state);
+	if (ostr)
+		ostr << Prints::PrintState(farstate);
+}
+
+void " + data.ProjectNameWithCapitalLetter + @"::PrintObs(const State& state, OBS_TYPE observation,
+	ostream& ostr) const {
+	const " + data.ProjectNameWithCapitalLetter + @"State& farstate = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(state);
+	
+	ostr << observation <<endl;
+}
+
+void " + data.ProjectNameWithCapitalLetter + @"::PrintBelief(const Belief& belief, ostream& out) const {
+	 out << ""called PrintBelief(): b printed""<<endl;
+		out << endl;
+	
+}
+
+void " + data.ProjectNameWithCapitalLetter + @"::PrintAction(int actionId, ostream& out) const {
+	out << Prints::PrintActionDescription(ActionManager::actions[actionId]) << endl;
+}
+
+State* " + data.ProjectNameWithCapitalLetter + @"::Allocate(int state_id, double weight) const {
+	" + data.ProjectNameWithCapitalLetter + @"State* state = memory_pool_.Allocate();
+	state->state_id = state_id;
+	state->weight = weight;
+	return state;
+}
+
+State* " + data.ProjectNameWithCapitalLetter + @"::Copy(const State* particle) const {
+	" + data.ProjectNameWithCapitalLetter + @"State* state = memory_pool_.Allocate();
+	*state = *static_cast<const " + data.ProjectNameWithCapitalLetter + @"State*>(particle);
+	state->SetAllocated();
+	return state;
+}
+
+void " + data.ProjectNameWithCapitalLetter + @"::Free(State* particle) const {
+	memory_pool_.Free(static_cast<" + data.ProjectNameWithCapitalLetter + @"State*>(particle));
+}
+
+int " + data.ProjectNameWithCapitalLetter + @"::NumActiveParticles() const {
+	return memory_pool_.num_allocated();
+}
+
+bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
+	OBS_TYPE& observation) const {
+	bool isNextStateFinal = false;
+	Random random(rand_num);
+	int __moduleExecutionTime = -1;
+	bool meetPrecondition = false;
+	
+	" + data.ProjectNameWithCapitalLetter + @"State &state__ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(s_state__);
+	 logd << ""[" + data.ProjectNameWithCapitalLetter + @"::Step] Selected Action:"" << Prints::PrintActionDescription(ActionManager::actions[actionId]) << ""||State""<< Prints::PrintState(state__);
+	CheckPreconditions(state__, reward, meetPrecondition, actionId);
+	if (!meetPrecondition)
+	{
+		__moduleExecutionTime = 0;
+		observation = illegalActionObs;
+		return false;
+	}
+
+	State *s_state = Copy(&s_state__);
+	" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
+
+	
+	SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
+
+	ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, reward, __moduleExecutionTime);
+
+	State *s_state_ = Copy(&s_state__);
+	" + data.ProjectNameWithCapitalLetter + @"State &state_ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state_);
+
+	ModuleDynamicModel(state, state_, state__, rand_num, actionId, reward,
+					   observation, __moduleExecutionTime);
+	
+	Free(s_state);
+	Free(s_state_);
+	bool finalState = ProcessSpecialStates(state__, reward);
+	return finalState;
+}
+
+" + GetCheckPreconditionsForModelCpp(data) + Environment.NewLine +
+ GetSampleModuleExecutionTimeFunction(data) + Environment.NewLine +
+ GetExtrinsicChangesDynamicModelFunction(data) + Environment.NewLine +
+ GetModuleDynamicModelFunction(data) + Environment.NewLine +
+ GetProcessSpecialStatesFunction(data) + Environment.NewLine + @"
+
+
+
+std::string " + data.ProjectNameWithCapitalLetter + @"::PrintObs(int action, OBS_TYPE obs) const 
+{
+	return Prints::PrintObs(action, obs);
+}
+
+std::string " + data.ProjectNameWithCapitalLetter + @"::PrintStateStr(const State &state) const { return """"; };
+}// namespace despot
+";
+
             return file;
         }
     }

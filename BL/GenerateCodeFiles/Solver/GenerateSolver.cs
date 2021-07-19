@@ -46,6 +46,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/globals.h", SolverFileTemplate.GetGlobalsFile(data));
             GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/main.cpp", SolverFileTemplate.GetMainFile(data));
+            GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/"+data.ProjectName+".cpp", SolverFileTemplate.GetModelCppFile(data));
 
 
             GenerateCodeFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/" + data.ProjectName + ".h", SolverFileTemplate.GetModelHeaderFile(data));

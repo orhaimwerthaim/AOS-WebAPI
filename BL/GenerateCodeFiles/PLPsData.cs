@@ -26,6 +26,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string ProjectName { get; set; }
         public string ProjectNameWithCapitalLetter { get; set; }
         public List<Assignment> InitialBeliefAssignments = new List<Assignment>();
+        public List<Assignment> ExtrinsicChangesDynamicModel = new List<Assignment>();
         public List<EnumVarTypePLP> GlobalEnumTypes = new List<EnumVarTypePLP>();
         public List<CompoundVarTypePLP> GlobalCompoundTypes = new List<CompoundVarTypePLP>();
 
@@ -78,7 +79,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 errors.AddRange(tempErrors);
             }
 
-            List<string> allCodeSections = GetC_CodeSections();
+            List<KeyValuePair<string, string>> allCodeSections = GetC_CodeSections();
             foreach (DistributionType distType in Enum.GetValues(typeof(DistributionType)))
             {
                 GetSampleDistributionFunctions(allCodeSections, distType);
@@ -87,11 +88,11 @@ namespace WebApiCSharp.GenerateCodeFiles
             GetMaxMinReward();
         }
         //AOS.SampleDiscrete(enumRealCase,{0.8, 0.1,0,0.1})//AOS.SampleNormal(40000,10000)//AOS.SampleUniform(40000,10000)
-        private void GetSampleDistributionFunctions(List<string> allCodeSections, DistributionType type)
+        private void GetSampleDistributionFunctions(List<KeyValuePair<string, string>> allCodeSections, DistributionType type)
         {
-            foreach (string code in allCodeSections)
+            foreach (KeyValuePair<string, string> code in allCodeSections)
             {
-                string c = code.Replace(" ", "");
+                string c = code.Key.Replace(" ", "");
                 bool found = false;
                 string functionName = type == DistributionType.Normal ? NORMAL_DISTRIBUTION_FUNCTION_NAME :
                         type == DistributionType.Discrete ? DISCRETE_DISTRIBUTION_FUNCTION_NAME :
@@ -105,6 +106,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                     if (found)
                     {
                         DistributionSample dist = new DistributionSample();
+                        dist.FromFile = code.Value;
                         c = c.Substring(index);
                         dist.FunctionDescription = c.Substring(0, c.IndexOf(")") + 1);
                         c = c.Substring(c.IndexOf(")") + 1);
@@ -119,16 +121,18 @@ namespace WebApiCSharp.GenerateCodeFiles
                             int startEnumIndex = dist.FunctionDescription.IndexOf("(") + 1;
                             int enumWordLength = dist.FunctionDescription.IndexOf(",") - startEnumIndex;
                             dist.Parameters.Add(dist.FunctionDescription.Substring(startEnumIndex, enumWordLength));
-                            dist.Parameters.AddRange(dist.FunctionDescription.Substring(dist.FunctionDescription.IndexOf("{")).Replace("{", "").Replace("}", "").Split(","));
+                            dist.Parameters.AddRange(dist.FunctionDescription.Substring(dist.FunctionDescription.IndexOf("{")).Replace("{", "").Replace("}", "").Replace(")", "").Split(","));
                         }
 
-                        if (!DistributionSamples.ContainsKey(dist.FunctionDescription))
+                        string key = dist.FromFile + "_" + dist.FunctionDescription;
+                        if (!DistributionSamples.ContainsKey(key))
                         {
-                            DistributionSamples.Add(dist.FunctionDescription, dist);
+                            DistributionSamples.Add(key, dist);
                         }
                     }
                 } while (found);
             }
+             
             string nameBase = type == DistributionType.Discrete ? "discrete_dist" :
                 type == DistributionType.Uniform ? "uniform_dist" :
                 type == DistributionType.Normal ? "normal_dist" : null;
@@ -137,38 +141,38 @@ namespace WebApiCSharp.GenerateCodeFiles
             {
                 if (DistributionSamples[key].Type == type)
                 {
-                    DistributionSamples[key].C_VariableName = nameBase + i.ToString();
+                    DistributionSamples[key].C_VariableName = DistributionSamples[key].FromFile + "_" + nameBase + i.ToString();
                     i++;
                 }
             }
         }
 
-        private List<string> GetC_CodeSections()
+        private List<KeyValuePair<string, string>> GetC_CodeSections()
         {
-            List<string> codeSections = new List<string>();
+            List<KeyValuePair<string, string>> codeSections = new List<KeyValuePair<string, string>>();
             foreach (PLP plp in PLPs.Values)
             {
                 foreach (Assignment assign in plp.DynamicModel_VariableAssignments)
                 {
-                    codeSections.Add(assign.AssignmentCode);
+                    codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, plp.Name));
                 }
 
                 foreach (Assignment assign in plp.ModuleExecutionTimeDynamicModel)
                 {
-                    codeSections.Add(assign.AssignmentCode);
+                    codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, plp.Name));
                 }
             }
 
             foreach (Assignment assign in InitialBeliefAssignments)
             {
-                codeSections.Add(assign.AssignmentCode);
+                codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
             }
 
             foreach (GlobalVariableDeclaration globalVarDec in GlobalVariableDeclarations)
             {
                 if (globalVarDec.DefaultCode != null)
                 {
-                    codeSections.Add(globalVarDec.DefaultCode);
+                    codeSections.Add(new KeyValuePair<string, string>(globalVarDec.DefaultCode, PLP_TYPE_NAME_ENVIRONMENT));
                 }
             }
 
@@ -334,12 +338,20 @@ namespace WebApiCSharp.GenerateCodeFiles
             GetEnvironmentTypes(out tempErrors);
             errors.AddRange(tempErrors);
             errors.AddRange(GetGlobalVariablesDeclaration());
-            GetBeliefStateAssignmentsAndSpecialStates();
+            GetBeliefStateAssignments_ExtrinsicChangesDynamicModel_AndSpecialStates();
             return errors;
         }
 
-        private void GetBeliefStateAssignmentsAndSpecialStates()
+        private void GetBeliefStateAssignments_ExtrinsicChangesDynamicModel_AndSpecialStates()
         {
+            foreach (BsonValue bVal in environmentPLP["ExtrinsicChangesDynamicModel"].AsBsonArray)
+            {
+                BsonDocument docAssignment = bVal.AsBsonDocument;
+                Assignment assignment = new Assignment() { AssignmentName = docAssignment["AssignmentName"].ToString(), AssignmentCode = docAssignment["AssignmentCode"].ToString().Replace(" ", "") };
+                ExtrinsicChangesDynamicModel.Add(assignment);
+            }
+
+
             foreach (BsonValue bVal in environmentPLP["InitialBeliefStateAssignments"].AsBsonArray)
             {
                 BsonDocument docAssignment = bVal.AsBsonDocument;
@@ -358,6 +370,9 @@ namespace WebApiCSharp.GenerateCodeFiles
                 SpecialStates.Add(spState);
             }
         }
+ 
+
+        
 
         private List<string> GetEnumValues(BsonDocument doc, string enumValuesFieldName, out List<string> errors)
         {
@@ -687,6 +702,8 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string FunctionDescription;
         public DistributionType Type;
         public List<string> Parameters;
+
+        public string FromFile;
 
         public DistributionSample()
         {
