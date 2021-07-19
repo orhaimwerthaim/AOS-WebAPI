@@ -49,6 +49,13 @@ namespace WebApiCSharp.GenerateCodeFiles
         public const string DISCRETE_DISTRIBUTION_FUNCTION_NAME = "AOS.SampleDiscrete"; //AOS.SampleDiscrete(enumRealCase,{0.8, 0.1,0,0.1})
         public const string NORMAL_DISTRIBUTION_FUNCTION_NAME = "AOS.SampleNormal"; //AOS.SampleNormal(40000,10000)
         public const string UNIFORM_DISTRIBUTION_FUNCTION_NAME = "AOS.SampleUniform"; //AOS.SampleUniform(40000,10000)
+
+        
+        public const string AOS_SET_NULL_FUNCTION_NAME = "AOS.SetNull"; //"AOS.SetNull(state__.cupAccurateLocation)"
+        public const string AOS_IS_INITIALIZED_NULL_FUNCTION_NAME = "AOS.IsInitialized"; //"AOS.IsInitialized(state__.cupAccurateLocation)"
+
+        public const string AOS_Bernoulli_FUNCTION_NAME = "AOS.Bernoulli"; //AOS.Bernoulli(0.9)  :Is handled in cpp code
+
         #region private variables 
         private string tempPlpName = "";
         private string tempPlpType = "";

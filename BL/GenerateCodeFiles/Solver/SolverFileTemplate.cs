@@ -1893,17 +1893,6 @@ public:
 
 
 
-        /*
-
-
-                     std::string NavigateActionDescription::GetActionParametersJson_ForActionRegistration()
-                     {
-                         json j;
-                         j[""oDesiredLocation->discrete_location""] = oDesiredLocation.discrete_location;
-                         std::string str(j.dump().c_str());
-                         return str;
-                     }
-                     */
         private static string GetClassesFunctionDefinitionForActionManagerCPP(PLPsData data)
         {
             string result = "";
@@ -2286,22 +2275,7 @@ namespace despot {
             return result;
         }
 
-        /*
-        std::string Prints::PrintActionType(ActionType actType)
-        {	
-            switch (actType)
-                {
-                case pickAction:
-                    return ""pickAction"";
-                case placeAction:
-                    return ""placeAction"";
-                case observeAction:
-                    return ""observeAction"";
-                case navigateAction:
-                    return ""navigateAction""; 
-                }
-        }
-        */
+
         private static string GetPrintActionType(PLPsData data)
         {
             string result = @"";
@@ -2338,53 +2312,13 @@ namespace despot {
             return result;
         }
 
-        /*
-        State* " + data.ProjectNameWithCapitalLetter + @"::CreateStartState(string tyep) const {
-          " + data.ProjectNameWithCapitalLetter + @"State* startState = memory_pool_.Allocate();
-          " + data.ProjectNameWithCapitalLetter + @"State& state = *startState;
-          startState->cupDiscreteGeneralLocation = eCorridor;
-          startState->handEmpty = true;
-
-          state.locationOutside_lab211 = tLocation();
-          state.locationAuditorium = tLocation();
-          state.locationCorridor = tLocation();
-          state.locationNear_elevator1 = tLocation();
-
-          state.locationOutside_lab211.discrete_location = eOutside_lab211;
-          state.locationOutside_lab211.actual_location = true;
-          state.locationAuditorium.discrete_location = eAuditorium; state.locationAuditorium.actual_location = true;
-          state.locationNear_elevator1.discrete_location = eNear_elevator1; state.locationNear_elevator1.actual_location = true;
-          state.locationCorridor.discrete_location = eCorridor; state.locationCorridor.actual_location = true;
-
-          startState->tDiscreteLocationObjects.push_back(eCorridor);
-          startState->tDiscreteLocationObjects.push_back(eOutside_lab211);
-          startState->tDiscreteLocationObjects.push_back(eNear_elevator1);
-          startState->tDiscreteLocationObjects.push_back(eAuditorium);
-
-          startState->tLocationObjectsForActions[""state.locationOutside_lab211""] = (state.locationOutside_lab211);
-          startState->tLocationObjectsForActions[""state.locationAuditorium""]=(state.locationAuditorium);
-          startState->tLocationObjectsForActions[""state.locationNear_elevator1""]=(state.locationNear_elevator1);
-          startState->tLocationObjectsForActions[""state.locationCorridor""]=(state.locationCorridor);
-
-          state.robotGenerallocation = state.locationNear_elevator1.discrete_location;
-          state.cupAccurateLocation = false;
-          //generated from environment file line: state.cupDiscreteGeneralLocation = AOS.SampleDiscrete(tDiscreteLocation,{0.6, 0.4,0,0});
-          state.cupDiscreteGeneralLocation = state.tDiscreteLocationObjects[discrete_dist1(generator)];
-
-
-          if (ActionManager::actions.size() == 0)
-          {
-              ActionManager::Init(const_cast <" + data.ProjectNameWithCapitalLetter + @"State*> (startState));
-          }
-          return startState;
-      }
-        */
 
         private static string HandleCodeLine(PLPsData data, string codeLine, string fromFile)
         {
             bool environmentFileCode = fromFile == PLPsData.PLP_TYPE_NAME_ENVIRONMENT;
             string code = codeLine;
             code = HandleC_Code_IsInitializedAOS_str(code);
+            code = HandleC_Code_IAOS_SetNull_str(code);
             foreach (string lowLevelConstantName in data.LocalVariableConstants.Select(x => x.Name))
             {
                 code = code.Replace(lowLevelConstantName, "true");//lowLevelConstants are assigned as true regarding the global varible level 
@@ -2442,7 +2376,10 @@ namespace despot {
                 {
                     foreach (string codeLine in oVar.DefaultCode.Split(";"))
                     {
-                        result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                        if (codeLine.Length > 0)
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                        }
                     }
                 }
             }
@@ -2462,10 +2399,30 @@ namespace despot {
 
 
 
+        private static string HandleC_Code_IAOS_SetNull_str(string codeLine)
+        {
+            string code = codeLine;
+            string functionSign = PLPsData.AOS_SET_NULL_FUNCTION_NAME;
+            bool found = false;
+            do
+            {
+                int startIndex = code.IndexOf(functionSign);
+                found = startIndex > -1;
+                if (found)
+                {
+                    int closeIndex = code.IndexOf(")", startIndex);
+                    string start = code.Substring(0, startIndex);
+                    string end = code.Substring(closeIndex + 1);
+                    string variableName = code.Substring(startIndex, closeIndex - startIndex).Replace(functionSign, "").Replace("(", "").Replace(")", "");
+                    code = start + variableName + " = false" + end;
+                }
+            } while (found);
+            return code;
+        }
         private static string HandleC_Code_IsInitializedAOS_str(string codeLine)
         {
             string code = codeLine;
-            string functionSign = "AOS.IsInitialized";
+            string functionSign = PLPsData.AOS_IS_INITIALIZED_NULL_FUNCTION_NAME;
             bool found = false;
             do
             {
@@ -2537,25 +2494,7 @@ namespace despot {
             }
             return result;
         }
-        /*
-        bool " + data.ProjectNameWithCapitalLetter + @"::ProcessSpecialStates(const " + data.ProjectNameWithCapitalLetter + @"State &state, double &reward) const
-        {
-            bool isFinalState = false;
-            if (state.robotGenerallocation == eNear_elevator1 && state.cupDiscreteGeneralLocation == eAuditorium)
-            {
-                reward += 5000;
-                isFinalState = true;
-            }
-            return isFinalState;
-        }
 
-        //p is between 0 to 1
-        bool AOSUtils::Bernoulli(double p)
-        {
-            int randInt = rand() % 100 + 1;
-            return (p * 100) >= randInt;
-        }
-        */
         private static string GetProcessSpecialStatesFunction(PLPsData data)
         {
             string result = "";
@@ -2598,7 +2537,10 @@ namespace despot {
                 {
                     foreach (string codeLine in assign.AssignmentCode.Split(";"))
                     {
-                        result += GenerateFilesUtils.GetIndentationStr(2, 4, HandleCodeLine(data, codeLine, plp.Name) + ";");
+                        if (codeLine.Length > 0)
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(2, 4, HandleCodeLine(data, codeLine, plp.Name) + ";");
+                        }
                     }
                 }
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
@@ -2624,7 +2566,10 @@ namespace despot {
             {
                 foreach (string codeLine in assign.AssignmentCode.Split(";"))
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                    if (codeLine.Length > 0)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                    }
                 }
             }
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
@@ -2645,7 +2590,10 @@ namespace despot {
                 {
                     foreach (string codeLine in assign.AssignmentCode.Split(";"))
                     {
-                        result += GenerateFilesUtils.GetIndentationStr(2, 4, HandleCodeLine(data, codeLine, plp.Name) + ";");
+                        if (codeLine.Length > 0)
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(2, 4, HandleCodeLine(data, codeLine, plp.Name) + ";");
+                        }
                     }
                 }
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
