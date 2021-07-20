@@ -80,6 +80,18 @@ namespace WebApiCSharp.Models
         public string Condition;
         public string Response;
         public string Comment;
+        public List<ResponseAssignmentToGlobalVar> ResponseAssignmentsToGlobalVar;
+
+        public ResponseRule()
+        {
+            ResponseAssignmentsToGlobalVar = new List<ResponseAssignmentToGlobalVar>();
+        }
+    }
+
+    public class ResponseAssignmentToGlobalVar
+    {
+        public string GlobalVarName;
+        public string Value;
     }
 
     public class Assignment
@@ -87,23 +99,24 @@ namespace WebApiCSharp.Models
         public string AssignmentName;
         public string AssignmentCode;
 
-        public TempVarType TempVariable;
+        public TempVar TempVariable;
 
         public Assignment()
         {
-            TempVariable = new TempVarType();
+            TempVariable = new TempVar();
         }
 
 
     }
 
-    public class TempVarType
+    public class TempVar
     {
         public string Type;
+        public string VariableName;
         public string EnumName;
         public List<string> EnumValues;
 
-        public TempVarType()
+        public TempVar()
         {
             EnumValues = new List<string>();
         }

@@ -16,7 +16,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         public double MaxReward;
         public double MinReward;
 
-        public int NumberOfActions = -1;
+        public int NumberOfActions = -1;//correctly Initialized when generating the AOS-Solver files
 
         public Dictionary<string, DistributionSample> DistributionSamples = new Dictionary<string, DistributionSample>();
         public Dictionary<string, PLP> PLPs = new Dictionary<string, PLP>();
@@ -50,16 +50,18 @@ namespace WebApiCSharp.GenerateCodeFiles
         public const string NORMAL_DISTRIBUTION_FUNCTION_NAME = "AOS.SampleNormal"; //AOS.SampleNormal(40000,10000)
         public const string UNIFORM_DISTRIBUTION_FUNCTION_NAME = "AOS.SampleUniform"; //AOS.SampleUniform(40000,10000)
 
-        
+
         public const string AOS_SET_NULL_FUNCTION_NAME = "AOS.SetNull"; //"AOS.SetNull(state__.cupAccurateLocation)"
         public const string AOS_IS_INITIALIZED_NULL_FUNCTION_NAME = "AOS.IsInitialized"; //"AOS.IsInitialized(state__.cupAccurateLocation)"
+        public const string AOS_UN_INITIALIZED_NULL_FUNCTION_NAME = "AOS.Uninitialize";//AOS.Uninitialize(state__.cupAccurateLocation)
 
-        public const string AOS_Bernoulli_FUNCTION_NAME = "AOS.Bernoulli"; //AOS.Bernoulli(0.9)  :Is handled in cpp code
+        public const string AOS_Bernoulli_FUNCTION_NAME = "AOS.Bernoulli"; //AOS.Bernoulli(0.9)  :replaced by 'AOSUtils::Bernoulli(0.9)', which is implemented in cpp
 
         #region private variables 
         private string tempPlpName = "";
         private string tempPlpType = "";
         private BsonDocument environmentPLP = null;
+        private string environmentPLP_Name = null;
         private BsonDocument environmentGlue = null;
         private Dictionary<string, BsonDocument> bsonPlps = new Dictionary<string, BsonDocument>();
         private Dictionary<string, BsonDocument> bsonGlues = new Dictionary<string, BsonDocument>();
@@ -139,7 +141,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                     }
                 } while (found);
             }
-             
+
             string nameBase = type == DistributionType.Discrete ? "discrete_dist" :
                 type == DistributionType.Uniform ? "uniform_dist" :
                 type == DistributionType.Normal ? "normal_dist" : null;
@@ -246,6 +248,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                     else
                     {
                         environmentPLP = plp;
+                        environmentPLP_Name = environmentPLP["PlpMain"]["Name"].ToString();
                     }
                     break;
                 case PLP_TYPE_NAME_ENVIRONMENT_GLUE:
@@ -345,26 +348,38 @@ namespace WebApiCSharp.GenerateCodeFiles
             GetEnvironmentTypes(out tempErrors);
             errors.AddRange(tempErrors);
             errors.AddRange(GetGlobalVariablesDeclaration());
-            GetBeliefStateAssignments_ExtrinsicChangesDynamicModel_AndSpecialStates();
+            errors.AddRange(GetBeliefStateAssignments_ExtrinsicChangesDynamicModel_AndSpecialStates());
             return errors;
         }
 
-        private void GetBeliefStateAssignments_ExtrinsicChangesDynamicModel_AndSpecialStates()
+        private List<string> GetBeliefStateAssignments_ExtrinsicChangesDynamicModel_AndSpecialStates()
         {
-            foreach (BsonValue bVal in environmentPLP["ExtrinsicChangesDynamicModel"].AsBsonArray)
+            List<string> errors = new List<string>();
+            List<string> tempErrors = new List<string>();
+
+            tempErrors.Clear();
+            List<Assignment> extrinsicChangesDynamicModel = LoadAssignment(environmentPLP["ExtrinsicChangesDynamicModel"].AsBsonArray, environmentPLP_Name,
+                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors);
+            errors.AddRange(tempErrors);
+            ExtrinsicChangesDynamicModel.AddRange(extrinsicChangesDynamicModel);
+            /*foreach (BsonValue bVal in environmentPLP["ExtrinsicChangesDynamicModel"].AsBsonArray)
             {
                 BsonDocument docAssignment = bVal.AsBsonDocument;
                 Assignment assignment = new Assignment() { AssignmentName = docAssignment["AssignmentName"].ToString(), AssignmentCode = docAssignment["AssignmentCode"].ToString().Replace(" ", "") };
                 ExtrinsicChangesDynamicModel.Add(assignment);
-            }
+            }*/
 
-
-            foreach (BsonValue bVal in environmentPLP["InitialBeliefStateAssignments"].AsBsonArray)
+            tempErrors.Clear();
+            List<Assignment> initialBeliefStateAssignments = LoadAssignment(environmentPLP["InitialBeliefStateAssignments"].AsBsonArray, environmentPLP_Name,
+                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors);
+            errors.AddRange(tempErrors);
+            InitialBeliefAssignments.AddRange(initialBeliefStateAssignments);
+            /*foreach (BsonValue bVal in environmentPLP["InitialBeliefStateAssignments"].AsBsonArray)
             {
                 BsonDocument docAssignment = bVal.AsBsonDocument;
                 Assignment assignment = new Assignment() { AssignmentName = docAssignment["AssignmentName"].ToString(), AssignmentCode = docAssignment["AssignmentCode"].ToString().Replace(" ", "") };
                 InitialBeliefAssignments.Add(assignment);
-            }
+            }*/
 
 
             foreach (BsonValue bState in environmentPLP["SpecialStates"].AsBsonArray)
@@ -376,10 +391,11 @@ namespace WebApiCSharp.GenerateCodeFiles
                 spState.Reward = docState["Reward"].AsDouble;
                 SpecialStates.Add(spState);
             }
+            return errors;
         }
- 
 
-        
+
+
 
         private List<string> GetEnumValues(BsonDocument doc, string enumValuesFieldName, out List<string> errors)
         {
@@ -467,15 +483,25 @@ namespace WebApiCSharp.GenerateCodeFiles
                         : doc[field][internalField].ToString()) : null;
             }
         }
+
+        private string GetPLPDescriptionForError(PLP plp)
+        {
+            return "PLP name='" + plp.Name + "',type = '" + plp.Type + "'";
+        }
+        private string GetPLPDescriptionForError(string plpName, string plpType)
+        {
+            return "PLP name='" + plpName + "',type = '" + plpType + "'";
+        }
         private PLP ProcessPLP(BsonDocument bPlp, out List<string> errors)
         {
             errors = new List<string>();
+            List<string> tempErrors = new List<string>();
             PLP plp = new PLP();
             plp.Name = bPlp["PlpMain"]["Name"].ToString();
             plp.Type = bPlp["PlpMain"]["Type"].ToString();
             plp.Project = bPlp["PlpMain"]["Project"].ToString();
 
-            string plpDescription = "PLP name='" + plp.Name + "',type = '" + plp.Type + "'";
+            string plpDescription = GetPLPDescriptionForError(plp);
             foreach (BsonValue bVal in bPlp["GlobalVariableModuleParameters"].AsBsonArray)
             {
                 BsonDocument docPar = bVal.AsBsonDocument;
@@ -526,6 +552,28 @@ namespace WebApiCSharp.GenerateCodeFiles
                 oResponseRule.Condition = docResponseRule["ConditionCodeWithLocalVariables"].ToString();
                 oResponseRule.Response = docResponseRule["Response"].ToString();
                 oResponseRule.Comment = GetBsonStringField(docResponseRule, "Comment");
+
+
+                if (docResponseRule.Contains("AssignGlobalVariables"))
+                {
+                    foreach (BsonValue bAssign in docResponseRule["AssignGlobalVariables"].AsBsonArray)
+                    {
+                        BsonDocument boAssign = bAssign.AsBsonDocument;
+                        ResponseAssignmentToGlobalVar assignment = new ResponseAssignmentToGlobalVar();
+                        assignment.GlobalVarName = GetBsonStringField(boAssign, "VarName");
+                        assignment.Value = GetBsonStringField(boAssign, "Value");
+                        if (assignment.GlobalVarName == null)
+                        {
+                            errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'VarName', it is a mandatory field!");
+                        }
+                        if (assignment.Value == null)
+                        {
+                            errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'Value', it is a mandatory field!");
+                        }
+                        oResponseRule.ResponseAssignmentsToGlobalVar.Add(assignment);
+                    }
+                }
+
                 plp.ResponseRules.Add(oResponseRule);
             }
 
@@ -540,7 +588,21 @@ namespace WebApiCSharp.GenerateCodeFiles
                     bPlp["Preconditions"].AsBsonDocument.Contains("ViolatingPreconditionPenalty") ?
                     bPlp["Preconditions"]["ViolatingPreconditionPenalty"].AsInt32 : 0;
 
-            foreach (BsonValue bVal in bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray)
+            tempErrors.Clear();
+            List<Assignment> moduleExecutionTimeAssignments = LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            errors.AddRange(tempErrors);
+            plp.ModuleExecutionTimeDynamicModel.AddRange(moduleExecutionTimeAssignments);
+            foreach (Assignment oAssignment in plp.ModuleExecutionTimeDynamicModel)
+            {
+                if (oAssignment.AssignmentCode.Contains("state_.") || oAssignment.AssignmentCode.Contains("state__."))
+                {
+                    errors.Add(plpDescription + ", 'ModuleExecutionTimeDynamicModel' cannot be dependent on 'state_' " +
+                    "(the state after extrinsic environment changes) or 'state__' (the next state, also after module effects), " +
+                    "see AssignmentCode='" + oAssignment.AssignmentCode + "'!");
+                }
+            }
+
+            /*foreach (BsonValue bVal in bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray)
             {
                 BsonDocument docAssignment = bVal.AsBsonDocument;
                 Assignment oAssignment = new Assignment();
@@ -548,26 +610,34 @@ namespace WebApiCSharp.GenerateCodeFiles
                 oAssignment.AssignmentName = docAssignment["AssignmentName"].ToString();
                 oAssignment.AssignmentCode = docAssignment["AssignmentCode"].ToString().Replace(" ", "");
 
-                if (docAssignment.Contains("TempVarType"))
+                if (docAssignment.Contains("TempVar"))
                 {
-                    BsonDocument docTemp = docAssignment["TempVarType"].AsBsonDocument;
-                    TempVarType oTemp = new TempVarType();
+
+
+                    BsonDocument docTemp = docAssignment["TempVar"].AsBsonDocument;
+                    TempVar oTemp = new TempVar();
+                    oTemp.VariableName = GetBsonStringField(docTemp, "VarName");
+                    if (oTemp.VariableName == null)
+                    {
+                        errors.Add(plpDescription + ", 'TempVar', field 'VarName' is mandatory (when 'TempVar' is defined)!");
+                    }
+
                     oTemp.Type = GetBsonStringField(docTemp, "Type");
                     if (oTemp.Type == null)
                     {
-                        errors.Add(plpDescription + ", 'TempVarType', field 'Type' is mandatory (when 'TempVarType' is defined)!");
+                        errors.Add(plpDescription + ", 'TempVar', field 'Type' is mandatory (when 'TempVar' is defined)!");
                     }
 
                     if (oTemp.Type != ENUM_VARIABLE_TYPE_NAME && oTemp.Type != "bool" && oTemp.Type != "int")
                     {
-                        errors.Add(plpDescription + ", 'TempVarType', valid values for field 'Type' are: 'enum','int' or 'bool'!");
+                        errors.Add(plpDescription + ", 'TempVar', valid values for field 'Type' are: 'enum','int' or 'bool'!");
                     }
                     if (oTemp.Type == ENUM_VARIABLE_TYPE_NAME)
                     {
                         oTemp.EnumName = GetBsonStringField(docTemp, "EnumName");
                         if (oTemp.EnumName == null)
                         {
-                            errors.Add(plpDescription + ", 'TempVarType', field 'EnumName' is mandatory (when 'Type' is 'enum')!");
+                            errors.Add(plpDescription + ", 'TempVar', field 'EnumName' is mandatory (when 'Type' is 'enum')!");
                         }
 
                         List<string> enumErrors;
@@ -584,7 +654,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                     "see AssignmentCode='" + oAssignment.AssignmentCode + "'!");
                 }
 
-            }
+            }*/
             if (plp.ModuleExecutionTimeDynamicModel.Count > 0)
             {
                 if (plp.ModuleExecutionTimeDynamicModel.Where(x => x.AssignmentCode.Contains(MODULE_EXECUTION_TIME_VARIABLE_NAME + "=")).ToList().Count == 0)
@@ -593,7 +663,11 @@ namespace WebApiCSharp.GenerateCodeFiles
                 }
             }
 
-            foreach (BsonValue bVal in bPlp["DynamicModel"]["NextStateAssignments"].AsBsonArray)
+            tempErrors.Clear();
+            List<Assignment> nextStateAssignments = LoadAssignment(bPlp["DynamicModel"]["NextStateAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            errors.AddRange(tempErrors);
+            plp.DynamicModel_VariableAssignments.AddRange(nextStateAssignments);
+            /*foreach (BsonValue bVal in bPlp["DynamicModel"]["NextStateAssignments"].AsBsonArray)
             {
                 BsonDocument docAssignment = bVal.AsBsonDocument;
                 Assignment oAssignment = new Assignment();
@@ -604,7 +678,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 if (docAssignment.Contains("TempVarType"))
                 {
                     BsonDocument docTemp = docAssignment["TempVarType"].AsBsonDocument;
-                    TempVarType oTemp = new TempVarType();
+                    TempVar oTemp = new TempVar();
                     oTemp.Type = GetBsonStringField(docTemp, "Type");
                     if (oTemp.Type == null)
                     {
@@ -630,8 +704,61 @@ namespace WebApiCSharp.GenerateCodeFiles
 
                 }
                 plp.DynamicModel_VariableAssignments.Add(oAssignment);
-            }
+            }*/
             return plp;
+        }
+        private List<Assignment> LoadAssignment(BsonArray bAssignmentsArray, string plpName, string plpType, out List<string> errors)
+        {
+            List<Assignment> assignments = new List<Assignment>();
+            string plpDescription = GetPLPDescriptionForError(plpName, plpType);
+            errors = new List<string>();
+            foreach (BsonValue bVal in bAssignmentsArray)
+            {
+                BsonDocument docAssignment = bVal.AsBsonDocument;
+                Assignment oAssignment = new Assignment();
+
+                oAssignment.AssignmentName = docAssignment["AssignmentName"].ToString();
+                oAssignment.AssignmentCode = docAssignment["AssignmentCode"].ToString().Replace(" ", "");
+
+                if (docAssignment.Contains("TempVar"))
+                {
+
+
+                    BsonDocument docTemp = docAssignment["TempVar"].AsBsonDocument;
+
+                    oAssignment.TempVariable.VariableName = GetBsonStringField(docTemp, "VarName");
+                    if (oAssignment.TempVariable.VariableName == null)
+                    {
+                        errors.Add(plpDescription + ", 'TempVar', field 'VarName' is mandatory (when 'TempVar' is defined)!");
+                    }
+
+                    oAssignment.TempVariable.Type = GetBsonStringField(docTemp, "Type");
+                    if (oAssignment.TempVariable.Type == null)
+                    {
+                        errors.Add(plpDescription + ", 'TempVar', field 'Type' is mandatory (when 'TempVar' is defined)!");
+                    }
+
+                    if (oAssignment.TempVariable.Type != ENUM_VARIABLE_TYPE_NAME && oAssignment.TempVariable.Type != "bool" && oAssignment.TempVariable.Type != "int")
+                    {
+                        errors.Add(plpDescription + ", 'TempVar', valid values for field 'Type' are: 'enum','int' or 'bool'!");
+                    }
+                    if (oAssignment.TempVariable.Type == ENUM_VARIABLE_TYPE_NAME)
+                    {
+                        oAssignment.TempVariable.EnumName = GetBsonStringField(docTemp, "EnumName");
+                        if (oAssignment.TempVariable.EnumName == null)
+                        {
+                            errors.Add(plpDescription + ", 'TempVar', field 'EnumName' is mandatory (when 'Type' is 'enum')!");
+                        }
+
+                        List<string> enumErrors;
+                        oAssignment.TempVariable.EnumValues.AddRange(GetEnumValues(docTemp, "EnumValues", out enumErrors));
+                        errors.AddRange(enumErrors);
+                    }
+
+                }
+                assignments.Add(oAssignment);
+            }
+            return assignments;
         }
     }
 
