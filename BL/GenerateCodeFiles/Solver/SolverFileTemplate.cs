@@ -1561,13 +1561,13 @@ public:
 ";
             return file;
         }
-        public static string GetEvaluatorCppFile(string projectName)
+        public static string GetEvaluatorCppFile(PLPsData data)
         {
             string file = @"#include <despot/evaluator.h>
 #include <despot/util/mongoDB_Bridge.h>
-#include <despot/model_primitives/" + projectName + @"/enum_map_" + projectName + @".h>
-#include <despot/model_primitives/" + projectName + @"/actionManager.h>
-#include <despot/model_primitives/" + projectName + @"/state.h>
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>
+#include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>
+#include <despot/model_primitives/" + data.ProjectName + @"/state.h>
 #include <nlohmann/json.hpp>
 using namespace std;
 
@@ -1739,7 +1739,7 @@ bool Evaluator::RunStep(int step, int round) {
 	bool terminal = ExecuteAction(action, reward, obs, updatesFromAction);
 	model_->PrintState(*state_);
 	logi << ""action:"" << action << "", reward:""
-		 << "", reward:"" << reward << "", observation:"" << obs << endl;
+		 << "", reward:"" << reward << "", observation:"" << enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs] << endl;
 	end_t = get_time_second();
 	logi << ""[RunStep] Time spent in ExecuteAction(): "" << (end_t - start_t)
 		<< endl;
@@ -1761,8 +1761,7 @@ bool Evaluator::RunStep(int step, int round) {
 	}
 
 	if (!Globals::config.silence && out_) {
-		*out_ << ""- Observation = "";
-		model_->PrintObs(*state_, obs, *out_);
+		*out_ << endl << ""- Observation = "" << enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs];
 	}
 
 	if (state_ != NULL) {
@@ -1935,14 +1934,14 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 		ActionType acType(actDesc.actionType);
 		std::string actionParameters = actDesc.GetActionParametersJson_ForActionExecution();
 		
-		std::string actionName = enum_map_" + projectName + @"::vecActionTypeEnumToString[acType];
+		std::string actionName = enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[acType];
 	  
 		bsoncxx::oid actionId = MongoDB_Bridge::SendActionToExecution(actDesc.actionId, actionName, actionParameters);
 
 		std::string obsStr = """";
 		updates = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
-		obs = enum_map_" + projectName + @"::vecStringToResponseEnum[obsStr];
+		obs = enum_map_" + data.ProjectName + @"::vecStringToResponseEnum[obsStr];
 		return false;
 	}
 }
@@ -2991,9 +2990,13 @@ namespace despot {
         {
             bool environmentFileCode = fromFile == PLPsData.PLP_TYPE_NAME_ENVIRONMENT;
             string code = codeLine;
-            code = HandleC_Code_IsInitializedAOS_str(code);
-            code = HandleC_Code_IAOS_SetNull_str(code);
-            code = code.Replace(PLPsData.AOS_Bernoulli_FUNCTION_NAME, "AOSUtils::Bernoulli");
+            code = HandleC_Code_AOS_SingleVariableFunctions_str(code, PLPsData.AOS_INITIALIZED_FUNCTION_NAME);
+            code = HandleC_Code_AOS_SingleVariableFunctions_str(code, PLPsData.AOS_UN_INITIALIZED_FUNCTION_NAME);
+            code = HandleC_Code_AOS_SingleVariableFunctions_str(code, PLPsData.AOS_IS_INITIALIZED_FUNCTION_NAME);
+            code = HandleC_Code_AOS_SingleVariableFunctions_str(code, PLPsData.AOS_Bernoulli_FUNCTION_NAME);
+            code = HandleC_Code_AOS_SingleVariableFunctions_str(code, PLPsData.AOS_SET_NULL_FUNCTION_NAME);
+            //code = HandleC_Code_IAOS_SetNull_str(code);
+
 
             foreach (string lowLevelConstantName in data.LocalVariableConstants.Select(x => x.Name))
             {
@@ -3085,42 +3088,64 @@ namespace despot {
 
 
 
-        private static string HandleC_Code_IAOS_SetNull_str(string codeLine)
+        // private static string HandleC_Code_IAOS_SetNull_str(string codeLine)
+        // {
+        //     string code = codeLine;
+        //     string functionSign = PLPsData.AOS_SET_NULL_FUNCTION_NAME;
+        //     bool found = false;
+        //     do
+        //     {
+        //         int startIndex = code.IndexOf(functionSign);
+        //         found = startIndex > -1;
+        //         if (found)
+        //         {
+        //             int closeIndex = code.IndexOf(")", startIndex);
+        //             string start = code.Substring(0, startIndex);
+        //             string end = code.Substring(closeIndex + 1);
+        //             string variableName = code.Substring(startIndex, closeIndex - startIndex).Replace(functionSign, "").Replace("(", "").Replace(")", "");
+        //             code = start + variableName + " = false" + end;
+        //         }
+        //     } while (found);
+        //     return code;
+        // }
+
+        //AOS_UN_INITIALIZED_NULL_FUNCTION_NAME
+        private static string HandleC_Code_AOS_SingleVariableFunctions_str(string codeLine, string functionSignature)
         {
             string code = codeLine;
-            string functionSign = PLPsData.AOS_SET_NULL_FUNCTION_NAME;
+            //string functionSign = PLPsData.AOS_IS_INITIALIZED_FUNCTION_NAME;
+            string template = "";
+            string START = "__START__";
+            string END = "__END__";
+            string VARIABLE_NAME = "__VARIABLE_NAME__";
+            switch (functionSignature)
+            {
+                case PLPsData.AOS_IS_INITIALIZED_FUNCTION_NAME:
+                    template = START + "(" + VARIABLE_NAME + " == true)" + END;
+                    break;
+                case PLPsData.AOS_UN_INITIALIZED_FUNCTION_NAME:
+                case PLPsData.AOS_SET_NULL_FUNCTION_NAME:
+                    template = START + VARIABLE_NAME + " = false" + END;
+                    break;
+                case PLPsData.AOS_INITIALIZED_FUNCTION_NAME:
+                    template = START + VARIABLE_NAME + " = true" + END;
+                    break;
+                case PLPsData.AOS_Bernoulli_FUNCTION_NAME:
+                    return codeLine.Replace(PLPsData.AOS_Bernoulli_FUNCTION_NAME, "AOSUtils::Bernoulli");
+            }
             bool found = false;
             do
             {
-                int startIndex = code.IndexOf(functionSign);
+                int startIndex = code.IndexOf(functionSignature);
                 found = startIndex > -1;
                 if (found)
                 {
                     int closeIndex = code.IndexOf(")", startIndex);
                     string start = code.Substring(0, startIndex);
                     string end = code.Substring(closeIndex + 1);
-                    string variableName = code.Substring(startIndex, closeIndex - startIndex).Replace(functionSign, "").Replace("(", "").Replace(")", "");
-                    code = start + variableName + " = false" + end;
-                }
-            } while (found);
-            return code;
-        }
-        private static string HandleC_Code_IsInitializedAOS_str(string codeLine)
-        {
-            string code = codeLine;
-            string functionSign = PLPsData.AOS_IS_INITIALIZED_NULL_FUNCTION_NAME;
-            bool found = false;
-            do
-            {
-                int startIndex = code.IndexOf(functionSign);
-                found = startIndex > -1;
-                if (found)
-                {
-                    int closeIndex = code.IndexOf(")", startIndex);
-                    string start = code.Substring(0, startIndex);
-                    string end = code.Substring(closeIndex + 1);
-                    string variableName = code.Substring(startIndex, closeIndex - startIndex).Replace(functionSign, "").Replace("(", "").Replace(")", "");
-                    code = start + "(" + variableName + " == true)" + end;
+                    string variableName = code.Substring(startIndex, closeIndex - startIndex).Replace(functionSignature, "").Replace("(", "").Replace(")", "");
+                    code = template.Replace(START, start).Replace(VARIABLE_NAME, variableName).Replace(END, end);
+                    //code = start + "(" + variableName + " == true)" + end;
                 }
             } while (found);
             return code;

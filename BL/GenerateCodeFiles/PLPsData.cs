@@ -52,8 +52,9 @@ namespace WebApiCSharp.GenerateCodeFiles
 
 
         public const string AOS_SET_NULL_FUNCTION_NAME = "AOS.SetNull"; //"AOS.SetNull(state__.cupAccurateLocation)"
-        public const string AOS_IS_INITIALIZED_NULL_FUNCTION_NAME = "AOS.IsInitialized"; //"AOS.IsInitialized(state__.cupAccurateLocation)"
-        public const string AOS_UN_INITIALIZED_NULL_FUNCTION_NAME = "AOS.Uninitialize";//AOS.Uninitialize(state__.cupAccurateLocation)
+        public const string AOS_IS_INITIALIZED_FUNCTION_NAME = "AOS.IsInitialized"; //"AOS.IsInitialized(state__.cupAccurateLocation)"
+        public const string AOS_UN_INITIALIZED_FUNCTION_NAME = "AOS.Uninitialize";//AOS.Uninitialize(state__.cupAccurateLocation)
+        public const string AOS_INITIALIZED_FUNCTION_NAME = "AOS.Initialize";//AOS.Initialize(state__.cupAccurateLocation)
 
         public const string AOS_Bernoulli_FUNCTION_NAME = "AOS.Bernoulli"; //AOS.Bernoulli(0.9)  :replaced by 'AOSUtils::Bernoulli(0.9)', which is implemented in cpp
 
@@ -584,9 +585,11 @@ namespace WebApiCSharp.GenerateCodeFiles
             plp.Preconditions_PlannerAssistancePreconditions = plp.Preconditions_PlannerAssistancePreconditions == null ? "true" : plp.Preconditions_PlannerAssistancePreconditions;
 
 
+            tempErrors.Clear();
             plp.Preconditions_ViolatingPreconditionPenalty = bPlp.Contains("Preconditions") &&
                     bPlp["Preconditions"].AsBsonDocument.Contains("ViolatingPreconditionPenalty") ?
-                    bPlp["Preconditions"]["ViolatingPreconditionPenalty"].AsInt32 : 0;
+                    GetIntFieldFromBson(plp, bPlp, "Preconditions", "ViolatingPreconditionPenalty", out tempErrors) : 0;
+            errors.AddRange(tempErrors);
 
             tempErrors.Clear();
             List<Assignment> moduleExecutionTimeAssignments = LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
@@ -706,6 +709,39 @@ namespace WebApiCSharp.GenerateCodeFiles
                 plp.DynamicModel_VariableAssignments.Add(oAssignment);
             }*/
             return plp;
+        }
+
+        private int GetIntFieldFromBson(string fromFile, string fileType, BsonDocument bson, string firstField, string secondField, out List<string> errors)
+        {
+            errors = new List<string>();
+            int result = int.MinValue;
+            string fileDesc = GetPLPDescriptionForError(fromFile, fileType);
+
+            if (!bson.Contains(firstField))
+            {
+                string errorMsg = "field '" + firstField + "' was expected but missing!";
+                errors.Add(fileDesc + ", " + errorMsg);
+                return result;
+            }
+            if (secondField != null && !bson[firstField].AsBsonDocument.Contains(secondField))
+            {
+                string errorMsg = "field '" + firstField + "." + secondField + "' was expected but missing !";
+                errors.Add(fileDesc + ", " + errorMsg);
+                return result;
+            }
+            BsonValue bVal = secondField == null ? bson[firstField] : bson[firstField][secondField];
+
+            if (!bVal.IsInt32)
+            {
+                string errorMsg = "field '" + firstField + (secondField != null ? "." + secondField : "") + "' should contain int (but contains \"" + bVal.ToString() + "\")!";
+                errors.Add(fileDesc + ", " + errorMsg);
+                return result;
+            }
+            return bson[firstField][secondField].AsInt32;
+        }
+        private int GetIntFieldFromBson(PLP plp, BsonDocument bson, string firstField, string secondField, out List<string> errors)
+        {
+            return GetIntFieldFromBson(plp.Name, plp.Type, bson, firstField, secondField, out errors);
         }
         private List<Assignment> LoadAssignment(BsonArray bAssignmentsArray, string plpName, string plpType, out List<string> errors)
         {
