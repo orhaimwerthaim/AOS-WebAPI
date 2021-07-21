@@ -8,54 +8,76 @@ using System.Text;
 using MongoDB.Bson;
 using WebApiCSharp.GenerateCodeFiles;
 using WebApiCSharp.Models;
+using System.Threading;
 
 namespace WebApiCSharp.BL
 {
 
     public class InitializeProjectBL
     {
-        private static Configuration configuration{ get; set; }
+        private static Configuration configuration { get; set; }
         enum PlpType { Environment, EnvironmentGlue, PLP, Glue }
         private static StringBuilder buildOutput = null;
-        private static StringBuilder buildErrors = null;
 
         private static void BuildOutputHandler(object sendingProcess,
             DataReceivedEventArgs outLine)
         {
-            // Collect the sort command output.
             if (!String.IsNullOrEmpty(outLine.Data))
             {
                 // Add the text to the collected output.
                 buildOutput.Append(Environment.NewLine + outLine.Data);
-                if (outLine.Data.ToLower().Contains("error"))
-                    buildErrors.Append(Environment.NewLine + outLine.Data);
             }
         }
-        
+
         static InitializeProjectBL()
         {
             configuration = ConfigurationService.Get();
         }
-        private static void BuildAosSolver()
+
+        private static string RunSolver()
         {
-            // Get the path that stores favorite links.
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
-                WorkingDirectory = configuration.SolverPath,// "/home/or/Projects/AOS-Solver",
-                FileName = "/opt/cmake-3.19.8-Linux-x86_64/bin/cmake",
-                Arguments = "--build /home/or/Projects/AOS-Solver/build --config Debug --target all -j 14 --"
-            };
-            Process process = Process.Start(sInfo);//Process.Start("echo", "asdasd"); 
+                WorkingDirectory = configuration.SolverPath + "/build",
+            FileName = "bash",
+                Arguments = "runSolverWrapper.sh"
 
-            // Set UseShellExecute to false for redirection.
+            };
+            Process process = new Process();
+            process.StartInfo = sInfo;
+
             process.StartInfo.UseShellExecute = false;
 
             process.StartInfo.RedirectStandardOutput = true;
+            buildOutput = new StringBuilder();
 
+            // Set our event handler to asynchronously read the sort output.
+            process.OutputDataReceived += BuildOutputHandler;
+            // Redirect standard input as well.  This stream
+            // is used synchronously.
+            process.StartInfo.RedirectStandardInput = true;
+            process.Start();
 
+            process.BeginOutputReadLine();
+            
+            
+            return buildOutput.ToString();
+        }
+        private static string BuildAosSolver()
+        {
+            ProcessStartInfo sInfo = new ProcessStartInfo()
+            {
+                WorkingDirectory = configuration.SolverPath,// "/home/.../AOS-Solver",
+                FileName = "/opt/cmake-3.19.8-Linux-x86_64/bin/cmake",
+                Arguments = "--build /home/or/Projects/AOS-Solver/build --config Debug --target all -j 14 --"
+            };
+            Process process = new Process();//Process.Start("echo", "asdasd"); 
+            process.StartInfo = sInfo;
+            // Set UseShellExecute to false for redirection.
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
 
             buildOutput = new StringBuilder();
-            buildErrors = new StringBuilder();
 
             // Set our event handler to asynchronously read the sort output.
             process.OutputDataReceived += BuildOutputHandler;
@@ -68,13 +90,8 @@ namespace WebApiCSharp.BL
 
             process.BeginOutputReadLine();
             process.WaitForExit();
-
-            Console.WriteLine("Build output:");
-            Console.WriteLine(buildOutput);
-            Console.WriteLine("Build Errors:");
-            Console.WriteLine(buildErrors);
-
             process.Close();
+            return buildOutput.ToString();
         }
         private static bool IsValidPLP(JsonDocument plp, out List<String> errorMessages)
         {
@@ -90,20 +107,27 @@ namespace WebApiCSharp.BL
         }
 
 
-        public static List<String> InitializeProject(string pLPsDirectoryPath)
+        public static void InitializeProject(string pLPsDirectoryPath, out List<String> errors, out string buildOutput, out string runOutput)
         {
-            List<String> errors = LoadPLPs(pLPsDirectoryPath);
-            if (errors.Count > 0) return errors;
+            buildOutput = "";
+            runOutput = "";
+            errors = new List<string>();
+            List<String> tempErrors;
 
-            PLPsData plpData = new PLPsData(out errors);
-            if (errors.Count > 0) return errors;
+            PLPsData plpData = new PLPsData(out tempErrors);
+            errors.AddRange(tempErrors);
 
             GenerateSolver generateSolver = new GenerateSolver(plpData);
 
+            if (errors.Count > 0)
+            {
+                return;
+            }
+            buildOutput = BuildAosSolver();
 
-            return errors;
+            runOutput = RunSolver();
         }
-        public static List<String> LoadPLPs(string pLPsDirectoryPath)
+        private static List<String> LoadPLPs(string pLPsDirectoryPath)
         {
             PLPsService.DeleteAll();
             List<String> errorMessages = new List<string>();

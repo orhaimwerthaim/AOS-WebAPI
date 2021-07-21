@@ -31,12 +31,15 @@ namespace WebApiCSharp.Controllers
         [HttpPost]
         public IActionResult Create(InitializeProject initProj)
         {
-            List<string> errors = InitializeProjectBL.InitializeProject(initProj.PLPsDirectoryPath);
+            List<string> errors = new List<string>();
+            string buildOutput;
+            string runOutput;
+            InitializeProjectBL.InitializeProject(initProj.PLPsDirectoryPath, out errors, out buildOutput, out runOutput);
             if(errors.Count > 0)
             {
                 return BadRequest(new {Errors = errors});
             }
-            return CreatedAtAction(nameof(Create), initProj);
+            return CreatedAtAction(nameof(Create), new {BuildOutput = buildOutput, RunOutput = runOutput});
         }
 
         
