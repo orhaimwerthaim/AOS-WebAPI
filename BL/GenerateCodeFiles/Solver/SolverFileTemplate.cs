@@ -2913,11 +2913,24 @@ namespace despot {
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "if(act->actionType == " + plp.Name + "Action)");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
 
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription *" + plp.Name +
-                        "A = static_cast<" + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription *>(act);");
+                    string actionDescVarName = plp.Name + "A";
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription *" + actionDescVarName +
+                        " = static_cast<" + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription *>(act);");
                     foreach (GlobalVariableModuleParameter oVar in plp.GlobalVariableModuleParameters)
                     {
-                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "//TODO:: add print for action fields (if realy needed?)");
+                        List<CompoundVarTypePLP> compType = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oVar.Type)).ToList();
+                        if (compType.Count == 0)
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << " + actionDescVarName + "->" + oVar.Name + ";");
+                        }
+                        else
+                        {
+                            foreach (var constPar in compType[0].Variables.Where(x => x.ConstantWhenInActionParameter))
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << Prints::Print" + constPar.Type + "((" + constPar.Type + ")" + actionDescVarName + "->" + oVar.Name + "." + constPar.Name + ");");
+                            }
+                        }
+
                         //result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << Prints::PrintLocation(("+oVar.Type+")"+plp.Name+"A->"+oVar.+" oDesiredLocation.discrete_location);");
                     }
 
@@ -3069,6 +3082,19 @@ namespace despot {
                         {
                             result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
                         }
+                    }
+                }
+            }
+
+            HashSet<string> handeled = new HashSet<string>();
+            foreach (GlobalVariableDeclaration gVarDec in data.GlobalVariableDeclarations)
+            {
+                if (gVarDec.IsActionParameter && handeled.Add(gVarDec.Type))
+                {
+                    foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(gVarDec.Type)))
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4, "startState->" + gVarDec.Type + "ObjectsForActions[\"state." +
+                                gVarDec2.Name + "\"] = (state." + gVarDec2.Name + ");");
                     }
                 }
             }
