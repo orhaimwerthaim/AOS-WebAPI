@@ -10,7 +10,7 @@ namespace WebApiCSharp.Services
 {
     public class LocalVariableService : ServiceBase
     {
-        public static IMongoCollection<LocalVariable> LocalVarCollection = dbAOS.GetCollection<LocalVariable>("LocalVariables");
+        public static IMongoCollection<LocalVariable> LocalVarCollection = dbAOS.GetCollection<LocalVariable>(Globals.LOCAL_VARIABLES_COLLECTION_NAME);
         public static List<LocalVariable> Get()
         {
             try

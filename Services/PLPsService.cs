@@ -12,7 +12,7 @@ namespace WebApiCSharp.Services
 {
     public class PLPsService : ServiceBase
     {
-        public static IMongoCollection<BsonDocument> PLPsCollection = dbAOS.GetCollection<BsonDocument>("PLPs");
+        public static IMongoCollection<BsonDocument> PLPsCollection = dbAOS.GetCollection<BsonDocument>(Globals.PLPS_COLLECTION_NAME);
         public static List<BsonDocument> GetAll()
         {
             try

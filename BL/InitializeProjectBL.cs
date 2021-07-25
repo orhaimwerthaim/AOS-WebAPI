@@ -15,6 +15,7 @@ namespace WebApiCSharp.BL
 
     public class InitializeProjectBL
     {
+        public Process AosSolverProcess = null;
         private static Configuration configuration { get; set; }
         enum PlpType { Environment, EnvironmentGlue, PLP, Glue }
         private static StringBuilder buildOutput = null;
@@ -39,7 +40,7 @@ namespace WebApiCSharp.BL
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
                 WorkingDirectory = configuration.SolverPath + "/build",
-            FileName = "bash",
+                FileName = "bash",
                 Arguments = "runSolverWrapper.sh"
 
             };
@@ -59,8 +60,8 @@ namespace WebApiCSharp.BL
             process.Start();
 
             process.BeginOutputReadLine();
-            
-            
+
+
             return buildOutput.ToString();
         }
         private static string BuildAosSolver()
@@ -90,8 +91,12 @@ namespace WebApiCSharp.BL
 
             process.BeginOutputReadLine();
             process.WaitForExit();
+            int pid = process.Id;
+            string output = buildOutput.ToString();
             process.Close();
-            return buildOutput.ToString();
+            process.OutputDataReceived -= BuildOutputHandler;
+            //return buildOutput.ToString();
+            return output;
         }
         private static bool IsValidPLP(JsonDocument plp, out List<String> errorMessages)
         {
@@ -107,15 +112,18 @@ namespace WebApiCSharp.BL
         }
 
 
-        public static void InitializeProject(string pLPsDirectoryPath, out List<String> errors, out string buildOutput, out string runOutput)
+        public static void InitializeProject(InitializeProject initProj, out List<String> errors, out string buildOutput, out string runOutput)
         {
             buildOutput = "";
             runOutput = "";
             errors = new List<string>();
             List<String> tempErrors;
 
+            AosGeneralService.DeleteCollectionsBeforeProjectInitialization();
+            errors.AddRange(LoadPLPs(initProj.PLPsDirectoryPath));
             PLPsData plpData = new PLPsData(out tempErrors);
             errors.AddRange(tempErrors);
+
 
             GenerateSolver generateSolver = new GenerateSolver(plpData);
 
@@ -125,11 +133,13 @@ namespace WebApiCSharp.BL
             }
             buildOutput = BuildAosSolver();
 
-            runOutput = RunSolver();
+       //     runOutput = RunSolver();
+
+
+            new GenerateRosMiddleware(plpData, initProj);
         }
         private static List<String> LoadPLPs(string pLPsDirectoryPath)
         {
-            PLPsService.DeleteAll();
             List<String> errorMessages = new List<string>();
 
             if (!Directory.Exists(pLPsDirectoryPath))
