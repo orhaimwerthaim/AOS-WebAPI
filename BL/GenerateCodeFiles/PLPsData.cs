@@ -20,6 +20,8 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public Dictionary<string, DistributionSample> DistributionSamples = new Dictionary<string, DistributionSample>();
         public Dictionary<string, PLP> PLPs = new Dictionary<string, PLP>();
+        public Dictionary<string, RosGlue> RosGlues = new Dictionary<string, RosGlue>();
+
         public List<SpecialState> SpecialStates = new List<SpecialState>();
         public List<LocalVariableConstant> LocalVariableConstants = new List<LocalVariableConstant>();
         public List<LocalVariableTypePLP> LocalVariableTypes = new List<LocalVariableTypePLP>();
@@ -82,10 +84,17 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             ProcessEnvironmentGlueFile();
 
+            List<string> tempErrors = new List<string>();
             foreach (KeyValuePair<string, BsonDocument> plp in bsonPlps)
             {
-                List<string> tempErrors = new List<string>();
-                PLPs.Add(plp.Key, ProcessPLP(plp.Value, out tempErrors));
+
+                PLPs.Add(plp.Key, (PLP)ProcessModuleDocumentationFile(plp.Value, out tempErrors));
+                errors.AddRange(tempErrors);
+            }
+            foreach (KeyValuePair<string, BsonDocument> plp in bsonGlues)
+            {
+                tempErrors.Clear();
+                RosGlues.Add(plp.Key, (RosGlue)ProcessModuleDocumentationFile(plp.Value, out tempErrors));
                 errors.AddRange(tempErrors);
             }
 
@@ -475,22 +484,106 @@ namespace WebApiCSharp.GenerateCodeFiles
             }
         }
 
-        private string GetPLPDescriptionForError(PLP plp)
+        private string GetPLPDescriptionForError(ModuleDocumentationFile docFile)
         {
-            return "PLP name='" + plp.Name + "',type = '" + plp.Type + "'";
+            return "PLP name='" + docFile.Name + "',type = '" + docFile.Type + "'";
         }
         private string GetPLPDescriptionForError(string plpName, string plpType)
         {
             return "PLP name='" + plpName + "',type = '" + plpType + "'";
         }
-        private PLP ProcessPLP(BsonDocument bPlp, out List<string> errors)
+
+        private RosGlue ProcessRosGlue(BsonDocument bRosGlue, out List<string> errors, RosGlue rosGlue)
         {
             errors = new List<string>();
             List<string> tempErrors = new List<string>();
-            PLP plp = new PLP();
-            plp.Name = bPlp["PlpMain"]["Name"].ToString();
-            plp.Type = bPlp["PlpMain"]["Type"].ToString();
-            plp.Project = bPlp["PlpMain"]["Project"].ToString();
+
+            string plpDescription = GetPLPDescriptionForError(rosGlue);
+
+            if (bRosGlue.Contains("LocalVariablesInitialization"))
+            {
+foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
+                    {
+                        BsonDocument docVar = bVal.AsBsonDocument;
+                        GlueParameterAssignment oPar = new GlueParameterAssignment();
+                        oPar.MsgFieldName = GetBsonStringField(docVar, "ServiceFieldName");
+                        oPar.LocalVariableName = GetBsonStringField(docVar, "LocalVariable");
+                        rosGlue.RosServiceActivation.ParametersAssignments.Add(oPar);
+                        if (oPar.MsgFieldName == null)
+                        {
+                            errors.Add(plpDescription + ", 'ModuleActivation.RosService.ServiceParameters', contains an element without a definition for 'ServiceFieldName', which is a mandatory field!");
+                        }
+                    }
+            }
+
+            if (bRosGlue["ModuleActivation"].AsBsonDocument.Contains("RosService"))
+            {
+                BsonDocument docAct = bRosGlue["ModuleActivation"]["RosService"].AsBsonDocument;
+                rosGlue.RosServiceActivation = new RosServiceActivation();
+                rosGlue.RosServiceActivation.ServiceName = GetBsonStringField(docAct, "ServiceName");
+
+                if (rosGlue.RosServiceActivation.ServiceName == null)
+                {
+                    errors.Add(plpDescription + ", 'ModuleActivation.RosService' does not contain a definition for 'ServiceName', which is a mandatory field!");
+                }
+
+                rosGlue.RosServiceActivation.ServicePath = GetBsonStringField(docAct, "ServicePath");
+
+                if (rosGlue.RosServiceActivation.ServicePath == null)
+                {
+                    errors.Add(plpDescription + ", 'ModuleActivation.RosService' does not contain a definition for 'ServicePath', which is a mandatory field!");
+                }
+
+                if (docAct.Contains("ServiceParameters"))
+                {
+                    foreach (BsonValue bVal in docAct["ServiceParameters"].AsBsonArray)
+                    {
+                        BsonDocument docPar = bVal.AsBsonDocument;
+                        GlueParameterAssignment oPar = new GlueParameterAssignment();
+                        oPar.MsgFieldName = GetBsonStringField(docPar, "ServiceFieldName");
+                        oPar.LocalVariableName = GetBsonStringField(docPar, "LocalVariable");
+                        rosGlue.RosServiceActivation.ParametersAssignments.Add(oPar);
+                        if (oPar.MsgFieldName == null)
+                        {
+                            errors.Add(plpDescription + ", 'ModuleActivation.RosService.ServiceParameters', contains an element without a definition for 'ServiceFieldName', which is a mandatory field!");
+                        }
+                    }
+                }
+
+
+                if (docAct.Contains("ImportCode"))
+                {
+                    foreach (BsonValue bVal in docAct["ImportCode"].AsBsonArray)
+                    {
+                        BsonDocument docImp = bVal.AsBsonDocument;
+                        RosImport oImp = new RosImport();
+
+                        oImp.From = GetBsonStringField(docImp, "From");
+
+
+                        if (docImp.Contains("Import"))
+                        {
+                            foreach (BsonValue bVal2 in docImp["Import"].AsBsonArray)
+                            {
+                                oImp.Imports.Add(bVal2.ToString());
+                            }
+                        }
+
+                        if (oImp.From == null && oImp.Imports.Count == 0)
+                        {
+                            errors.Add(plpDescription + ", in 'ModuleActivation.RosService.ImportCode',  contains an element without a definition for either 'From' or 'Import', one of them must be deinfed!");
+                        }
+                        rosGlue.RosServiceActivation.Imports.Add(oImp);
+                    }
+                }
+            }
+
+            return rosGlue;
+        }
+        private PLP ProcessPLP(BsonDocument bPlp, out List<string> errors, PLP plp)
+        {
+            errors = new List<string>();
+            List<string> tempErrors = new List<string>();
 
             string plpDescription = GetPLPDescriptionForError(plp);
             foreach (BsonValue bVal in bPlp["GlobalVariableModuleParameters"].AsBsonArray)
@@ -610,6 +703,25 @@ namespace WebApiCSharp.GenerateCodeFiles
             plp.DynamicModel_VariableAssignments.AddRange(nextStateAssignments);
 
             return plp;
+        }
+        private ModuleDocumentationFile ProcessModuleDocumentationFile(BsonDocument bPlp, out List<string> errors)
+        {
+            errors = new List<string>();
+            List<string> tempErrors = new List<string>();
+            ModuleDocumentationFile docFile = bPlp["PlpMain"]["Type"].ToString().Equals(PLP_TYPE_NAME_PLP) ? new PLP() : bPlp["PlpMain"]["Type"].ToString().Equals(PLP_TYPE_NAME_GLUE) ? new RosGlue() : new ModuleDocumentationFile();
+
+            docFile.Name = bPlp["PlpMain"]["Name"].ToString();
+            docFile.Type = bPlp["PlpMain"]["Type"].ToString();
+            docFile.Project = bPlp["PlpMain"]["Project"].ToString();
+
+            switch (docFile.Type)
+            {
+                case PLP_TYPE_NAME_PLP:
+                    return ProcessPLP(bPlp, out errors, (PLP)docFile);
+                case PLP_TYPE_NAME_GLUE:
+                    return ProcessRosGlue(bPlp, out errors, (RosGlue)docFile);
+            }
+            return docFile;
         }
 
         private int GetIntFieldFromBson(string fromFile, string fileType, BsonDocument bson, string firstField, string secondField, out List<string> errors)

@@ -5,13 +5,9 @@ using System.Collections.Generic;
 
 namespace WebApiCSharp.Models
 {
-    public class PLP
+    public class PLP:ModuleDocumentationFile
     { 
-          public string Name{get;set;}
 
-          public string Type{ get; set; }
-
-          public string Project{ get; set; }
 
           public List<GlobalVariableModuleParameter> GlobalVariableModuleParameters { get; set; }
 

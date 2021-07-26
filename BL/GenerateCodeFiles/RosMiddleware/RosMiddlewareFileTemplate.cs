@@ -95,8 +95,28 @@ include_directories(
         }
 
 
+private static string GetImportsForMiddlewareNode(PLPsData data, InitializeProject initProj)
+{
+            string result = "";
+            foreach(string targetProj in initProj.RosTarget.RosTargetProjectPackages)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(0, 0, "from "+targetProj+".msg import *");
+                result += GenerateFilesUtils.GetIndentationStr(0, 0, "from "+targetProj+".srv import *");
+            }
+
+            foreach(PLP plp in data.PLPs.Values)
+            {
+                if(plp.Type == PLPsData.PLP_TYPE_NAME_GLUE)
+                {
+                    
+                }
+            }
+            return result;
+        }
+
         public static string GetAosRosMiddlewareNodeFile(PLPsData data, InitializeProject initProj)
         {
+            
             string file = @"#!/usr/bin/python
 import datetime
 import rospy 
@@ -119,7 +139,15 @@ collActions = aosDB[""Actions""]
 
 def ltLocationToDict(lt):
     return {""x"": lt.x, ""y"": lt.y, ""z"": lt.z}
-
+class ltLocation:
+    def __init__(self, x,y,z):
+        self.x=x
+        self.y=y
+        self.z=z
+    def __init__(self):
+        self.x=0.0
+        self.y=0.0
+        self.z=0.0
 class ListenToMongoDbCommands:
     def __init__(self, _topicListener):
         self.currentActionSequenceID = 1
@@ -135,6 +163,7 @@ class ListenToMongoDbCommands:
 
 
     def handle_pick(self, params):
+        print(""in handle pick------------------------------"")
         responseNotByLocalVariables = None
         cupAccurateLocation = """"
         obj_location = """"
@@ -145,9 +174,10 @@ class ListenToMongoDbCommands:
             cupAccurateLocation = aos_GlobalVariablesAssignments_collection.find_one(
                 {""GlobalVariableName"": ""state.cupAccurateLocation""})
 
-            obj_location = ltLocation(x=cupAccurateLocation[""LowLevelValue""][""x""],
-                                      y=cupAccurateLocation[""LowLevelValue""][""y""],
-                                      z=cupAccurateLocation[""LowLevelValue""][""z""])
+            obj_location = ltLocation()
+            obj_location.x=cupAccurateLocation[""LowLevelValue""][""x""]
+            obj_location.y=cupAccurateLocation[""LowLevelValue""][""y""]
+            obj_location.z=cupAccurateLocation[""LowLevelValue""][""z""]
         except:
             print(""illegalActionObs"")
             responseNotByLocalVariables = ""illegalActionObs""
@@ -190,8 +220,10 @@ class ListenToMongoDbCommands:
         oDesiredLocation_actual_locationDB = aos_GlobalVariablesAssignments_collection.find_one(
             {""GlobalVariableName"": fromGlobalVar})
 
-        desired_location = ltLocation(x=oDesiredLocation_actual_locationDB[""LowLevelValue""][""x""], y=oDesiredLocation_actual_locationDB[""LowLevelValue""][""y""],
-                                  z=oDesiredLocation_actual_locationDB[""LowLevelValue""][""z""])
+        desired_location = ltLocation()
+        desired_location.x=oDesiredLocation_actual_locationDB[""LowLevelValue""][""x""]
+        desired_location.y=oDesiredLocation_actual_locationDB[""LowLevelValue""][""y""]
+        desired_location.z=oDesiredLocation_actual_locationDB[""LowLevelValue""][""z""]
 
         try:
             navigate_proxy = rospy.ServiceProxy(self.navigateServiceName, navigate)
@@ -240,6 +272,15 @@ class ListenToMongoDbCommands:
             top_gripper_pressure = self._topicListener.localVarNamesAndValues[""pick""][""top_gripper_pressure""]
             gripper_opening = self._topicListener.localVarNamesAndValues[""pick""][""gripper_opening""]
             gripper_pressure = self._topicListener.localVarNamesAndValues[""pick""][""gripper_pressure""]
+
+            if DEBUG:
+                print(""pick action local variables:"")
+                print(""top_gripper_pressure"")
+                print(top_gripper_pressure)
+                print(""gripper_opening:"")
+                print(gripper_opening)
+                print(""gripper_pressure:"")
+                print(gripper_pressure)
             if moduleResponse == """" and gripper_pressure > 0 and gripper_opening > 0:
                 moduleResponse = ""pick_res_pick_action_success""
             if moduleResponse == """" and gripper_pressure == 0:
@@ -282,9 +323,12 @@ class ListenToMongoDbCommands:
                 moduleResponse = 'navigate_eFailed'
 
         if DEBUG:
+            print(""moduleResponse result:"")
             print(moduleResponse)
         moduleResponseItem = {""Module"": moduleName, ""ActionSequenceId"": actionSequenceID,
                 ""ModuleResponseText"": moduleResponse, ""StartTime"": startTime, ""EndTime"": datetime.datetime.utcnow(), ""ActionForExecutionId"":self.currentActionFotExecutionId}
+
+
         aos_ModuleResponses_collection.insert_one(moduleResponseItem)
         for varName, value in assignGlobalVar.items():
             isInit = False
@@ -313,7 +357,10 @@ class ListenToMongoDbCommands:
                 rospy.sleep(0.3)#0.03 is a tested duration, not to drop updates
                 moduleActivationStartTime = datetime.datetime.utcnow()
                 responseNotByLocalVariables = None
+                print(""module name:"")
+                print(moduleName)
                 if moduleName == ""pick"":
+                    print(""handle pick"")
                     responseNotByLocalVariables = self.handle_pick(actionParameters)
                 if moduleName == ""observe"":
                     responseNotByLocalVariables = self.handle_observe(actionParameters)
@@ -538,7 +585,7 @@ class AOS_InitEnvironmentFile:
 
 
 if __name__ == '__main__':
-    rospy.init_node('" + GenerateRosMiddleware.ROS_MIDDLEWARE_PACKAGE_NAME + @"', anonymous=True)
+    rospy.init_node('aos_ros_middleware_auto', anonymous=True)
     AOS_InitEnvironmentFile()
     topicListener = AOS_TopicListenerServer()
     commandlistener = ListenToMongoDbCommands(topicListener)

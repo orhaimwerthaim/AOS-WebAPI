@@ -133,7 +133,7 @@ namespace WebApiCSharp.BL
             }
             buildOutput = BuildAosSolver();
 
-       //     runOutput = RunSolver();
+            runOutput = RunSolver();
 
 
             new GenerateRosMiddleware(plpData, initProj);
