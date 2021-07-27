@@ -8,10 +8,12 @@ namespace WebApiCSharp.Models
     public class RosGlue:ModuleDocumentationFile
     {
         public RosServiceActivation RosServiceActivation;
+        public List<GlueLocalVariablesInitialization> GlueLocalVariablesInitializations;
 
         public RosGlue()
         {
             RosServiceActivation = null;
+            GlueLocalVariablesInitializations = new List<GlueLocalVariablesInitialization>();
         }
     }
 
@@ -30,7 +32,9 @@ namespace WebApiCSharp.Models
 
     public class GlueParameterAssignment
     {
-        public string LocalVariableName;
+        public string AssignServiceFieldCode;
+
+        public string ConstantToAssign;
         public string MsgFieldName;
     }
 
@@ -42,7 +46,14 @@ namespace WebApiCSharp.Models
         public string TopicMessageType;
         public string VariableType;
 
+        public string InitialValue;
+
         public List<RosImport> Imports;
+
+        public GlueLocalVariablesInitialization()
+        {
+            Imports = new List<RosImport>();
+        }
     }
     public class RosImport
     {

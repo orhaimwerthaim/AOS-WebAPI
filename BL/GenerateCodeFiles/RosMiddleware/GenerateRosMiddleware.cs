@@ -36,7 +36,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             GenerateFilesUtils.WriteTextFile(rosMiddlewareDirectory + "/package.xml", RosMiddlewareFileTemplate.GetPackageFile(initProj));
 
             Directory.CreateDirectory(rosMiddlewareDirectory + "/scripts");
-            GenerateFilesUtils.WriteTextFile(rosMiddlewareDirectory + "/scripts/" + ROS_MIDDLEWARE_PACKAGE_NAME + "_node.py", RosMiddlewareFileTemplate.GetAosRosMiddlewareNodeFile(data, initProj));
+            GenerateFilesUtils.WriteTextFile(rosMiddlewareDirectory + "/scripts/" + ROS_MIDDLEWARE_PACKAGE_NAME + "_node.py", RosMiddlewareFileTemplate.GetAosRosMiddlewareNodeFile(data, initProj), true);
 
 
 

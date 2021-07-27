@@ -62,7 +62,6 @@ namespace WebApiCSharp.Models
 
           public string Type{ get; set; } 
 
-          public string UnderlineLocalVariableType{ get; set; }
     }
 
     public class LocalVariablesInitializationFromGlobalVariable

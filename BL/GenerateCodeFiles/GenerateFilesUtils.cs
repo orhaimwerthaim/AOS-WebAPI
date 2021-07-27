@@ -47,6 +47,12 @@ namespace WebApiCSharp.GenerateCodeFiles
             string resPath = basePath + "/" + pathEnd;
             return resPath;
         }
+
+        public static bool IsPrimitiveType(string type)
+        {
+            return PLPsData.PRIMITIVE_TYPES.Any(x => x.Equals(type));
+        }
+
         public static string ToUpperFirstLetter(string str)
         {
             return char.ToUpper(str[0]) + str.Substring(1);
@@ -58,7 +64,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         }
 
 
-        public static void WriteTextFile(string path, string content)
+        public static void WriteTextFile(string path, string content, bool setExecuteable = false)
         {
             if (File.Exists(path))
             {
@@ -68,6 +74,10 @@ namespace WebApiCSharp.GenerateCodeFiles
             using (StreamWriter sw = File.CreateText(path))
             {
                 sw.Write(content);
+            }
+            if(setExecuteable)
+            {
+                RunApplicationUntilEnd("chmod", null, "+x " + path);
             }
         }
 

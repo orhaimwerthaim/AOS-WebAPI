@@ -2621,7 +2621,7 @@ public:
                             {
                                 if (oVar.ConstantWhenInActionParameter)
                                 {
-                                    result += "    j[\"" + param.Name + "->" + oVar.Name + "\"] = " + param.Name + "." + oVar.Name + ";" + Environment.NewLine;
+                                    result += "    j[\"" + param.Name + "." + oVar.Name + "\"] = " + param.Name + "." + oVar.Name + ";" + Environment.NewLine;
                                 }
                             }
                         }

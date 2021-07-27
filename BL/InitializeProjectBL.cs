@@ -131,9 +131,9 @@ namespace WebApiCSharp.BL
             {
                 return;
             }
-            buildOutput = BuildAosSolver();
+            //buildOutput = BuildAosSolver();
 
-            runOutput = RunSolver();
+            //runOutput = RunSolver();
 
 
             new GenerateRosMiddleware(plpData, initProj);

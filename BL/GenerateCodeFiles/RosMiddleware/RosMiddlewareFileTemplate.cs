@@ -95,37 +95,230 @@ include_directories(
         }
 
 
-private static string GetImportsForMiddlewareNode(PLPsData data, InitializeProject initProj)
-{
+        private static string GetImportsForMiddlewareNode(PLPsData data, InitializeProject initProj)
+        {
             string result = "";
-            foreach(string targetProj in initProj.RosTarget.RosTargetProjectPackages)
+            Dictionary<string, HashSet<string>> unImports = new Dictionary<string, HashSet<string>>();
+            List<RosImport> imports = new List<RosImport>();
+
+            foreach (RosGlue glue in data.RosGlues.Values)
             {
-                result += GenerateFilesUtils.GetIndentationStr(0, 0, "from "+targetProj+".msg import *");
-                result += GenerateFilesUtils.GetIndentationStr(0, 0, "from "+targetProj+".srv import *");
+                imports.AddRange(glue.RosServiceActivation.Imports);
+
+                foreach (var lVar in glue.GlueLocalVariablesInitializations)
+                {
+                    imports.AddRange(lVar.Imports);
+                }
             }
 
-            foreach(PLP plp in data.PLPs.Values)
+            foreach (RosImport im in imports)
             {
-                if(plp.Type == PLPsData.PLP_TYPE_NAME_GLUE)
+                im.From = im.From == null ? "" : im.From;
+                if (!unImports.ContainsKey(im.From))
                 {
-                    
+                    unImports.Add(im.From, new HashSet<string>());
+                }
+                foreach (string sIm in im.Imports)
+                {
+                    unImports[im.From].Add(sIm);
+                }
+            }
+
+            foreach (KeyValuePair<string, HashSet<string>> keyVal in unImports)
+            {
+                string baseS = keyVal.Key.Replace(" ", "").Length == 0 ? "" : "from " + keyVal.Key + " ";
+                result += GenerateFilesUtils.GetIndentationStr(0, 0, baseS + "import " + String.Join(",", keyVal.Value));
+            }
+            return result;
+        }
+
+        private static string GetLocalVariableTypeClasses(PLPsData data)
+        {
+            string result = "";
+            foreach (LocalVariableTypePLP type in data.LocalVariableTypes)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(0, 4, "def " + type.TypeName + "ToDict(lt):");
+
+                List<string> saFields = type.SubFields.Select(x => "\"" + x.FieldName + "\": lt." + x.FieldName).ToList();
+
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "return {" + String.Join(", ", saFields) + "}");
+
+                result += Environment.NewLine;
+
+                result += GenerateFilesUtils.GetIndentationStr(0, 4, "class " + type.TypeName + ":");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self, " + String.Join(", ", type.SubFields.Select(x => x.FieldName)) + "):");
+                foreach (LocalVariableCompoundTypeField field in type.SubFields)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "self." + field.FieldName + "=" + field.FieldName);
+                }
+
+                result += Environment.NewLine;
+
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self):");
+                foreach (LocalVariableCompoundTypeField field in type.SubFields)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "self." + field.FieldName + "=None");
                 }
             }
             return result;
         }
 
+        private static string GetListenToMongoDbCommandsInitFunction(PLPsData data)
+        {
+            string result = "";
+
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self, _topicListener):");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.currentActionSequenceID = 1");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.currentActionFotExecutionId = None");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "self._topicListener = _topicListener");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.readyToActivate = \"\" ");
+
+            foreach (RosGlue glue in data.RosGlues.Values)
+            {
+                if (glue.RosServiceActivation != null && !string.IsNullOrEmpty(glue.RosServiceActivation.ServiceName))
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "self." + glue.Name + "ServiceName = \"" + glue.RosServiceActivation.ServicePath + "\"");
+                }
+            }
+
+            result += Environment.NewLine;
+
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.listen_to_mongodb_commands()");
+            return result;
+        }
+
+        private static CompoundVarTypePLP GetCompundTypeByName(string compTypeName, PLPsData data)
+        {
+            List<CompoundVarTypePLP> cl = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(compTypeName)).ToList();
+            return cl.Count == 0 ? null : cl[0];
+        }
+        private static CompoundVarTypePLP_Variable GetCompundVariableByName(CompoundVarTypePLP oComp, string subFields, PLPsData data)
+        {
+            string[] bits = subFields.Split(".");
+            if (oComp == null || bits.Length == 0) return null;
+            List<CompoundVarTypePLP_Variable> lv = oComp.Variables.Where(x => x.Name.Equals(bits[0])).ToList();
+            if (lv.Count == 0) return null;
+            if (bits.Length == 0) return lv[0];
+            bits[0] = "";
+            return GetCompundVariableByName(GetCompundTypeByName(lv[0].Type, data), String.Join(".", bits.Where(x => !String.IsNullOrEmpty(x))), data);
+        }
+
+        private static LocalVariableTypePLP GetUnderlineLocalVariableTypeByVarName(PLPsData data, PLP plp, string variableName)
+        {
+            string underlineTypeName = GetUnderlineLocalVariableNameTypeByVarName(data, plp, variableName);
+            underlineTypeName = underlineTypeName == null ? "" : underlineTypeName;
+            return data.LocalVariableTypes.Where(x => x.TypeName.Equals(underlineTypeName)).FirstOrDefault();
+
+        }
+        private static string GetUnderlineLocalVariableNameTypeByVarName(PLPsData data, PLP plp, string variableName)
+        {
+
+            string[] bits = variableName.Split(".");
+
+            string baseVarName = bits[0] + (bits.Length > 1 ? bits[1] : "");
+            List<GlobalVariableDeclaration> dl = data.GlobalVariableDeclarations.Where(x => ("state." + x.Name).Equals(baseVarName)).ToList();
+
+            if (dl.Count > 0)
+            {
+                if (GenerateFilesUtils.IsPrimitiveType(dl[0].Type))
+                {
+                    return null;
+                }
+                if (PLPsData.ANY_VALUE_TYPE_NAME.Equals(dl[0].Type))
+                {
+                    return dl[0].UnderlineLocalVariableType;
+                }
+                CompoundVarTypePLP comp = GetCompundTypeByName(dl[0].Type, data);
+                CompoundVarTypePLP_Variable oVar = GetCompundVariableByName(comp, string.Join(".", bits.Skip(1)), data);
+                return oVar == null || !oVar.Type.Equals(PLPsData.ANY_VALUE_TYPE_NAME) ? null : oVar.UnderlineLocalVariableType;
+            }
+            else//is a parameter
+            {
+                List<GlobalVariableModuleParameter> temp = plp.GlobalVariableModuleParameters.Where(x => x.Name.Equals(bits[0])).ToList();
+                if (temp.Count == 0) return null;
+                CompoundVarTypePLP comp = GetCompundTypeByName(temp[0].Type, data);
+                CompoundVarTypePLP_Variable oVar = GetCompundVariableByName(comp, string.Join(".", bits.Skip(1)), data);
+                return oVar == null || !oVar.Type.Equals(PLPsData.ANY_VALUE_TYPE_NAME) ? null : oVar.UnderlineLocalVariableType;
+            }
+        }
+        private static string GetHandleModuleFunction(PLPsData data)
+        {
+            string result = "";
+
+            foreach (RosGlue glue in data.RosGlues.Values)
+            {
+                PLP plp = data.PLPs[glue.Name];
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "def handle_" + glue.Name + "(self, params):");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "responseNotByLocalVariables = None");
+                Dictionary<string, LocalVariablesInitializationFromGlobalVariable> localVarsFromGlobal = new Dictionary<string, LocalVariablesInitializationFromGlobalVariable>();
+
+                bool hasVar = false;
+                foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
+                {
+                    hasVar = true;
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, oGlVar.InputLocalVariable + " = \"\"");
+                }
+                if (hasVar)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "try:");
+
+                    foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "dbVar = aos_GlobalVariablesAssignments_collection.find_one({\"GlobalVariableName\": \"" + oGlVar.FromGlobalVariable + "\"})");
+
+                        LocalVariableTypePLP underlineType = GetUnderlineLocalVariableTypeByVarName(data, plp, oGlVar.FromGlobalVariable);
+                        if (underlineType != null)
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = " + underlineType.TypeName + "()");
+                            foreach (LocalVariableCompoundTypeField field in underlineType.SubFields)
+                            {
+                                //obj_location.z=cupAccurateLocation[""LowLevelValue""][""z""]
+                                result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + "." + field.FieldName + " = dbVar[\"LowLevelValue\"][\"" + field.FieldName + "\"]");
+                            }
+                        }
+                        else
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = dbVar[\"LowLevelValue\"]");
+                        }
+                    }
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "except:");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "responseNotByLocalVariables = \"illegalActionObs\"");
+                }
+
+                if (glue.RosServiceActivation != null && !string.IsNullOrEmpty(glue.RosServiceActivation.ServiceName))
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "try:");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "rospy.wait_for_service(self." + glue.Name + "ServiceName)");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, glue.Name + "_proxy = rospy.ServiceProxy(self." + glue.Name + "ServiceName, " + glue.RosServiceActivation.ServiceName + ")");
+
+                    string serviceCallParam = string.Join(", ", glue.RosServiceActivation.ParametersAssignments.Select(x => x.MsgFieldName + "=(" + x.AssignServiceFieldCode + ")"));
+
+
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "__res = " + glue.Name + "_proxy(" + serviceCallParam + ")");
+
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + glue.Name + " service terminated\")");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "except:");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "print(\"Service call failed\")");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "");
+                }
+
+
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "return responseNotByLocalVariables");
+
+            }
+            return result;
+        }
         public static string GetAosRosMiddlewareNodeFile(PLPsData data, InitializeProject initProj)
         {
-            
+
             string file = @"#!/usr/bin/python
 import datetime
-import rospy 
-from aos_ros_target_project.msg import *
-from aos_ros_target_project.srv import *
-from std_msgs.msg import String, Bool
-from geometry_msgs.msg import Twist
-import pymongo 
-DEBUG = True
+import rospy  
+import pymongo
+" + GetImportsForMiddlewareNode(data, initProj) + @"
+ 
+DEBUG = False
 aosDbConnection = pymongo.MongoClient(""mongodb://localhost:27017/"")
 aosDB = aosDbConnection[""AOS""]
 aos_statisticsDB = aosDbConnection[""AOS_Statistics""]
@@ -137,123 +330,14 @@ collActionForExecution = aosDB[""ActionsForExecution""]
 collActions = aosDB[""Actions""]
 
 
-def ltLocationToDict(lt):
-    return {""x"": lt.x, ""y"": lt.y, ""z"": lt.z}
-class ltLocation:
-    def __init__(self, x,y,z):
-        self.x=x
-        self.y=y
-        self.z=z
-    def __init__(self):
-        self.x=0.0
-        self.y=0.0
-        self.z=0.0
+
+" + GetLocalVariableTypeClasses(data) + @"
+
 class ListenToMongoDbCommands:
-    def __init__(self, _topicListener):
-        self.currentActionSequenceID = 1
-        self.currentActionFotExecutionId = None
-        self._topicListener = _topicListener
-        self.readyToActivate = """" 
-        self.pickServiceName = ""/arm_manipulation/pick""
-        self.observeServiceName = '/custom_actions/observe'
-        self.navigateServiceName = '/custom_actions/navigate'
-        self.placeServiceName = '/arm_manipulation/place'
-
-        self.listen_to_mongodb_commands()
+" + GetListenToMongoDbCommandsInitFunction(data) + @"
 
 
-    def handle_pick(self, params):
-        print(""in handle pick------------------------------"")
-        responseNotByLocalVariables = None
-        cupAccurateLocation = """"
-        obj_location = """"
-        try:
-            rospy.wait_for_service(self.pickServiceName)
-
-            # get global variable low-level value
-            cupAccurateLocation = aos_GlobalVariablesAssignments_collection.find_one(
-                {""GlobalVariableName"": ""state.cupAccurateLocation""})
-
-            obj_location = ltLocation()
-            obj_location.x=cupAccurateLocation[""LowLevelValue""][""x""]
-            obj_location.y=cupAccurateLocation[""LowLevelValue""][""y""]
-            obj_location.z=cupAccurateLocation[""LowLevelValue""][""z""]
-        except:
-            print(""illegalActionObs"")
-            responseNotByLocalVariables = ""illegalActionObs""
-        try:
-            pick_proxy = rospy.ServiceProxy(self.pickServiceName, pick)
-            req = pickLocation(x= obj_location.x, y=obj_location.y, z= obj_location.z)
-            pick_proxy(req)
-            if DEBUG:
-                print(""pick service terminated"")
-
-        except:
-            print(""Service call failed"")
-        return responseNotByLocalVariables
-
-    def handle_place(self, params):
-        responseNotByLocalVariables = None
-        rospy.wait_for_service(self.placeServiceName)
-
-        try:
-            place_proxy = rospy.ServiceProxy(self.placeServiceName, place)
-            place_proxy()
-            if DEBUG:
-                print(""place service terminated"")
-
-        except rospy.ServiceException as e:
-            print(""Service call failed: %s"" % e)
-        return responseNotByLocalVariables
-
-    def handle_navigate(self, params):
-        responseNotByLocalVariables = None
-        rospy.wait_for_service(self.navigateServiceName)
-
-        fromGlobalVar = ""oDesiredLocation.actual_location""
-      
-
-        stateVarName = params[""ParameterLinks""][""oDesiredLocation""]
-       
-        fromGlobalVar = fromGlobalVar.replace(""oDesiredLocation."",stateVarName + ""."")
-      
-        oDesiredLocation_actual_locationDB = aos_GlobalVariablesAssignments_collection.find_one(
-            {""GlobalVariableName"": fromGlobalVar})
-
-        desired_location = ltLocation()
-        desired_location.x=oDesiredLocation_actual_locationDB[""LowLevelValue""][""x""]
-        desired_location.y=oDesiredLocation_actual_locationDB[""LowLevelValue""][""y""]
-        desired_location.z=oDesiredLocation_actual_locationDB[""LowLevelValue""][""z""]
-
-        try:
-            navigate_proxy = rospy.ServiceProxy(self.navigateServiceName, navigate)
-            goal_location = pickLocation()
-            goal_location.x= desired_location.x
-            goal_location.y=desired_location.y
-            goal_location.z= desired_location.z
-
-
-            navigate_proxy(goal_location=goal_location)
-            if DEBUG:
-                print(""navigate service terminated"")
-
-        except rospy.ServiceException as e:
-            print(""Service call failed: %s"" % e)
-        return responseNotByLocalVariables
-
-    def handle_observe(self, params):
-        responseNotByLocalVariables = None
-        try:
-            observe_proxy = rospy.ServiceProxy(self.observeServiceName, observe)
-            __res = observe_proxy()
-            observedLocation={""x"": __res.observed_location.x, ""y"": __res.observed_location.y, ""z"": __res.observed_location.z}
-            self._topicListener.updateLocalVariableValue(""observedLocation"",observedLocation)
-            if DEBUG:
-                print(""observe service terminated"")
-
-        except rospy.ServiceException as e:
-            print(""Service call failed: %s"" % e)
-        return responseNotByLocalVariables
+" + GetHandleModuleFunction(data) + @"
 
     def registerModuleResponse(self, moduleName, startTime, actionSequenceID, responseNotByLocalVariables):
         if DEBUG:

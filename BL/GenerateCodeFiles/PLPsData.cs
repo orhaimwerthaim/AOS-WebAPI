@@ -45,7 +45,10 @@ namespace WebApiCSharp.GenerateCodeFiles
         public const string ANY_VALUE_TYPE_NAME = "anyValue";
 
         public const string ENUM_VARIABLE_TYPE_NAME = "enum";
-        public const string MODULE_EXECUTION_TIME_VARIABLE_NAME = "__moduleExecutionTime";
+        public const string INT_VARIABLE_TYPE_NAME = "int";
+        public const string BOOL_VARIABLE_TYPE_NAME = "bool";
+        public static readonly string[] PRIMITIVE_TYPES = {ENUM_VARIABLE_TYPE_NAME, INT_VARIABLE_TYPE_NAME, BOOL_VARIABLE_TYPE_NAME};
+    public const string MODULE_EXECUTION_TIME_VARIABLE_NAME = "__moduleExecutionTime";
         public const string MODULE_REWARD_VARIABLE_NAME = "__reward";
 
         public const string DISCRETE_DISTRIBUTION_FUNCTION_NAME = "AOS.SampleDiscrete"; //AOS.SampleDiscrete(enumRealCase,{0.8, 0.1,0,0.1})
@@ -333,7 +336,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 foreach (BsonValue bVar in docType["Variables"].AsBsonArray)
                 {
                     BsonDocument docVar = bVar.AsBsonDocument;
-                    localVar.VariablesNameAndType.Add(new KeyValuePair<string, string>(docVar["Name"].ToString(), docVar["Type"].ToString()));
+                    localVar.SubFields.Add(new LocalVariableCompoundTypeField() { FieldName = docVar["Name"].ToString(), FieldType = docVar["Type"].ToString() });
                 }
                 LocalVariableTypes.Add(localVar);
             }
@@ -435,6 +438,14 @@ namespace WebApiCSharp.GenerateCodeFiles
                             oVar.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
 
                             oVar.ConstantWhenInActionParameter = docVar.Contains("ConstantWhenInActionParameter") ? docVar["ConstantWhenInActionParameter"].AsBoolean : false;
+
+
+                            oVar.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
+
+                            if (oVar.UnderlineLocalVariableType != null && oVar.Type != ANY_VALUE_TYPE_NAME)
+                            {
+                                errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", in 'GlobalVariableTypes',  'UnderlineLocalVariableType' is defined while type '" + oVar.Type + "' is not '" + ANY_VALUE_TYPE_NAME + "'!");
+                            }
                             comp.Variables.Add(oVar);
                         }
                         GlobalCompoundTypes.Add(comp);
@@ -457,6 +468,13 @@ namespace WebApiCSharp.GenerateCodeFiles
                 oVarDec.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
                 oVarDec.DefaultCode = docVar.Contains("DefaultCode") ? (docVar["DefaultCode"].ToString().Equals("") ? null : docVar["DefaultCode"].ToString()) : null;
                 oVarDec.IsActionParameter = docVar.Contains("IsActionParameter") ? docVar["IsActionParameter"].AsBoolean : false;
+
+                oVarDec.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
+
+                if (oVarDec.UnderlineLocalVariableType != null && oVarDec.Type != ANY_VALUE_TYPE_NAME)
+                {
+                    errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", in 'GlobalVariablesDeclaration',  'UnderlineLocalVariableType' is defined while type '" + oVarDec.Type + "' is not '" + ANY_VALUE_TYPE_NAME + "'!");
+                }
 
                 GlobalVariableDeclarations.Add(oVarDec);
                 if (oVarDec.DefaultCode != null && oVarDec.Default != null)
@@ -502,18 +520,40 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             if (bRosGlue.Contains("LocalVariablesInitialization"))
             {
-foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
+                foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
+                {
+                    BsonDocument docVar = bVal.AsBsonDocument;
+                    GlueLocalVariablesInitialization oVar = new GlueLocalVariablesInitialization();
+                    oVar.LocalVarName = GetBsonStringField(docVar, "LocalVariableName");
+                    oVar.RosTopicPath = GetBsonStringField(docVar, "RosTopicPath");
+                    oVar.TopicMessageType = GetBsonStringField(docVar, "TopicMessageType");
+                    oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
+                    oVar.VariableType = GetBsonStringField(docVar, "VariableType");
+
+                    tempErrors.Clear();
+                    oVar.Imports.AddRange(LoadImports(docVar, out tempErrors, plpDescription, "LocalVariablesInitialization"));
+                    errors.AddRange(tempErrors);
+
+                    oVar.InitialValue = GetBsonStringField(docVar, "InitialValue");
+
+                    rosGlue.GlueLocalVariablesInitializations.Add(oVar);
+
+
+                    if (oVar.LocalVarName == null)
                     {
-                        BsonDocument docVar = bVal.AsBsonDocument;
-                        GlueParameterAssignment oPar = new GlueParameterAssignment();
-                        oPar.MsgFieldName = GetBsonStringField(docVar, "ServiceFieldName");
-                        oPar.LocalVariableName = GetBsonStringField(docVar, "LocalVariable");
-                        rosGlue.RosServiceActivation.ParametersAssignments.Add(oPar);
-                        if (oPar.MsgFieldName == null)
-                        {
-                            errors.Add(plpDescription + ", 'ModuleActivation.RosService.ServiceParameters', contains an element without a definition for 'ServiceFieldName', which is a mandatory field!");
-                        }
+                        errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element without a definition for 'LocalVariableName', which is a mandatory field!");
                     }
+
+                    if (oVar.AssignmentCode == null)
+                    {
+                        errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element without a definition for 'AssignmentCode', which is a mandatory field!");
+                    }
+
+                    if ((oVar.TopicMessageType == null) != (oVar.RosTopicPath == null))
+                    {
+                        errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element in which 'RosTopicPath' and 'TopicMessageType' are not both defined (or both not defined), it must be conssitent!");
+                    }
+                }
             }
 
             if (bRosGlue["ModuleActivation"].AsBsonDocument.Contains("RosService"))
@@ -541,17 +581,26 @@ foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
                         BsonDocument docPar = bVal.AsBsonDocument;
                         GlueParameterAssignment oPar = new GlueParameterAssignment();
                         oPar.MsgFieldName = GetBsonStringField(docPar, "ServiceFieldName");
-                        oPar.LocalVariableName = GetBsonStringField(docPar, "LocalVariable");
+                        oPar.AssignServiceFieldCode = GetBsonStringField(docPar, "AssignServiceFieldCode");
+
+
                         rosGlue.RosServiceActivation.ParametersAssignments.Add(oPar);
                         if (oPar.MsgFieldName == null)
                         {
                             errors.Add(plpDescription + ", 'ModuleActivation.RosService.ServiceParameters', contains an element without a definition for 'ServiceFieldName', which is a mandatory field!");
                         }
+
+                        if (oPar.MsgFieldName == null)
+                        {
+                            errors.Add(plpDescription + ", 'ModuleActivation.RosService.ServiceParameters', contains an element without a definition for 'AssignServiceFieldCode', which is a mandatory field!");
+                        }
                     }
                 }
 
-
-                if (docAct.Contains("ImportCode"))
+                tempErrors.Clear();
+                rosGlue.RosServiceActivation.Imports.AddRange(LoadImports(docAct, out tempErrors, plpDescription, "ModuleActivation.RosService"));
+                errors.AddRange(tempErrors);
+                /*if (docAct.Contains("ImportCode"))
                 {
                     foreach (BsonValue bVal in docAct["ImportCode"].AsBsonArray)
                     {
@@ -575,10 +624,44 @@ foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
                         }
                         rosGlue.RosServiceActivation.Imports.Add(oImp);
                     }
-                }
+                }*/
             }
 
             return rosGlue;
+        }
+
+        private List<RosImport> LoadImports(BsonDocument doc, out List<string> errors, string plpDescription, string baseJsonField)
+        {
+            errors = new List<string>();
+            List<RosImport> result = new List<RosImport>();
+            if (doc.Contains("ImportCode"))
+            {
+                foreach (BsonValue bVal in doc["ImportCode"].AsBsonArray)
+                {
+                    BsonDocument docImp = bVal.AsBsonDocument;
+                    RosImport oImp = new RosImport();
+
+                    oImp.From = GetBsonStringField(docImp, "From");
+
+
+                    if (docImp.Contains("Import"))
+                    {
+                        foreach (BsonValue bVal2 in docImp["Import"].AsBsonArray)
+                        {
+                            oImp.Imports.Add(bVal2.ToString());
+                        }
+                    }
+
+                    if (oImp.From == null && oImp.Imports.Count == 0)
+                    {
+                        errors.Add(plpDescription + ", in '" + baseJsonField + ".ImportCode',  contains an element without a definition for either 'From' or 'Import', one of them must be deinfed!");
+                    }
+                    result.Add(oImp);
+                }
+            }
+
+
+            return result;
         }
         private PLP ProcessPLP(BsonDocument bPlp, out List<string> errors, PLP plp)
         {
@@ -593,12 +676,7 @@ foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
 
                 oPar.Name = docPar["Name"].ToString();
                 oPar.Type = docPar["Type"].ToString();
-                oPar.UnderlineLocalVariableType = GetBsonStringField(docPar, "UnderlineLocalVariableType");
 
-                if (oPar.UnderlineLocalVariableType != null && oPar.Type != ANY_VALUE_TYPE_NAME)
-                {
-                    errors.Add(plpDescription + ", in 'GlobalVariableModuleParameters',  'UnderlineLocalVariableType' is defined while type '" + oPar.Type + "' is not '" + ANY_VALUE_TYPE_NAME + "'!");
-                }
                 plp.GlobalVariableModuleParameters.Add(oPar);
             }
 
@@ -836,14 +914,19 @@ foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
     public class LocalVariableTypePLP
     {
         public string TypeName;
-        public List<KeyValuePair<string, string>> VariablesNameAndType;
+        public List<LocalVariableCompoundTypeField> SubFields;
 
         public LocalVariableTypePLP()
         {
-            VariablesNameAndType = new List<KeyValuePair<string, string>>();
+            SubFields = new List<LocalVariableCompoundTypeField>();
         }
     }
 
+    public class LocalVariableCompoundTypeField
+    {
+        public string FieldName;
+        public string FieldType;
+    }
     public class CompoundVarTypePLP_Variable
     {
         public string Name;
@@ -851,6 +934,8 @@ foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
         public string Default;
 
         public bool ConstantWhenInActionParameter;
+
+        public string UnderlineLocalVariableType;
     }
 
     public class GlobalVariableDeclaration
@@ -860,6 +945,9 @@ foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
         public string Default;
         public string DefaultCode;
         public bool IsActionParameter;
+ 
+
+        public string UnderlineLocalVariableType;
 
     }
 
