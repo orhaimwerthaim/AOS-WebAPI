@@ -22,12 +22,12 @@ namespace WebApiCSharp.GenerateCodeFiles
             };
             Process process = new Process();
             process.StartInfo = sInfo;
-            if(workingDir != null)
+            if (workingDir != null)
             {
                 process.StartInfo.WorkingDirectory = workingDir;
             }
 
-            if(arguments != null)
+            if (arguments != null)
             {
                 process.StartInfo.Arguments = arguments;
             }
@@ -58,9 +58,19 @@ namespace WebApiCSharp.GenerateCodeFiles
             return char.ToUpper(str[0]) + str.Substring(1);
         }
 
-        public static string GetIndentationStr(int numOfIndentations, int indentSize = 4, string str = "", bool withNewLine = true)
+
+        private static string GetIdent(int numOfIndentations, int indentSize)
         {
-            return (new string(' ', numOfIndentations * indentSize)) + str + Environment.NewLine;
+            return (new string(' ', numOfIndentations * indentSize));
+        }
+        public static string GetIndentationStr(int numOfIndentations, int indentSize = 4, string str = "", bool withNewLine = true, bool isPythonCode = false)
+        {
+            string result = GetIdent(numOfIndentations, indentSize) + str + (withNewLine ? Environment.NewLine : "");
+            result = !isPythonCode ? result : 
+                result
+                .Replace("\n", Environment.NewLine + GetIdent(numOfIndentations, indentSize))
+                .Replace("\t", GetIdent(1, indentSize));
+            return result;
         }
 
 
@@ -75,7 +85,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             {
                 sw.Write(content);
             }
-            if(setExecuteable)
+            if (setExecuteable)
             {
                 RunApplicationUntilEnd("chmod", null, "+x " + path);
             }

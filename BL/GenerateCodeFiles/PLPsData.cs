@@ -13,6 +13,8 @@ namespace WebApiCSharp.GenerateCodeFiles
     public class PLPsData
     {
         #region public PLP data
+
+        public static string GetFatalErrorMsg(string PLPDesc, Exception e) { return (PLPDesc == null ? "" : PLPDesc) + " Fatal Error!!!" + Environment.NewLine + e.ToString(); }
         public double MaxReward;
         public double MinReward;
 
@@ -47,8 +49,8 @@ namespace WebApiCSharp.GenerateCodeFiles
         public const string ENUM_VARIABLE_TYPE_NAME = "enum";
         public const string INT_VARIABLE_TYPE_NAME = "int";
         public const string BOOL_VARIABLE_TYPE_NAME = "bool";
-        public static readonly string[] PRIMITIVE_TYPES = {ENUM_VARIABLE_TYPE_NAME, INT_VARIABLE_TYPE_NAME, BOOL_VARIABLE_TYPE_NAME};
-    public const string MODULE_EXECUTION_TIME_VARIABLE_NAME = "__moduleExecutionTime";
+        public static readonly string[] PRIMITIVE_TYPES = { ENUM_VARIABLE_TYPE_NAME, INT_VARIABLE_TYPE_NAME, BOOL_VARIABLE_TYPE_NAME };
+        public const string MODULE_EXECUTION_TIME_VARIABLE_NAME = "__moduleExecutionTime";
         public const string MODULE_REWARD_VARIABLE_NAME = "__reward";
 
         public const string DISCRETE_DISTRIBUTION_FUNCTION_NAME = "AOS.SampleDiscrete"; //AOS.SampleDiscrete(enumRealCase,{0.8, 0.1,0,0.1})
@@ -76,38 +78,45 @@ namespace WebApiCSharp.GenerateCodeFiles
         public PLPsData(out List<string> errors)
         {
             errors = new List<string>();
-            List<BsonDocument> bPLPs = PLPsService.GetAll();
-            foreach (BsonDocument plp in bPLPs)
+            try
             {
-                errors.AddRange(AddPLPSetProjectName(plp));
-                if (errors.Count > 0) return;
+                List<BsonDocument> bPLPs = PLPsService.GetAll();
+                foreach (BsonDocument plp in bPLPs)
+                {
+                    errors.AddRange(AddPLPSetProjectName(plp));
+                    if (errors.Count > 0) return;
+                }
+
+                errors.AddRange(ProcessEnvironmentFile());
+
+                ProcessEnvironmentGlueFile();
+
+                List<string> tempErrors = new List<string>();
+                foreach (KeyValuePair<string, BsonDocument> plp in bsonPlps)
+                {
+
+                    PLPs.Add(plp.Key, (PLP)ProcessModuleDocumentationFile(plp.Value, out tempErrors));
+                    errors.AddRange(tempErrors);
+                }
+                foreach (KeyValuePair<string, BsonDocument> plp in bsonGlues)
+                {
+                    tempErrors.Clear();
+                    RosGlues.Add(plp.Key, (RosGlue)ProcessModuleDocumentationFile(plp.Value, out tempErrors));
+                    errors.AddRange(tempErrors);
+                }
+
+                List<KeyValuePair<string, string>> allCodeSections = GetC_CodeSections();
+                foreach (DistributionType distType in Enum.GetValues(typeof(DistributionType)))
+                {
+                    GetSampleDistributionFunctions(allCodeSections, distType);
+                }
+
+                GetMaxMinReward();
             }
-
-            errors.AddRange(ProcessEnvironmentFile());
-
-            ProcessEnvironmentGlueFile();
-
-            List<string> tempErrors = new List<string>();
-            foreach (KeyValuePair<string, BsonDocument> plp in bsonPlps)
+            catch (Exception e)
             {
-
-                PLPs.Add(plp.Key, (PLP)ProcessModuleDocumentationFile(plp.Value, out tempErrors));
-                errors.AddRange(tempErrors);
+                errors.Add(GetFatalErrorMsg(null, e));
             }
-            foreach (KeyValuePair<string, BsonDocument> plp in bsonGlues)
-            {
-                tempErrors.Clear();
-                RosGlues.Add(plp.Key, (RosGlue)ProcessModuleDocumentationFile(plp.Value, out tempErrors));
-                errors.AddRange(tempErrors);
-            }
-
-            List<KeyValuePair<string, string>> allCodeSections = GetC_CodeSections();
-            foreach (DistributionType distType in Enum.GetValues(typeof(DistributionType)))
-            {
-                GetSampleDistributionFunctions(allCodeSections, distType);
-            }
-
-            GetMaxMinReward();
         }
         //AOS.SampleDiscrete(enumRealCase,{0.8, 0.1,0,0.1})//AOS.SampleNormal(40000,10000)//AOS.SampleUniform(40000,10000)
         private void GetSampleDistributionFunctions(List<KeyValuePair<string, string>> allCodeSections, DistributionType type)
@@ -529,7 +538,11 @@ namespace WebApiCSharp.GenerateCodeFiles
                     oVar.TopicMessageType = GetBsonStringField(docVar, "TopicMessageType");
                     oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
                     oVar.VariableType = GetBsonStringField(docVar, "VariableType");
+                    oVar.RosParameterPath = GetBsonStringField(docVar, "RosParameter");
 
+                    tempErrors.Clear();
+                    oVar.FromROSServiceResponse = GetBoolFieldFromBsonNullIfNotThere(rosGlue.Name, PLPsData.PLP_TYPE_NAME_GLUE, docVar, "FromROSServiceResponse", null, out tempErrors);
+                    errors.AddRange(tempErrors);
                     tempErrors.Clear();
                     oVar.Imports.AddRange(LoadImports(docVar, out tempErrors, plpDescription, "LocalVariablesInitialization"));
                     errors.AddRange(tempErrors);
@@ -556,6 +569,10 @@ namespace WebApiCSharp.GenerateCodeFiles
                 }
             }
 
+            if(!bRosGlue.Contains("ModuleActivation"))
+            {
+                errors.Add(plpDescription + ", 'ModuleActivation' is not defined, but it is a mandatory field!");
+            }
             if (bRosGlue["ModuleActivation"].AsBsonDocument.Contains("RosService"))
             {
                 BsonDocument docAct = bRosGlue["ModuleActivation"]["RosService"].AsBsonDocument;
@@ -786,20 +803,30 @@ namespace WebApiCSharp.GenerateCodeFiles
         {
             errors = new List<string>();
             List<string> tempErrors = new List<string>();
-            ModuleDocumentationFile docFile = bPlp["PlpMain"]["Type"].ToString().Equals(PLP_TYPE_NAME_PLP) ? new PLP() : bPlp["PlpMain"]["Type"].ToString().Equals(PLP_TYPE_NAME_GLUE) ? new RosGlue() : new ModuleDocumentationFile();
-
-            docFile.Name = bPlp["PlpMain"]["Name"].ToString();
-            docFile.Type = bPlp["PlpMain"]["Type"].ToString();
-            docFile.Project = bPlp["PlpMain"]["Project"].ToString();
-
-            switch (docFile.Type)
+            ModuleDocumentationFile docFile = null;
+            try
             {
-                case PLP_TYPE_NAME_PLP:
-                    return ProcessPLP(bPlp, out errors, (PLP)docFile);
-                case PLP_TYPE_NAME_GLUE:
-                    return ProcessRosGlue(bPlp, out errors, (RosGlue)docFile);
+                docFile = bPlp["PlpMain"]["Type"].ToString().Equals(PLP_TYPE_NAME_PLP) ? new PLP() : bPlp["PlpMain"]["Type"].ToString().Equals(PLP_TYPE_NAME_GLUE) ? new RosGlue() : new ModuleDocumentationFile();
+
+                docFile.Name = bPlp["PlpMain"]["Name"].ToString();
+                docFile.Type = bPlp["PlpMain"]["Type"].ToString();
+                docFile.Project = bPlp["PlpMain"]["Project"].ToString();
+
+                switch (docFile.Type)
+                {
+                    case PLP_TYPE_NAME_PLP:
+                        return ProcessPLP(bPlp, out errors, (PLP)docFile);
+                    case PLP_TYPE_NAME_GLUE:
+                        return ProcessRosGlue(bPlp, out errors, (RosGlue)docFile);
+                }
+                return docFile;
             }
-            return docFile;
+            catch (Exception e)
+            {
+                string plpDescription = docFile == null ? "" : GetPLPDescriptionForError(docFile) + ", ";
+                errors.Add(PLPsData.GetFatalErrorMsg(plpDescription, e));
+                return null;
+            }
         }
 
         private int GetIntFieldFromBson(string fromFile, string fileType, BsonDocument bson, string firstField, string secondField, out List<string> errors)
@@ -824,11 +851,38 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             if (!bVal.IsInt32)
             {
-                string errorMsg = "field '" + firstField + (secondField != null ? "." + secondField : "") + "' should contain int (but contains \"" + bVal.ToString() + "\")!";
+                string errorMsg = "field '" + firstField + (secondField != null ? "." + secondField : "") + "' should contain " + PLPsData.INT_VARIABLE_TYPE_NAME + " (but contains \"" + bVal.ToString() + "\")!";
                 errors.Add(fileDesc + ", " + errorMsg);
                 return result;
             }
             return bson[firstField][secondField].AsInt32;
+        }
+
+
+        private bool? GetBoolFieldFromBsonNullIfNotThere(string fromFile, string fileType, BsonDocument bson, string firstField, string secondField, out List<string> errors)
+        {
+            errors = new List<string>();
+            bool? result = null;
+            string fileDesc = GetPLPDescriptionForError(fromFile, fileType);
+
+            if (!bson.Contains(firstField))
+            {
+                return null;
+            }
+            if (secondField != null && !bson[firstField].AsBsonDocument.Contains(secondField))
+            {
+                return null;
+            }
+
+            BsonValue bVal = secondField == null ? bson[firstField] : bson[firstField][secondField];
+
+            if (!bVal.IsBoolean)
+            {
+                string errorMsg = "field '" + firstField + (secondField != null ? "." + secondField : "") + "' should contain " + PLPsData.BOOL_VARIABLE_TYPE_NAME + " (but contains \"" + bVal.ToString() + "\")!";
+                errors.Add(fileDesc + ", " + errorMsg);
+                return result;
+            }
+            return secondField == null ? bson[firstField].AsBoolean : bson[firstField][secondField].AsBoolean;
         }
         private int GetIntFieldFromBson(PLP plp, BsonDocument bson, string firstField, string secondField, out List<string> errors)
         {
@@ -945,7 +999,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string Default;
         public string DefaultCode;
         public bool IsActionParameter;
- 
+
 
         public string UnderlineLocalVariableType;
 

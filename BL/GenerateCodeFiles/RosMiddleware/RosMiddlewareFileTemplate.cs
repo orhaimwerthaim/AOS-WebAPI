@@ -253,6 +253,7 @@ include_directories(
                 Dictionary<string, LocalVariablesInitializationFromGlobalVariable> localVarsFromGlobal = new Dictionary<string, LocalVariablesInitializationFromGlobalVariable>();
 
                 bool hasVar = false;
+
                 foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
                 {
                     hasVar = true;
@@ -294,7 +295,14 @@ include_directories(
                     string serviceCallParam = string.Join(", ", glue.RosServiceActivation.ParametersAssignments.Select(x => x.MsgFieldName + "=(" + x.AssignServiceFieldCode + ")"));
 
 
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "__res = " + glue.Name + "_proxy(" + serviceCallParam + ")");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "__input = " + glue.Name + "_proxy(" + serviceCallParam + ")");
+                    GlueLocalVariablesInitialization localVarFromServiceReponse = glue.GlueLocalVariablesInitializations.Where(x => x.FromROSServiceResponse.HasValue && x.FromROSServiceResponse.Value).FirstOrDefault();
+                    if (localVarFromServiceReponse != null)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, localVarFromServiceReponse.AssignmentCode, true, true);
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.updateLocalVariableValue(\"" + localVarFromServiceReponse.LocalVarName + "\"," + localVarFromServiceReponse.LocalVarName + ")");
+                    }
+
 
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + glue.Name + " service terminated\")");
@@ -307,6 +315,245 @@ include_directories(
                 result += GenerateFilesUtils.GetIndentationStr(2, 4, "return responseNotByLocalVariables");
 
             }
+            return result;
+        }
+
+        private static string GetListenToMongoCommandsFunctionPart(PLPsData data)
+        {
+            string result = "";
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "if moduleName == \"" + plp.Name + "\":");
+                result += GenerateFilesUtils.GetIndentationStr(5, 4, "print(\"handle " + plp.Name + "\")");
+                result += GenerateFilesUtils.GetIndentationStr(5, 4, "responseNotByLocalVariables = self.handle_" + plp.Name + "(actionParameters)");
+            }
+            return result;
+        }
+        private static string GetModuleResponseFunctionPart(PLPsData data)
+        {
+            string result = "";
+            foreach (RosGlue glue in data.RosGlues.Values)
+            {
+                PLP plp = data.PLPs[glue.Name];
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "if moduleName == \"" + glue.Name + "\":");
+                HashSet<string> localVarNames = new HashSet<string>();
+                foreach (var oVar in glue.GlueLocalVariablesInitializations)
+                {
+                    localVarNames.Add(oVar.LocalVarName);
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, oVar.LocalVarName + " = self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oVar.LocalVarName + "\"]");
+                }
+                foreach (var oVar in plp.LocalVariablesInitializationFromGlobalVariables)
+                {
+                    localVarNames.Add(oVar.InputLocalVariable);
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, oVar.InputLocalVariable + " = self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oVar.InputLocalVariable + "\"]");
+                }
+
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + glue.Name + " action local variables:\")");
+                foreach (string varName in localVarNames)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + varName + ":\")");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(" + varName + ")");
+                }
+
+                foreach (var responseRule in plp.ResponseRules)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"\" and " + responseRule.Condition + ":");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "moduleResponse = \"" + glue.Name + "_" + responseRule.Response + "\"");
+                }
+                result += Environment.NewLine;
+            }
+            return result;
+        }
+
+        private static string GetCodeLineWithLocalVarRefference(string codeLine, HashSet<string> localVarNames)
+        {
+            string result = codeLine;
+            foreach(string varName in localVarNames)
+            {
+                result = result.Replace(varName, "self.localVarNamesAndValues[self.listenTargetModule][\""+varName+"\"]");
+            }
+            return result;
+        }
+        private static string GetAOS_TopicListenerServerClass(PLPsData data)
+        {
+            string result = "";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "class AOS_TopicListenerServer:");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self):");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.localVarNamesAndValues = {", false);
+
+            List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.GlueLocalVariablesInitializations.Count > 0).ToList();
+            HashSet<string> localVarNames = new HashSet<string>();
+            for (int j = 0; gluesWithLocalVars.Count < j; j++)
+            {
+                RosGlue glue = gluesWithLocalVars[j];
+
+                result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + glue.Name + "\":{", false);
+
+                for (int i = 0; glue.GlueLocalVariablesInitializations.Count < i; i++)
+                {
+                    var localVar = glue.GlueLocalVariablesInitializations[i];
+                    localVarNames.Add(localVar.LocalVarName);
+                    result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + localVar.LocalVarName + "\": " +
+                            (string.IsNullOrEmpty(localVar.InitialValue) ? "None" : localVar.InitialValue) +
+                            (i == glue.GlueLocalVariablesInitializations.Count - 1 ? "" : ", "), false);
+                }
+                result += GenerateFilesUtils.GetIndentationStr(0, 4, "}" + (j < gluesWithLocalVars.Count -1 ? ", " : ""), false);
+            }
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.setListenTarget(\"initTopicListener\")");
+
+
+            Dictionary<string, Dictionary<string, List<GlueLocalVariablesInitialization>>> topicsToListen = new Dictionary<string, Dictionary<string, List<GlueLocalVariablesInitialization>>>();
+            foreach (RosGlue glue in data.RosGlues.Values)
+            {
+                foreach (var oLVar in glue.GlueLocalVariablesInitializations)
+                {
+                    if (!string.IsNullOrEmpty(oLVar.RosTopicPath))
+                    {
+                        string cbFunc = "cb_" + oLVar.RosTopicPath.Replace("/", "_");
+                        if (!topicsToListen.ContainsKey(oLVar.RosTopicPath))
+                        {
+                            topicsToListen[oLVar.RosTopicPath] = new Dictionary<string, List<GlueLocalVariablesInitialization>>();
+                        }
+                        if (!topicsToListen[oLVar.RosTopicPath].ContainsKey(glue.Name))
+                        {
+                            topicsToListen[oLVar.RosTopicPath][glue.Name] = new List<GlueLocalVariablesInitialization>();
+                        }
+                        topicsToListen[oLVar.RosTopicPath][glue.Name].Add(oLVar);
+                    }
+                }
+            }
+
+            foreach (var topic in topicsToListen)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "rospy.Subscriber(\"" + topic.Key + "\", " + topic.Value.Values.ToList()[0][0].TopicMessageType + ", self.cb_" + topic.Key.Replace("/", "_") + ", queue_size=1000)");
+
+            }
+            result += Environment.NewLine;
+
+            foreach (var topic in topicsToListen)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "def cb_" + topic.Key.Replace("/", "_") + "(self, data):");
+
+                foreach (var glueTopic in topic.Value)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "if self.listenTargetModule == \"" + glueTopic.Key + "\":");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"handling topic call:" + glueTopic.Key + "\")");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(data)");
+                    foreach (var localVar in glueTopic.Value)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "#-----------------------------------------------------------------------");
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "value = self." + glueTopic.Key + "_get_value_" + localVar.LocalVarName + "(data)");
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "self.updateLocalVariableValue(\"" + localVar.LocalVarName + "\", value)");
+                    }
+                }
+
+
+
+                result += Environment.NewLine;
+            }
+
+            
+
+            foreach (var topic in topicsToListen)
+            {
+                foreach (var glueTopic in topic.Value)
+                {
+                    foreach (var localVar in glueTopic.Value)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4, "def " + glueTopic.Key + "_get_value_" + localVar.LocalVarName + "(self, __input):");
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, GetCodeLineWithLocalVarRefference(localVar.AssignmentCode, localVarNames), true, true);
+
+                        result += Environment.NewLine;
+                    }
+                }
+            }
+
+            result += @"
+    def initLocalVars(self, moduleNameToInit):
+        if DEBUG:
+            print(""initLocalVars:"")
+            print(moduleNameToInit)
+        for moduleName, localVarNamesAndValuesPerModule in self.localVarNamesAndValues.items():
+            for localVarName, value in localVarNamesAndValuesPerModule.items():
+                if moduleName == moduleNameToInit:
+                    if DEBUG:
+                        print (""init var:"")
+                        print(localVarName)
+                    aos_local_var_collection.replace_one({""Module"": moduleName, ""VarName"": localVarName},
+                                                         {""Module"": moduleName, ""VarName"": localVarName, ""Value"": value},
+                                                         upsert=True)
+                    aosStats_local_var_collection.insert_one(
+                        {""Module"": moduleName, ""VarName"": localVarName, ""value"": value, ""Time"": datetime.datetime.utcnow()})
+
+
+    def setListenTarget(self, _listenTargetModule):
+        self.initLocalVars(_listenTargetModule)
+        if DEBUG:
+            print('setListenTopicTargetModule:')
+            print(_listenTargetModule)
+        self.listenTargetModule = _listenTargetModule
+";
+            Dictionary<string, List<GlueLocalVariablesInitialization>> rosParamVariables = new Dictionary<string, List<GlueLocalVariablesInitialization>>();
+            foreach (RosGlue glue in data.RosGlues.Values)
+            {
+                List<GlueLocalVariablesInitialization> glueParamVariables = glue.GlueLocalVariablesInitializations.Where(x => !string.IsNullOrEmpty(x.RosParameterPath)).ToList();
+                if (glueParamVariables.Count > 0)
+                {
+                    rosParamVariables.Add(glue.Name, glueParamVariables);
+                }
+            }
+
+            foreach (var glueRosParamLocalVars in rosParamVariables)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "if self.listenTargetModule == \"" + glueRosParamLocalVars.Key + "\":");
+                foreach (var localParam in glueRosParamLocalVars.Value)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "self.checkParameterValue_" + localParam.LocalVarName + "()");
+                }
+            }
+
+
+
+            foreach (var glueRosParamLocalVars in rosParamVariables)
+            {
+                foreach (var localParam in glueRosParamLocalVars.Value)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "def checkParameterValue_" + localParam.LocalVarName + "(self):#TODO:: need to see how to update ROS parameters. using threading disable other topic listeners");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "if self.listenTargetModule == \"" + glueRosParamLocalVars.Key + "\":");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "try:");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "#__input = rospy.get_param('" + localParam.RosParameterPath + "')");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "#" + localParam.LocalVarName + " = __input");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "#self.updateLocalVariableValue(\"" + localParam.LocalVarName + "\", " + localParam.LocalVarName + ")");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "self.updateLocalVariableValue(\"" + localParam.LocalVarName + "\", True)");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "except:");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "pass");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "#threading.Timer(1, self.checkParameterValue_" + localParam.LocalVarName + ").start()");
+                }
+            }
+
+
+
+
+            result += @"
+    def updateLocalVariableValue(self, varName, value):
+        if DEBUG:
+            print(""update local var:"")
+            print(varName)
+            print(value)
+        if self.localVarNamesAndValues[self.listenTargetModule][varName] != value:
+            if DEBUG:
+                print(""ACTUAL UPDATE --------------------------------------------------------------------------"")
+            self.localVarNamesAndValues[self.listenTargetModule][varName]=value
+            aos_local_var_collection.replace_one({""Module"": self.listenTargetModule, ""VarName"":varName}, {""Module"": self.listenTargetModule, ""VarName"":varName, ""Value"":value}, upsert=True)
+            aosStats_local_var_collection.insert_one(
+                {""Module"": self.listenTargetModule, ""VarName"": varName, ""value"": value, ""Time"": datetime.datetime.utcnow()})
+            if DEBUG:
+                print(""WAS UPDATED --------------------------------------------------------------------------"")
+
+";
             return result;
         }
         public static string GetAosRosMiddlewareNodeFile(PLPsData data, InitializeProject initProj)
@@ -352,59 +599,7 @@ class ListenToMongoDbCommands:
 
         moduleResponse = """"
         assignGlobalVar = {}
-        if moduleName == ""pick"":
-            top_gripper_pressure = self._topicListener.localVarNamesAndValues[""pick""][""top_gripper_pressure""]
-            gripper_opening = self._topicListener.localVarNamesAndValues[""pick""][""gripper_opening""]
-            gripper_pressure = self._topicListener.localVarNamesAndValues[""pick""][""gripper_pressure""]
-
-            if DEBUG:
-                print(""pick action local variables:"")
-                print(""top_gripper_pressure"")
-                print(top_gripper_pressure)
-                print(""gripper_opening:"")
-                print(gripper_opening)
-                print(""gripper_pressure:"")
-                print(gripper_pressure)
-            if moduleResponse == """" and gripper_pressure > 0 and gripper_opening > 0:
-                moduleResponse = ""pick_res_pick_action_success""
-            if moduleResponse == """" and gripper_pressure == 0:
-                moduleResponse = ""pick_res_not_holding""
-            if moduleResponse == """" and top_gripper_pressure > 200:
-                moduleResponse = ""pick_res_broke_the_object""
-
-        if moduleName == ""place"":
-            dropped_object = self._topicListener.localVarNamesAndValues[""place""][""dropped_object""]
-            gripper_pressure = self._topicListener.localVarNamesAndValues[""place""][""gripper_pressure""]
-            arm_attached_to_object_at_end = self._topicListener.localVarNamesAndValues[""place""][""arm_attached_to_object_at_end""]
-            arm_attached_to_object_at_start = self._topicListener.localVarNamesAndValues[""place""][""arm_attached_to_object_at_start""]
-            arm_plan_path_success = self._topicListener.localVarNamesAndValues[""place""][""arm_plan_path_success""]
-            if moduleResponse == """" and arm_plan_path_success == True and  arm_attached_to_object_at_start == True and arm_attached_to_object_at_end == False and dropped_object == False:
-                moduleResponse = ""place_ePlaceActionSuccess""
-            if moduleResponse == """" and dropped_object == True:
-                moduleResponse = ""place_eDroppedObject""
-            if moduleResponse == """" and True:
-                moduleResponse = ""place_eFailedUnknown""
-
-        if moduleName == ""observe"":
-            self.listenTargetModule = ""none""
-            observedLocation = self._topicListener.localVarNamesAndValues[""observe""][""observedLocation""]
-            if moduleResponse == """" and observedLocation is None:
-                moduleResponse = ""observe_eNotObserved""
-                varName1 = ""state.cupAccurateLocation""
-                value1 = None
-                assignGlobalVar[varName1] = value1
-            if moduleResponse == """" and observedLocation is not None:
-                moduleResponse = ""observe_eObserved""
-                varName1 = ""state.cupAccurateLocation""
-                value1 = observedLocation
-                assignGlobalVar[varName1] = value1
-
-        if moduleName == ""navigate"":
-            navigationModuleSuccessOutput = self._topicListener.localVarNamesAndValues[""navigate""][""navigationModuleSuccessOutput""]
-            if moduleResponse == """" and navigationModuleSuccessOutput == True:
-                moduleResponse = 'navigate_eSuccess'
-            if moduleResponse == """" and True:
-                moduleResponse = 'navigate_eFailed'
+" + GetModuleResponseFunctionPart(data) + @"
 
         if DEBUG:
             print(""moduleResponse result:"")
@@ -443,15 +638,8 @@ class ListenToMongoDbCommands:
                 responseNotByLocalVariables = None
                 print(""module name:"")
                 print(moduleName)
-                if moduleName == ""pick"":
-                    print(""handle pick"")
-                    responseNotByLocalVariables = self.handle_pick(actionParameters)
-                if moduleName == ""observe"":
-                    responseNotByLocalVariables = self.handle_observe(actionParameters)
-                if moduleName == ""navigate"":
-                    responseNotByLocalVariables = self.handle_navigate(actionParameters)
-                if moduleName == ""place"":
-                    responseNotByLocalVariables = self.handle_place(actionParameters)
+                
+" + GetListenToMongoCommandsFunctionPart(data) + @"
                 rospy.sleep(0.3)#0.015 is a tested duration, not to drop updates
                 self._topicListener.setListenTarget(""after action"")
 
@@ -466,203 +654,13 @@ class ListenToMongoDbCommands:
                 self.currentActionFotExecutionId = None
             rospy.sleep(0.1)
 
-class AOS_TopicListenerServer:
-    def __init__(self):
-        self.localVarNamesAndValues = {""pick"":{""top_gripper_pressure"": 0, ""gripper_opening"": None, ""gripper_pressure"": None},
-                                       ""observe"":{""observedLocation"": None},
-                                       ""navigate"":{""navigationModuleSuccessOutput"": False},
-                                       ""place"":{""arm_plan_path_success"": None, ""arm_attached_to_object_at_start"": None, ""arm_attached_to_object_at_end"": None, ""gripper_pressure"":None, ""dropped_object"":None}}
-
-        self.setListenTarget(""initTopicListener"")
-        rospy.Subscriber(""/gripper/gripper_pressure"", Twist, self.cb_gripper_gripper_pressure, queue_size=1000)
-        rospy.Subscriber(""/gripper/gripper_opening"", Force, self.cb__gripper_gripper_opening, queue_size=1000)
-        rospy.Subscriber(""/navigation/planner_output"", String, self.cb_navigation_planner_output, queue_size=1000)
-        rospy.Subscriber(""/moveit/collisions/arm_collision"", Bool, self.cb_moveit_collisions_arm_collision, queue_size=1000)
-
-    def cb_moveit_collisions_arm_collision(self, data):
-        if self.listenTargetModule == ""place"":
-            if DEBUG:
-                print(""handling topic call:place"")
-                print(data)
-            # ----------------------------------------------------------
-            value = self.place_get_value_arm_attached_to_object_at_end(data)
-            self.updateLocalVariableValue(""arm_attached_to_object_at_end"",value)
-            # ----------------------------------------------------------
-            value = self.place_get_value_arm_attached_to_object_at_start(data)
-            self.updateLocalVariableValue(""arm_attached_to_object_at_start"", value)
-
-    def cb_navigation_planner_output(self, data):
-        if self.listenTargetModule == ""navigate"":
-            if DEBUG:
-                print(""handling topic call:navigate"")
-                print(data)
-            # ----------------------------------------------------------
-            value = self.navigate_get_value_navigationModuleSuccessOutput(data)
-            self.updateLocalVariableValue(""navigationModuleSuccessOutput"",value)
-
-    def cb__gripper_gripper_opening(self, data):
-        if self.listenTargetModule == ""pick"":
-            if DEBUG:
-                print(""handling topic call:pick"")
-                print(data)
-            # ----------------------------------------------------------
-            value = self.pick_get_value_gripper_opening(data)
-            self.updateLocalVariableValue(""gripper_opening"", value)
-
-    def cb_gripper_gripper_pressure(self, data):
-        if self.listenTargetModule == ""pick"":
-            if DEBUG:
-                print(""handling topic call:pick"")
-                print(data)
-            # ----------------------------------------------------------
-            value = self.pick_get_value_gripper_pressure(data)
-            self.updateLocalVariableValue(""gripper_pressure"", value)
-            #----------------------------------------------------------
-            value = self.pick_get_value_top_gripper_pressure(data)
-            self.updateLocalVariableValue(""top_gripper_pressure"", value)
-
-        if self.listenTargetModule == ""place"":
-            if DEBUG:
-                print(""handling topic call:place"")
-                print(data)
-            # ----------------------------------------------------------
-            value = self.place_get_value_gripper_pressure(data)
-            self.updateLocalVariableValue(""gripper_pressure"", value)
-            # ----------------------------------------------------------
-            value = self.place_get_value_dropped_object(data)
-            self.updateLocalVariableValue(""dropped_object"", value)
-
-    def place_get_value_dropped_object(self, __input):
-        if self.localVarNamesAndValues[self.listenTargetModule][""dropped_object""] == True:
-            return self.localVarNamesAndValues[self.listenTargetModule][""dropped_object""]
-        else:
-            return self.localVarNamesAndValues[self.listenTargetModule][""arm_attached_to_object_at_end""] == False and __input.linear.x == 0
-
-
-
-    def place_get_value_gripper_pressure(self, __input):
-        return __input.linear.x
-
-
-
-    def place_get_value_arm_attached_to_object_at_end(self, __input):
-        return __input.data
-
-
-
-    def place_get_value_arm_attached_to_object_at_start(self, __input):
-        if self.localVarNamesAndValues[self.listenTargetModule][""arm_attached_to_object_at_start""] == True:
-            return True
-        else:
-            return __input.data
-
-    def checkParameterValue_arm_plan_path_success(self):#TODO:: need to see how to update ROS parameters. using threading disable other topic listeners
-        if self.listenTargetModule == ""place"":
-            try:
-                #__input = rospy.get_param('/moveit/plan_path/planning_success')
-                #arm_plan_path_success = __input
-                #self.updateLocalVariableValue(""arm_plan_path_success"", arm_plan_path_success)
-                self.updateLocalVariableValue(""arm_plan_path_success"", True)
-            except:
-                pass
-            #threading.Timer(1, self.checkParameterValue_arm_plan_path_success).start()
-
-
-    def initLocalVars(self, moduleNameToInit):
-        if DEBUG:
-            print(""initLocalVars:"")
-            print(moduleNameToInit)
-        for moduleName, localVarNamesAndValuesPerModule in self.localVarNamesAndValues.items():
-            for localVarName, value in localVarNamesAndValuesPerModule.items():
-                if moduleName == moduleNameToInit:
-                    if DEBUG:
-                        print (""init var:"")
-                        print(localVarName)
-                    aos_local_var_collection.replace_one({""Module"": moduleName, ""VarName"": localVarName},
-                                                         {""Module"": moduleName, ""VarName"": localVarName, ""Value"": value},
-                                                         upsert=True)
-                    aosStats_local_var_collection.insert_one(
-                        {""Module"": moduleName, ""VarName"": localVarName, ""value"": value, ""Time"": datetime.datetime.utcnow()})
-
-
-
-    def setListenTarget(self, _listenTargetModule):
-        self.initLocalVars(_listenTargetModule)
-        if DEBUG:
-            print('setListenTopicTargetModule:')
-            print(_listenTargetModule)
-        self.listenTargetModule = _listenTargetModule
-        if self.listenTargetModule == ""place"":
-            self.checkParameterValue_arm_plan_path_success()
-
-    def updateLocalVariableValue(self, varName, value):
-        if DEBUG:
-            print(""update local var:"")
-            print(varName)
-            print(value)
-        if self.localVarNamesAndValues[self.listenTargetModule][varName] != value:
-            if DEBUG:
-                print(""ACTUAL UPDATE --------------------------------------------------------------------------"")
-            self.localVarNamesAndValues[self.listenTargetModule][varName]=value
-            aos_local_var_collection.replace_one({""Module"": self.listenTargetModule, ""VarName"":varName}, {""Module"": self.listenTargetModule, ""VarName"":varName, ""Value"":value}, upsert=True)
-            aosStats_local_var_collection.insert_one(
-                {""Module"": self.listenTargetModule, ""VarName"": varName, ""value"": value, ""Time"": datetime.datetime.utcnow()})
-            if DEBUG:
-                print(""WAS UPDATED --------------------------------------------------------------------------"")
-
-
-    def pick_get_value_gripper_pressure(self, __input):
-        return __input.linear.x
-
-    def pick_get_value_top_gripper_pressure(self, __input):
-        if self.localVarNamesAndValues[self.listenTargetModule][""top_gripper_pressure""] > __input.linear.x:
-            return self.localVarNamesAndValues[self.listenTargetModule][""top_gripper_pressure""]
-        else:
-            return __input.linear.x
-
-
-
-    def pick_get_value_gripper_opening(self, __input):
-        return __input.x
-
-
-
-    def navigate_get_value_navigationModuleSuccessOutput(self, __input):
-        if self.localVarNamesAndValues[self.listenTargetModule][""navigationModuleSuccessOutput""] == True:
-            return True
-        return __input.data.find('success') > -1
+" + GetAOS_TopicListenerServerClass(data) + @"
 
 
 
 
 
-class AOS_InitEnvironmentFile:
-    def __init__(self):
-        ___locationOutside_lab211 = ltLocation()
-        ___locationOutside_lab211.x = 2
-        ___locationOutside_lab211.y = 3
-
-        ___locationAuditorium = ltLocation()
-        ___locationAuditorium.x = 4
-        ___locationAuditorium.y = 5
-
-        ___locationNear_elevator1 = ltLocation()
-        ___locationNear_elevator1.x = 6
-        ___locationNear_elevator1.y = 7
-
-        ___locationCorridor = ltLocation()
-        ___locationCorridor.x = 8
-        ___locationCorridor.y = 9
-
-        self.updateGlobalVarLowLevelValue(""state.locationOutside_lab211.actual_location"",ltLocationToDict(___locationOutside_lab211))
-        self.updateGlobalVarLowLevelValue(""state.locationAuditorium.actual_location"", ltLocationToDict(___locationAuditorium))
-        self.updateGlobalVarLowLevelValue(""state.locationNear_elevator1.actual_location"", ltLocationToDict(___locationNear_elevator1))
-        self.updateGlobalVarLowLevelValue(""state.locationCorridor.actual_location"", ltLocationToDict(___locationCorridor))
-
-    def updateGlobalVarLowLevelValue(self, varName, value):
-        aos_GlobalVariablesAssignments_collection.replace_one({""GlobalVariableName"": varName},{""GlobalVariableName"": varName, ""LowLevelValue"": value,
-                                                                                               ""IsInitialized"": True, ""UpdatingActionSequenceId"": ""initialization"",
-                                                                                               ""ModuleResponseId"": ""initialization""},upsert=True)
+" + GetAOS_InitEnvironmentFile(data) + @"
 
 
 
@@ -675,6 +673,68 @@ if __name__ == '__main__':
     commandlistener = ListenToMongoDbCommands(topicListener)
     ";
             return file;
+        }
+
+        private static Dictionary<string, string> GetLocalConstantAssignments(PLPsData data, HashSet<string> constants)
+        {
+            Dictionary<string, string> result = new Dictionary<string, string>();
+            List<string> tempCodeLines = data.GlobalVariableDeclarations.Select(x => x.DefaultCode).Where(x => !string.IsNullOrEmpty(x)).ToList();
+            List<string> codeLines = new List<string>();
+            foreach (string codeLine in tempCodeLines)
+            {
+                codeLines.AddRange(codeLine.Replace("if", "").Replace("else", "").Replace("{", "").Replace("}", "").Replace(" ", "").Split(";")
+                    .Where(x => !string.IsNullOrEmpty(x) && constants.Any(sConst => x.Contains(sConst))).ToList());
+            }
+
+            foreach (string line in codeLines)
+            {
+                string[] bits = line.Split("=");
+                if (bits.Length != 2) throw new Exception("unexpected code ('" + line + "')");
+                result[bits[0]] = bits[1];
+            }
+
+
+
+
+            return result;
+        }
+
+        private static string GetAOS_InitEnvironmentFile(PLPsData data)
+        {
+            string result = "";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "class AOS_InitEnvironmentFile:");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self):");
+
+            Dictionary<string, LocalVariableConstant> constants = new Dictionary<string, LocalVariableConstant>();
+            foreach (var lConst in data.LocalVariableConstants)
+            {
+                constants[lConst.Name] = lConst;
+                if (!GenerateFilesUtils.IsPrimitiveType(lConst.Type))
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, lConst.Name + " = " + lConst.Type + "()");
+                }
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, lConst.InitCode, true, true);
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "");
+                result += Environment.NewLine;
+            }
+
+            Dictionary<string, string> assignments = GetLocalConstantAssignments(data, constants.Select(x => x.Key).ToHashSet<string>());
+            foreach (var assignment in assignments)
+            {
+                string value = "";
+                value = GenerateFilesUtils.IsPrimitiveType(constants[assignment.Value].Type) ? assignment.Value : constants[assignment.Value].Type + "ToDict(" + constants[assignment.Value].Name + ")";
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "self.updateGlobalVarLowLevelValue(\"" + assignment.Key + "\"," + value + ")");
+            }
+
+
+            result += @"
+    def updateGlobalVarLowLevelValue(self, varName, value):
+        aos_GlobalVariablesAssignments_collection.replace_one({""GlobalVariableName"": varName},{""GlobalVariableName"": varName, ""LowLevelValue"": value,
+                                                                                               ""IsInitialized"": True, ""UpdatingActionSequenceId"": ""initialization"",
+                                                                                               ""ModuleResponseId"": ""initialization""},upsert=True)
+
+";
+            return result;
         }
     }
 }

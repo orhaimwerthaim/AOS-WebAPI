@@ -46,7 +46,10 @@ namespace WebApiCSharp.Models
         public string TopicMessageType;
         public string VariableType;
 
+        public string RosParameterPath;
+
         public string InitialValue;
+        public bool? FromROSServiceResponse;
 
         public List<RosImport> Imports;
 
