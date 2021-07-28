@@ -7,6 +7,7 @@ using WebApiCSharp.Models;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 namespace WebApiCSharp.GenerateCodeFiles
 {
     public class RosMiddlewareFileTemplate
@@ -358,7 +359,7 @@ include_directories(
 
                 foreach (var responseRule in plp.ResponseRules)
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"\" and " + responseRule.Condition + ":");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"\" and " + (string.IsNullOrEmpty(responseRule.Condition) ? "True" : responseRule.Condition) + ":");
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "moduleResponse = \"" + glue.Name + "_" + responseRule.Response + "\"");
                 }
                 result += Environment.NewLine;
@@ -369,9 +370,11 @@ include_directories(
         private static string GetCodeLineWithLocalVarRefference(string codeLine, HashSet<string> localVarNames)
         {
             string result = codeLine;
-            foreach(string varName in localVarNames)
+            foreach (string varName in localVarNames.OrderByDescending(x => x.Length))
             {
-                result = result.Replace(varName, "self.localVarNamesAndValues[self.listenTargetModule][\""+varName+"\"]");
+                string pattern = @"\b" + varName + @"\b";
+                string replaceTo = "self.localVarNamesAndValues[self.listenTargetModule][\"" + varName + "\"]";
+                result = Regex.Replace(result, pattern, replaceTo);
             }
             return result;
         }
@@ -384,21 +387,21 @@ include_directories(
 
             List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.GlueLocalVariablesInitializations.Count > 0).ToList();
             HashSet<string> localVarNames = new HashSet<string>();
-            for (int j = 0; gluesWithLocalVars.Count < j; j++)
+            for (int j = 0; gluesWithLocalVars.Count > j; j++)
             {
                 RosGlue glue = gluesWithLocalVars[j];
 
                 result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + glue.Name + "\":{", false);
 
-                for (int i = 0; glue.GlueLocalVariablesInitializations.Count < i; i++)
+                for (int i = 0; glue.GlueLocalVariablesInitializations.Count > i; i++)
                 {
                     var localVar = glue.GlueLocalVariablesInitializations[i];
                     localVarNames.Add(localVar.LocalVarName);
                     result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + localVar.LocalVarName + "\": " +
-                            (string.IsNullOrEmpty(localVar.InitialValue) ? "None" : localVar.InitialValue) +
+                            (string.IsNullOrEmpty(localVar.InitialValue) ? "None" :  localVar.InitialValue) +
                             (i == glue.GlueLocalVariablesInitializations.Count - 1 ? "" : ", "), false);
                 }
-                result += GenerateFilesUtils.GetIndentationStr(0, 4, "}" + (j < gluesWithLocalVars.Count -1 ? ", " : ""), false);
+                result += GenerateFilesUtils.GetIndentationStr(0, 4, "}" + (j < gluesWithLocalVars.Count - 1 ? ", " : ""), false);
             }
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.setListenTarget(\"initTopicListener\")");
@@ -455,7 +458,7 @@ include_directories(
                 result += Environment.NewLine;
             }
 
-            
+
 
             foreach (var topic in topicsToListen)
             {
@@ -723,7 +726,7 @@ if __name__ == '__main__':
             {
                 string value = "";
                 value = GenerateFilesUtils.IsPrimitiveType(constants[assignment.Value].Type) ? assignment.Value : constants[assignment.Value].Type + "ToDict(" + constants[assignment.Value].Name + ")";
-                result += GenerateFilesUtils.GetIndentationStr(1, 4, "self.updateGlobalVarLowLevelValue(\"" + assignment.Key + "\"," + value + ")");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.updateGlobalVarLowLevelValue(\"" + assignment.Key + "\"," + value + ")");
             }
 
 

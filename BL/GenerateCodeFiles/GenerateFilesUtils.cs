@@ -65,12 +65,12 @@ namespace WebApiCSharp.GenerateCodeFiles
         }
         public static string GetIndentationStr(int numOfIndentations, int indentSize = 4, string str = "", bool withNewLine = true, bool isPythonCode = false)
         {
-            string result = GetIdent(numOfIndentations, indentSize) + str + (withNewLine ? Environment.NewLine : "");
+            string result = GetIdent(numOfIndentations, indentSize) + str;
             result = !isPythonCode ? result : 
                 result
                 .Replace("\n", Environment.NewLine + GetIdent(numOfIndentations, indentSize))
                 .Replace("\t", GetIdent(1, indentSize));
-            return result;
+            return result + (withNewLine ? Environment.NewLine : "");
         }
 
 
