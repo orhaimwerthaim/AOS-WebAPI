@@ -25,7 +25,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         
 
-        public GenerateSolver(PLPsData data)
+        public GenerateSolver(PLPsData data, InitializeProject initProj)
         {
             int totalNumberOfActionsInProject;
             plpsData = data;
@@ -54,7 +54,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
 
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/solver/pomcp.cpp", SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath, conf.SolverGraphPDF_Depth));
-            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/evaluator.cpp", SolverFileTemplate.GetEvaluatorCppFile(data));
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/evaluator.cpp", SolverFileTemplate.GetEvaluatorCppFile(data,  initProj));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/simple_tui.cpp", SolverFileTemplate.GetSimpleTuiCppFile(data));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/evaluator.h", SolverFileTemplate.GetEvaluatorHeaderFile(data));
  

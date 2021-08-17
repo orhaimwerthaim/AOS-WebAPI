@@ -13,11 +13,7 @@ namespace WebApiCSharp.Controllers
     [ApiController]
     [Route("[controller]")]
     public class LocalVariableController : ControllerBase
-    {
-        private static readonly string[] Summaries = new[]
-        {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
+    { 
 
         private readonly ILogger<LocalVariableController> _logger;
 

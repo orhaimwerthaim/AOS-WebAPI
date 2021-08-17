@@ -34,6 +34,13 @@ namespace WebApiCSharp.Controllers
             List<string> errors = new List<string>();
             string buildOutput;
             string runOutput;
+            if(initProj.DebugConfiguration == null)
+            {
+                initProj.DebugConfiguration = new DebugConfiguration();
+                initProj.DebugConfiguration.ActionsToSimulate = new List<int>(); 
+                initProj.DebugConfiguration.DebugOn = false;
+            }
+
             InitializeProjectBL.InitializeProject(initProj, out errors, out buildOutput, out runOutput);
             if(errors.Count > 0)
             {

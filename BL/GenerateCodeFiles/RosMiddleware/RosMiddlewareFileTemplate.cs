@@ -199,7 +199,7 @@ include_directories(
             if (oComp == null || bits.Length == 0) return null;
             List<CompoundVarTypePLP_Variable> lv = oComp.Variables.Where(x => x.Name.Equals(bits[0])).ToList();
             if (lv.Count == 0) return null;
-            if (bits.Length == 0) return lv[0];
+            if (bits.Length == 1) return lv[0];
             bits[0] = "";
             return GetCompundVariableByName(GetCompundTypeByName(lv[0].Type, data), String.Join(".", bits.Where(x => !String.IsNullOrEmpty(x))), data);
         }
@@ -211,12 +211,14 @@ include_directories(
             return data.LocalVariableTypes.Where(x => x.TypeName.Equals(underlineTypeName)).FirstOrDefault();
 
         }
+
+
         private static string GetUnderlineLocalVariableNameTypeByVarName(PLPsData data, PLP plp, string variableName)
         {
 
             string[] bits = variableName.Split(".");
 
-            string baseVarName = bits[0] + (bits.Length > 1 ? bits[1] : "");
+            string baseVarName = bits[0] + "." + (bits.Length > 1 ? bits[1] : "");
             List<GlobalVariableDeclaration> dl = data.GlobalVariableDeclarations.Where(x => ("state." + x.Name).Equals(baseVarName)).ToList();
 
             if (dl.Count > 0)
@@ -266,9 +268,22 @@ include_directories(
 
                     foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
                     {
-                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "dbVar = aos_GlobalVariablesAssignments_collection.find_one({\"GlobalVariableName\": \"" + oGlVar.FromGlobalVariable + "\"})");
+                        LocalVariableTypePLP underlineType = null;
+                        if (oGlVar.FromGlobalVariable.StartsWith(PLPsData.GLOBAL_VARIABLE_STATE_REF))
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "globVarName = \"" + oGlVar.FromGlobalVariable + "\"");
+                        }
+                        else
+                        {
+                            //globVarName = "oDesiredLocation.actual_location".replace("oDesiredLocation", params["ParameterLinks"]["oDesiredLocation"])
+                            string baseGlobalParameter = plp.GlobalVariableModuleParameters
+                                .Where(x => oGlVar.FromGlobalVariable.StartsWith(x.Name + ".") || oGlVar.FromGlobalVariable.Equals(x.Name))
+                                .Select(x => x.Name).FirstOrDefault();
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "globVarName = \"" + oGlVar.FromGlobalVariable + "\".replace(\"" + baseGlobalParameter + "\", params[\"ParameterLinks\"][\"" + baseGlobalParameter + "\"], 1)");
+                        }
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "dbVar = aos_GlobalVariablesAssignments_collection.find_one({\"GlobalVariableName\": globVarName})");
 
-                        LocalVariableTypePLP underlineType = GetUnderlineLocalVariableTypeByVarName(data, plp, oGlVar.FromGlobalVariable);
+                        underlineType = GetUnderlineLocalVariableTypeByVarName(data, plp, oGlVar.FromGlobalVariable);
                         if (underlineType != null)
                         {
                             result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = " + underlineType.TypeName + "()");
@@ -282,6 +297,8 @@ include_directories(
                         {
                             result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = dbVar[\"LowLevelValue\"]");
                         }
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oGlVar.InputLocalVariable + "\"] = " + underlineType.TypeName + "ToDict(" + oGlVar.InputLocalVariable + ")");
+                        //self._topicListener.localVarNamesAndValues["navigate"]["desired_location"]
                     }
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "except:");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "responseNotByLocalVariables = \"illegalActionObs\"");
@@ -385,7 +402,8 @@ include_directories(
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self):");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.localVarNamesAndValues = {", false);
 
-            List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.GlueLocalVariablesInitializations.Count > 0).ToList();
+            List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.GlueLocalVariablesInitializations.Count > 0 || data.PLPs[x.Name].LocalVariablesInitializationFromGlobalVariables.Count > 0).ToList();
+
             HashSet<string> localVarNames = new HashSet<string>();
             for (int j = 0; gluesWithLocalVars.Count > j; j++)
             {
@@ -398,8 +416,15 @@ include_directories(
                     var localVar = glue.GlueLocalVariablesInitializations[i];
                     localVarNames.Add(localVar.LocalVarName);
                     result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + localVar.LocalVarName + "\": " +
-                            (string.IsNullOrEmpty(localVar.InitialValue) ? "None" :  localVar.InitialValue) +
-                            (i == glue.GlueLocalVariablesInitializations.Count - 1 ? "" : ", "), false);
+                            (string.IsNullOrEmpty(localVar.InitialValue) ? "None" : localVar.InitialValue) +
+                            (i == glue.GlueLocalVariablesInitializations.Count - 1 && data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables.Count == 0 ? "" : ", "), false);
+                }
+                for (int i = 0; i < data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables.Count; i++)
+                {
+                    var localFromGlob = data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables[i];
+                    localVarNames.Add(localFromGlob.InputLocalVariable);
+                    result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + localFromGlob.InputLocalVariable + "\": None" +
+                            (i == data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables.Count - 1 ? "" : ", "), false);
                 }
                 result += GenerateFilesUtils.GetIndentationStr(0, 4, "}" + (j < gluesWithLocalVars.Count - 1 ? ", " : ""), false);
             }
@@ -568,7 +593,7 @@ import rospy
 import pymongo
 " + GetImportsForMiddlewareNode(data, initProj) + @"
  
-DEBUG = False
+DEBUG = " + (initProj.DebugConfiguration.DebugOn ? "True" : "False") + @"
 aosDbConnection = pymongo.MongoClient(""mongodb://localhost:27017/"")
 aosDB = aosDbConnection[""AOS""]
 aos_statisticsDB = aosDbConnection[""AOS_Statistics""]

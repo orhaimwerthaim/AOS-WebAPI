@@ -1451,6 +1451,8 @@ public:
  * in a real.
  */
 class Evaluator {
+	private:
+	std::vector<int> action_sequence_to_sim;
 protected:
 	DSPOMDP* model_;
 	std::string belief_type_;
@@ -1561,7 +1563,7 @@ public:
 ";
             return file;
         }
-        public static string GetEvaluatorCppFile(PLPsData data)
+        public static string GetEvaluatorCppFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"#include <despot/evaluator.h>
 #include <despot/util/mongoDB_Bridge.h>
@@ -1699,6 +1701,10 @@ Evaluator::Evaluator(DSPOMDP* model, string belief_type, Solver* solver,
 	start_clockt_(start_clockt),
 	target_finish_time_(-1),
 	out_(out) {
+        " + (initProj.DebugConfiguration.ActionsToSimulate.Count > 0 ?
+        (String.Join("        " + Environment.NewLine,
+            initProj.DebugConfiguration.ActionsToSimulate.Select(x => "action_sequence_to_sim.push_back(" + x + ");").ToList()))
+        : "") + @"
 }
 
 Evaluator::~Evaluator() {
@@ -1721,9 +1727,21 @@ bool Evaluator::RunStep(int step, int round) {
 	}
 
 	double step_start_t = get_time_second();
+    double start_t = get_time_second();
+	int action = 500;
 
-	double start_t = get_time_second();
-	int action = solver_->Search().action;
+	action = solver_->Search().action;
+	
+	if(action_sequence_to_sim.size() > 0)
+	{
+		action = action_sequence_to_sim[0];
+		action_sequence_to_sim.erase(action_sequence_to_sim.begin());
+		if(action_sequence_to_sim.size() == 0)
+		{
+			action_sequence_to_sim.push_back(-1);
+		}
+	}
+
 	double end_t = get_time_second();
 	logi << ""[RunStep] Time spent in "" << typeid(*solver_).name()
 		<< ""::Search(): "" << (end_t - start_t) << endl;

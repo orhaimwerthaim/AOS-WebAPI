@@ -9,7 +9,7 @@ using System.Collections.Generic;
 namespace WebApiCSharp.Services
 {
     public class Globals
-    {
+    { 
         public const string LOCAL_VARIABLES_COLLECTION_NAME = "LocalVariables";
         public const string PLPS_COLLECTION_NAME = "PLPs";
         public const string ACTIONS_COLLECTION_NAME = "Actions";

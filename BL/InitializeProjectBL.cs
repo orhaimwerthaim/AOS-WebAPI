@@ -125,7 +125,7 @@ namespace WebApiCSharp.BL
             errors.AddRange(tempErrors);
 
 
-            GenerateSolver generateSolver = new GenerateSolver(plpData);
+            GenerateSolver generateSolver = new GenerateSolver(plpData, initProj);
 
             if (errors.Count > 0)
             {
