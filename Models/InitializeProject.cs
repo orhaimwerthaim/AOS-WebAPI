@@ -36,15 +36,11 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
-        public List<int> ActionsToSimulate { get; set; }
-        public int SearchDepth { get; set; }
-        public float DiscountFactor { get; set; }
+        public List<int> ActionsToSimulate { get; set; } 
         public bool IsInternalSimulation { get; set; }
         public float PlanningTimePerMoveInSeconds{ get; set; }
         public SolverConfiguration()
-        {
-            DiscountFactor = 0.9999F;
-            SearchDepth = 42;
+        {  
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();
             IsInternalSimulation = false;

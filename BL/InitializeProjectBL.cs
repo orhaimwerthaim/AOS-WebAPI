@@ -114,29 +114,39 @@ namespace WebApiCSharp.BL
 
         public static void InitializeProject(InitializeProject initProj, out List<String> errors, out string buildOutput, out string runOutput)
         {
+            errors = new List<string>();
             buildOutput = "";
             runOutput = "";
-            errors = new List<string>();
-            List<String> tempErrors;
-
-            AosGeneralService.DeleteCollectionsBeforeProjectInitialization();
-            errors.AddRange(LoadPLPs(initProj.PLPsDirectoryPath));
-            PLPsData plpData = new PLPsData(out tempErrors);
-            errors.AddRange(tempErrors);
-
-
-            GenerateSolver generateSolver = new GenerateSolver(plpData, initProj);
-
-            if (errors.Count > 0)
+            try
             {
-                return;
+                List<String> tempErrors;
+
+
+
+
+                AosGeneralService.DeleteCollectionsBeforeProjectInitialization();
+                errors.AddRange(LoadPLPs(initProj.PLPsDirectoryPath));
+                PLPsData plpData = new PLPsData(out tempErrors);
+                errors.AddRange(tempErrors);
+
+
+                GenerateSolver generateSolver = new GenerateSolver(plpData, initProj);
+
+                if (errors.Count > 0)
+                {
+                    return;
+                }
+                //buildOutput = BuildAosSolver();
+
+                //runOutput = RunSolver();
+
+
+                new GenerateRosMiddleware(plpData, initProj);
             }
-            //buildOutput = BuildAosSolver();
-
-            //runOutput = RunSolver();
-
-
-            new GenerateRosMiddleware(plpData, initProj);
+            catch (Exception e)
+            {
+                errors.Add(e.Message);
+            }
         }
         private static List<String> LoadPLPs(string pLPsDirectoryPath)
         {

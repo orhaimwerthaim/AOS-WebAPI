@@ -18,6 +18,9 @@ namespace WebApiCSharp.GenerateCodeFiles
         public double MaxReward;
         public double MinReward;
 
+        public int Horizon { get; set; }
+        public float Discount { get; set; }
+
         public int NumberOfActions = -1;//correctly Initialized when generating the AOS-Solver files
 
         public Dictionary<string, DistributionSample> DistributionSamples = new Dictionary<string, DistributionSample>();
@@ -272,6 +275,17 @@ namespace WebApiCSharp.GenerateCodeFiles
                     {
                         environmentPLP = plp;
                         environmentPLP_Name = environmentPLP["PlpMain"]["Name"].ToString();
+                        if (!environmentPLP.Contains("EnvironmentGeneral") || !environmentPLP["EnvironmentGeneral"].AsBsonDocument.Contains("Horizon") || !environmentPLP["EnvironmentGeneral"]["Horizon"].IsInt32)
+                        {
+                            errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"EnvironmentGeneral.Horizon\" must be defined with integer value!");
+                        }
+                        Horizon = environmentPLP["EnvironmentGeneral"]["Horizon"].AsInt32;
+
+                        if (!environmentPLP.Contains("EnvironmentGeneral") || !environmentPLP["EnvironmentGeneral"].AsBsonDocument.Contains("Discount") || !environmentPLP["EnvironmentGeneral"]["Discount"].IsDouble)
+                        {
+                            errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"EnvironmentGeneral.Discount\" must be defined with decimal value!");
+                        }
+                        Discount = (float)environmentPLP["EnvironmentGeneral"]["Discount"].AsDouble;
                     }
                     break;
                 case PLP_TYPE_NAME_ENVIRONMENT_GLUE:
@@ -336,32 +350,35 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         private void ProcessEnvironmentGlueFile()
         {
-            foreach (BsonValue bType in environmentGlue["LocalVariableTypes"].AsBsonArray)
+            if (environmentGlue != null)
             {
-                LocalVariableTypePLP localVar = new LocalVariableTypePLP();
-                BsonDocument docType = bType.AsBsonDocument;
-
-                localVar.TypeName = docType["TypeName"].ToString();
-
-                foreach (BsonValue bVar in docType["Variables"].AsBsonArray)
+                foreach (BsonValue bType in environmentGlue["LocalVariableTypes"].AsBsonArray)
                 {
-                    BsonDocument docVar = bVar.AsBsonDocument;
-                    localVar.SubFields.Add(new LocalVariableCompoundTypeField() { FieldName = docVar["Name"].ToString(), FieldType = docVar["Type"].ToString() });
+                    LocalVariableTypePLP localVar = new LocalVariableTypePLP();
+                    BsonDocument docType = bType.AsBsonDocument;
+
+                    localVar.TypeName = docType["TypeName"].ToString();
+
+                    foreach (BsonValue bVar in docType["Variables"].AsBsonArray)
+                    {
+                        BsonDocument docVar = bVar.AsBsonDocument;
+                        localVar.SubFields.Add(new LocalVariableCompoundTypeField() { FieldName = docVar["Name"].ToString(), FieldType = docVar["Type"].ToString() });
+                    }
+                    LocalVariableTypes.Add(localVar);
                 }
-                LocalVariableTypes.Add(localVar);
-            }
 
 
-            foreach (BsonValue bConst in environmentGlue["Constants"].AsBsonArray)
-            {
-                LocalVariableConstant localVar = new LocalVariableConstant();
-                BsonDocument docConst = bConst.AsBsonDocument;
+                foreach (BsonValue bConst in environmentGlue["Constants"].AsBsonArray)
+                {
+                    LocalVariableConstant localVar = new LocalVariableConstant();
+                    BsonDocument docConst = bConst.AsBsonDocument;
 
-                localVar.Name = docConst["Name"].ToString();
-                localVar.Type = docConst["Type"].ToString();
-                localVar.InitCode = docConst["InitCode"].ToString();
+                    localVar.Name = docConst["Name"].ToString();
+                    localVar.Type = docConst["Type"].ToString();
+                    localVar.InitCode = docConst["InitCode"].ToString();
 
-                LocalVariableConstants.Add(localVar);
+                    LocalVariableConstants.Add(localVar);
+                }
             }
         }
         private List<string> ProcessEnvironmentFile()
@@ -397,12 +414,19 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             foreach (BsonValue bState in environmentPLP["SpecialStates"].AsBsonArray)
             {
-                BsonDocument docState = bState.AsBsonDocument;
-                SpecialState spState = new SpecialState();
-                spState.IsGoalState = docState["IsGoalState"].AsBoolean;
-                spState.StateConditionCode = docState["StateConditionCode"].ToString();
-                spState.Reward = docState["Reward"].AsDouble;
-                SpecialStates.Add(spState);
+                try
+                {
+                    BsonDocument docState = bState.AsBsonDocument;
+                    SpecialState spState = new SpecialState();
+                    spState.IsGoalState = docState["IsGoalState"].AsBoolean;
+                    spState.StateConditionCode = docState["StateConditionCode"].ToString();
+                    spState.Reward = docState["Reward"].AsDouble;
+                    SpecialStates.Add(spState);
+                }
+                catch (Exception e)
+                {
+                    errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"SpecialStates.IsGoalState\" must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
+                }
             }
             return errors;
         }
@@ -447,8 +471,6 @@ namespace WebApiCSharp.GenerateCodeFiles
                             oVar.Type = docVar["Type"].ToString();
                             oVar.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
 
-                            oVar.ConstantWhenInActionParameter = docVar.Contains("ConstantWhenInActionParameter") ? docVar["ConstantWhenInActionParameter"].AsBoolean : false;
-
 
                             oVar.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
 
@@ -477,7 +499,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 oVarDec.Type = docVar["Type"].ToString();
                 oVarDec.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
                 oVarDec.DefaultCode = docVar.Contains("DefaultCode") ? (docVar["DefaultCode"].ToString().Equals("") ? null : docVar["DefaultCode"].ToString()) : null;
-                oVarDec.IsActionParameter = docVar.Contains("IsActionParameter") ? docVar["IsActionParameter"].AsBoolean : false;
+                oVarDec.IsActionParameterValue = docVar.Contains("IsActionParameterValue") ? docVar["IsActionParameterValue"].AsBoolean : false;
 
                 oVarDec.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
 
@@ -570,7 +592,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 }
             }
 
-            if(!bRosGlue.Contains("ModuleActivation"))
+            if (!bRosGlue.Contains("ModuleActivation"))
             {
                 errors.Add(plpDescription + ", 'ModuleActivation' is not defined, but it is a mandatory field!");
             }
@@ -687,27 +709,33 @@ namespace WebApiCSharp.GenerateCodeFiles
             List<string> tempErrors = new List<string>();
 
             string plpDescription = GetPLPDescriptionForError(plp);
-            foreach (BsonValue bVal in bPlp["GlobalVariableModuleParameters"].AsBsonArray)
+            if (bPlp.Contains("GlobalVariableModuleParameters"))
             {
-                BsonDocument docPar = bVal.AsBsonDocument;
-                GlobalVariableModuleParameter oPar = new GlobalVariableModuleParameter();
+                foreach (BsonValue bVal in bPlp["GlobalVariableModuleParameters"].AsBsonArray)
+                {
+                    BsonDocument docPar = bVal.AsBsonDocument;
+                    GlobalVariableModuleParameter oPar = new GlobalVariableModuleParameter();
 
-                oPar.Name = docPar["Name"].ToString();
-                oPar.Type = docPar["Type"].ToString();
+                    oPar.Name = docPar["Name"].ToString();
+                    oPar.Type = docPar["Type"].ToString();
 
-                plp.GlobalVariableModuleParameters.Add(oPar);
+                    plp.GlobalVariableModuleParameters.Add(oPar);
+                }
             }
 
-            foreach (BsonValue bVal in bPlp["LocalVariablesInitializationFromGlobalVariables"].AsBsonArray)
+            if (bPlp.Contains("LocalVariablesInitializationFromGlobalVariables"))
             {
-                BsonDocument docVar = bVal.AsBsonDocument;
-                LocalVariablesInitializationFromGlobalVariable oVar = new LocalVariablesInitializationFromGlobalVariable();
+                foreach (BsonValue bVal in bPlp["LocalVariablesInitializationFromGlobalVariables"].AsBsonArray)
+                {
+                    BsonDocument docVar = bVal.AsBsonDocument;
+                    LocalVariablesInitializationFromGlobalVariable oVar = new LocalVariablesInitializationFromGlobalVariable();
 
-                oVar.FromGlobalVariable = docVar["FromGlobalVariable"].ToString();
-                oVar.InputLocalVariable = docVar["InputLocalVariable"].ToString();
-                plp.LocalVariablesInitializationFromGlobalVariables.Add(oVar);
+                    oVar.FromGlobalVariable = docVar["FromGlobalVariable"].ToString();
+                    oVar.InputLocalVariable = docVar["InputLocalVariable"].ToString();
+                    plp.LocalVariablesInitializationFromGlobalVariables.Add(oVar);
+                }
             }
-
+            
             foreach (BsonValue bVal in bPlp["ModuleResponse"]["EnumResponse"].AsBsonArray)
             {
                 if (plp.EnumResponse.Contains(bVal.ToString()))
@@ -723,38 +751,40 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             plp.ResponseType = bPlp["ModuleResponse"]["Type"].ToString();
 
-
-            foreach (BsonValue bVal in bPlp["ModuleResponse"]["ResponseRules"].AsBsonArray)
+            if (bPlp["ModuleResponse"].AsBsonDocument.Contains("ResponseRules"))
             {
-                BsonDocument docResponseRule = bVal.AsBsonDocument;
-                ResponseRule oResponseRule = new ResponseRule();
-
-                oResponseRule.Condition = docResponseRule["ConditionCodeWithLocalVariables"].ToString();
-                oResponseRule.Response = docResponseRule["Response"].ToString();
-                oResponseRule.Comment = GetBsonStringField(docResponseRule, "Comment");
-
-
-                if (docResponseRule.Contains("AssignGlobalVariables"))
+                foreach (BsonValue bVal in bPlp["ModuleResponse"]["ResponseRules"].AsBsonArray)
                 {
-                    foreach (BsonValue bAssign in docResponseRule["AssignGlobalVariables"].AsBsonArray)
-                    {
-                        BsonDocument boAssign = bAssign.AsBsonDocument;
-                        ResponseAssignmentToGlobalVar assignment = new ResponseAssignmentToGlobalVar();
-                        assignment.GlobalVarName = GetBsonStringField(boAssign, "VarName");
-                        assignment.Value = GetBsonStringField(boAssign, "Value");
-                        if (assignment.GlobalVarName == null)
-                        {
-                            errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'VarName', it is a mandatory field!");
-                        }
-                        if (assignment.Value == null)
-                        {
-                            errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'Value', it is a mandatory field!");
-                        }
-                        oResponseRule.ResponseAssignmentsToGlobalVar.Add(assignment);
-                    }
-                }
+                    BsonDocument docResponseRule = bVal.AsBsonDocument;
+                    ResponseRule oResponseRule = new ResponseRule();
 
-                plp.ResponseRules.Add(oResponseRule);
+                    oResponseRule.Condition = docResponseRule["ConditionCodeWithLocalVariables"].ToString();
+                    oResponseRule.Response = docResponseRule["Response"].ToString();
+                    oResponseRule.Comment = GetBsonStringField(docResponseRule, "Comment");
+
+
+                    if (docResponseRule.Contains("AssignGlobalVariables"))
+                    {
+                        foreach (BsonValue bAssign in docResponseRule["AssignGlobalVariables"].AsBsonArray)
+                        {
+                            BsonDocument boAssign = bAssign.AsBsonDocument;
+                            ResponseAssignmentToGlobalVar assignment = new ResponseAssignmentToGlobalVar();
+                            assignment.GlobalVarName = GetBsonStringField(boAssign, "VarName");
+                            assignment.Value = GetBsonStringField(boAssign, "Value");
+                            if (assignment.GlobalVarName == null)
+                            {
+                                errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'VarName', it is a mandatory field!");
+                            }
+                            if (assignment.Value == null)
+                            {
+                                errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'Value', it is a mandatory field!");
+                            }
+                            oResponseRule.ResponseAssignmentsToGlobalVar.Add(assignment);
+                        }
+                    }
+
+                    plp.ResponseRules.Add(oResponseRule);
+                }
             }
 
             plp.Preconditions_GlobalVariableConditionCode = GetBsonStringField(bPlp, "Preconditions", "GlobalVariableConditionCode");
@@ -771,7 +801,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             errors.AddRange(tempErrors);
 
             tempErrors.Clear();
-            List<Assignment> moduleExecutionTimeAssignments = LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            List<Assignment> moduleExecutionTimeAssignments = !bPlp.Contains("ModuleExecutionTimeDynamicModel") ? new List<Assignment>() :  LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
             errors.AddRange(tempErrors);
             plp.ModuleExecutionTimeDynamicModel.AddRange(moduleExecutionTimeAssignments);
             foreach (Assignment oAssignment in plp.ModuleExecutionTimeDynamicModel)
@@ -920,7 +950,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                         errors.Add(plpDescription + ", 'TempVar', field 'Type' is mandatory (when 'TempVar' is defined)!");
                     }
 
-                    if (oAssignment.TempVariable.Type != ENUM_VARIABLE_TYPE_NAME && oAssignment.TempVariable.Type != "bool" && oAssignment.TempVariable.Type != "int")
+                    if (oAssignment.TempVariable.Type != ENUM_VARIABLE_TYPE_NAME && oAssignment.TempVariable.Type != "bool" && oAssignment.TempVariable.Type != "int" && GlobalEnumTypes.Where(x=> x.TypeName.Equals(oAssignment.TempVariable.Type)).FirstOrDefault() == null)
                     {
                         errors.Add(plpDescription + ", 'TempVar', valid values for field 'Type' are: 'enum','int' or 'bool'!");
                     }
@@ -988,7 +1018,6 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string Type;
         public string Default;
 
-        public bool ConstantWhenInActionParameter;
 
         public string UnderlineLocalVariableType;
     }
@@ -999,7 +1028,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string Type;
         public string Default;
         public string DefaultCode;
-        public bool IsActionParameter;
+        public bool IsActionParameterValue;
 
 
         public string UnderlineLocalVariableType;

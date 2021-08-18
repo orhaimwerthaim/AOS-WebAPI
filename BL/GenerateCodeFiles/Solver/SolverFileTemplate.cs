@@ -253,9 +253,9 @@ install(FILES ""${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake""
             return file;
         }
         #endregion
-        
 
-        public static string GetConfigHeaderFile(InitializeProject initProj)
+
+        public static string GetConfigHeaderFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"#ifndef CONFIG_H
 #define CONFIG_H
@@ -280,10 +280,10 @@ struct Config {
 	bool silence;
 
 	Config() :
-		search_depth("+initProj.SolverConfiguration.SearchDepth+@"),
-		discount("+initProj.SolverConfiguration.DiscountFactor+@"),
+		search_depth(" + data.Horizon + @"),
+		discount(" + data.Horizon + @"),
 		root_seed(42),
-		time_per_move("+initProj.SolverConfiguration.PlanningTimePerMoveInSeconds+@"),
+		time_per_move(" + initProj.SolverConfiguration.PlanningTimePerMoveInSeconds + @"),
 		num_scenarios(500),
 		pruning_constant(0),
 		xi(0.95),
@@ -292,7 +292,7 @@ struct Config {
 		max_policy_sim_len(10),
 		noise(0.1),
 		silence(false),
-		internalSimulation("+initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower()+@")
+		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @")
 		{
 		
 	}
@@ -2135,7 +2135,7 @@ int main(int argc, char* argv[]) {
             string result = "";
             foreach (EnumVarTypePLP eType in data.GlobalEnumTypes)
             {
-                result = GenerateFilesUtils.GetIndentationStr(1, 4, "static std::string Print" + eType.TypeName + "(" + eType.TypeName + ");");
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "static std::string Print" + eType.TypeName + "(" + eType.TypeName + ");");
             }
             return result;
         }
@@ -2572,7 +2572,7 @@ namespace despot
             foreach (GlobalVariableDeclaration oVarDec in data.GlobalVariableDeclarations)
             {
 
-                if (oVarDec.IsActionParameter)
+                if (oVarDec.IsActionParameterValue)
                 {
                     paramTypes.Add(oVarDec.Type);
                 }
@@ -2694,10 +2694,8 @@ public:
                             CompoundVarTypePLP oType = lTemp[0];
                             foreach (var oVar in oType.Variables)
                             {
-                                if (oVar.ConstantWhenInActionParameter)
-                                {
-                                    result += "    j[\"" + param.Name + "->" + oVar.Name + "\"] = " + param.Name + "." + oVar.Name + ";" + Environment.NewLine;
-                                }
+                                result += "    j[\"" + param.Name + "->" + oVar.Name + "\"] = " + param.Name + "." + oVar.Name + ";" + Environment.NewLine;
+
                             }
                         }
                     }
@@ -2771,7 +2769,7 @@ void ActionManager::Init(" + data.ProjectNameWithCapitalLetter + @"State* state)
                     for (int i = 0; plp.GlobalVariableModuleParameters.Count > i; i++)
                     {
                         GlobalVariableModuleParameter oParam = plp.GlobalVariableModuleParameters[i];
-                        int cardinality = data.GlobalVariableDeclarations.Where(x => x.IsActionParameter && x.Type.Equals(oParam.Type)).Count();
+                        int cardinality = data.GlobalVariableDeclarations.Where(x => x.IsActionParameterValue && x.Type.Equals(oParam.Type)).Count();
                         totalActionNumberForPLP *= cardinality;
                         parameters[i] = new KeyValuePair<GlobalVariableModuleParameter, int>(oParam, cardinality);
 
@@ -3000,9 +2998,11 @@ namespace despot {
                         }
                         else
                         {
-                            foreach (var constPar in compType[0].Variables.Where(x => x.ConstantWhenInActionParameter))
+                            foreach (var constPar in compType[0].Variables)
                             {
-                                result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << Prints::Print" + constPar.Type + "((" + constPar.Type + ")" + actionDescVarName + "->" + oVar.Name + "." + constPar.Name + ");");
+                                bool primitive = GenerateFilesUtils.IsPrimitiveType(constPar.Type) || constPar.Type.Equals(PLPsData.ANY_VALUE_TYPE_NAME);
+                                string print = primitive ? (actionDescVarName + "->" + oVar.Name + "." + constPar.Name) : ("Prints::Print" + constPar.Type + "((" + constPar.Type + ")" + actionDescVarName + "->" + oVar.Name + "." + constPar.Name + ");");
+                                result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << \"" + constPar.Name + ":\" << "+print+";");
                             }
                         }
 
@@ -3164,7 +3164,7 @@ namespace despot {
             HashSet<string> handeled = new HashSet<string>();
             foreach (GlobalVariableDeclaration gVarDec in data.GlobalVariableDeclarations)
             {
-                if (gVarDec.IsActionParameter && handeled.Add(gVarDec.Type))
+                if (gVarDec.IsActionParameterValue && handeled.Add(gVarDec.Type))
                 {
                     foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(gVarDec.Type)))
                     {

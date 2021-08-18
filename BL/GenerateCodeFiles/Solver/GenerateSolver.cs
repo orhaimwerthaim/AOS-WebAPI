@@ -46,7 +46,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             SolverFileTemplate.EnumMappingsForModuleResponseAndTempVar = enumMappingsForModuleResponseAndTempVar;
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/state_var_types.h", SolverFileTemplate.GetStateVarTypesHeaderFile(data));
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/state.h", SolverFileTemplate.GetStateHeaderFile(data));
-            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/config.h", SolverFileTemplate.GetConfigHeaderFile(initProj));
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/config.h", SolverFileTemplate.GetConfigHeaderFile(data, initProj));
 
 
             GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/Makefile", SolverFileTemplate.GetProjectExample_MakeFile());

@@ -37,24 +37,7 @@ namespace WebApiCSharp.Models
         }
 
     }
-
-    public class PLPMain
-    {
-        public string project{get;set;}
-        public string name{get;set;}
-        public string type{get;set;}
-        public int version{get;set;}
-
-    }
-
-    public class EnvironmentGeneral
-    {
-        public string project{get;set;}
-        public string name{get;set;}
-        public string type{get;set;}
-        public int version{get;set;}
-
-    }
+  
 
     public class GlobalVariableModuleParameter
     {
