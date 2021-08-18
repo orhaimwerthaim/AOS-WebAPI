@@ -253,6 +253,58 @@ install(FILES ""${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake""
             return file;
         }
         #endregion
+        
+
+        public static string GetConfigHeaderFile(InitializeProject initProj)
+        {
+            string file = @"#ifndef CONFIG_H
+#define CONFIG_H
+
+#include <string>
+
+namespace despot {
+
+struct Config {
+	bool internalSimulation; 
+	int search_depth;
+	double discount;
+	unsigned int root_seed;
+	double time_per_move;  // CPU time available to construct the search tree
+	int num_scenarios;
+	double pruning_constant;
+	double xi; // xi * gap(root) is the target uncertainty at the root.
+	int sim_len; // Number of steps to run the simulation for.
+  std::string default_action;
+	int max_policy_sim_len; // Maximum number of steps for simulating the default policy
+	double noise;
+	bool silence;
+
+	Config() :
+		search_depth("+initProj.SolverConfiguration.SearchDepth+@"),
+		discount("+initProj.SolverConfiguration.DiscountFactor+@"),
+		root_seed(42),
+		time_per_move("+initProj.SolverConfiguration.PlanningTimePerMoveInSeconds+@"),
+		num_scenarios(500),
+		pruning_constant(0),
+		xi(0.95),
+		sim_len(90),
+		default_action(""""),
+		max_policy_sim_len(10),
+		noise(0.1),
+		silence(false),
+		internalSimulation("+initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower()+@")
+		{
+		
+	}
+};
+
+} // namespace despot
+
+#endif
+";
+            return file;
+        }
+
 
         public static string GetPOMCP_File(string debugPDF_Path, int debugPDF_Depth)
         {
@@ -1701,9 +1753,9 @@ Evaluator::Evaluator(DSPOMDP* model, string belief_type, Solver* solver,
 	start_clockt_(start_clockt),
 	target_finish_time_(-1),
 	out_(out) {
-        " + (initProj.DebugConfiguration.ActionsToSimulate.Count > 0 ?
+        " + (initProj.SolverConfiguration.ActionsToSimulate.Count > 0 ?
         (String.Join("        " + Environment.NewLine,
-            initProj.DebugConfiguration.ActionsToSimulate.Select(x => "action_sequence_to_sim.push_back(" + x + ");").ToList()))
+            initProj.SolverConfiguration.ActionsToSimulate.Select(x => "action_sequence_to_sim.push_back(" + x + ");").ToList()))
         : "") + @"
 }
 
@@ -1728,11 +1780,13 @@ bool Evaluator::RunStep(int step, int round) {
 
 	double step_start_t = get_time_second();
     double start_t = get_time_second();
-	int action = 500;
+	int action = -1;
 
-	action = solver_->Search().action;
-	
-	if(action_sequence_to_sim.size() > 0)
+	if(action_sequence_to_sim.size() == 0)
+	{
+        action = solver_->Search().action;
+	}
+	else
 	{
 		action = action_sequence_to_sim[0];
 		action_sequence_to_sim.erase(action_sequence_to_sim.begin());
@@ -1806,7 +1860,10 @@ bool Evaluator::RunStep(int step, int round) {
 	*out_<<endl;
 
 	start_t = get_time_second();
-	solver_->Update(action, obs, updatesFromAction);
+	if(action_sequence_to_sim.size() == 0)
+	{
+		solver_->Update(action, obs, updatesFromAction);
+	}
 	end_t = get_time_second();
 	logi << ""[RunStep] Time spent in Update(): "" << (end_t - start_t) << endl;
 

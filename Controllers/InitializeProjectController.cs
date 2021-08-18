@@ -34,12 +34,8 @@ namespace WebApiCSharp.Controllers
             List<string> errors = new List<string>();
             string buildOutput;
             string runOutput;
-            if(initProj.DebugConfiguration == null)
-            {
-                initProj.DebugConfiguration = new DebugConfiguration();
-                initProj.DebugConfiguration.ActionsToSimulate = new List<int>(); 
-                initProj.DebugConfiguration.DebugOn = false;
-            }
+            initProj.MiddlewareConfiguration = (initProj.MiddlewareConfiguration == null) ? new MiddlewareConfiguration() : initProj.MiddlewareConfiguration;
+            initProj.SolverConfiguration = (initProj.SolverConfiguration == null) ? new SolverConfiguration() : initProj.SolverConfiguration;
 
             InitializeProjectBL.InitializeProject(initProj, out errors, out buildOutput, out runOutput);
             if(errors.Count > 0)

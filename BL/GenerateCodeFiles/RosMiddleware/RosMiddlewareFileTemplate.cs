@@ -593,7 +593,7 @@ import rospy
 import pymongo
 " + GetImportsForMiddlewareNode(data, initProj) + @"
  
-DEBUG = " + (initProj.DebugConfiguration.DebugOn ? "True" : "False") + @"
+DEBUG = " + (initProj.MiddlewareConfiguration.DebugOn ? "True" : "False") + @"
 aosDbConnection = pymongo.MongoClient(""mongodb://localhost:27017/"")
 aosDB = aosDbConnection[""AOS""]
 aos_statisticsDB = aosDbConnection[""AOS_Statistics""]
