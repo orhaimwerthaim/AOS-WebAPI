@@ -735,7 +735,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                     plp.LocalVariablesInitializationFromGlobalVariables.Add(oVar);
                 }
             }
-            
+
             foreach (BsonValue bVal in bPlp["ModuleResponse"]["EnumResponse"].AsBsonArray)
             {
                 if (plp.EnumResponse.Contains(bVal.ToString()))
@@ -787,12 +787,27 @@ namespace WebApiCSharp.GenerateCodeFiles
                 }
             }
 
-            plp.Preconditions_GlobalVariableConditionCode = GetBsonStringField(bPlp, "Preconditions", "GlobalVariableConditionCode");
-            plp.Preconditions_GlobalVariableConditionCode = plp.Preconditions_GlobalVariableConditionCode == null ? "true" : plp.Preconditions_GlobalVariableConditionCode;
+            tempErrors.Clear();
+            plp.Preconditions_GlobalVariablePreconditionAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("GlobalVariablePreconditionAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["GlobalVariablePreconditionAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            errors.AddRange(tempErrors);
 
-            plp.Preconditions_PlannerAssistancePreconditions = GetBsonStringField(bPlp, "Preconditions", "PlannerAssistancePreconditions");
-            plp.Preconditions_PlannerAssistancePreconditions = plp.Preconditions_PlannerAssistancePreconditions == null ? "true" : plp.Preconditions_PlannerAssistancePreconditions;
+            tempErrors.Clear();
+            plp.Preconditions_PlannerAssistancePreconditionsAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("PlannerAssistancePreconditionsAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["PlannerAssistancePreconditionsAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            errors.AddRange(tempErrors);
 
+            List<Assignment> preconditions = new List<Assignment>(); 
+            preconditions.AddRange(plp.Preconditions_PlannerAssistancePreconditionsAssignments);
+            preconditions.AddRange(plp.Preconditions_GlobalVariablePreconditionAssignments);
+            
+            foreach (Assignment oAssignment in preconditions)
+            {
+                if (oAssignment.AssignmentCode.Contains("state_.") || oAssignment.AssignmentCode.Contains("state__."))
+                {
+                    errors.Add(plpDescription + ", 'GlobalVariablePreconditionAssignments' and 'PlannerAssistancePreconditionsAssignments' cannot be dependent on 'state_' or 'stat__'" +
+                    "(the state after extrinsic environment changes) or 'state__' (the next state, also after module effects), " +
+                    "see AssignmentCode='" + oAssignment.AssignmentCode + "'!");
+                }
+            }
 
             tempErrors.Clear();
             plp.Preconditions_ViolatingPreconditionPenalty = bPlp.Contains("Preconditions") &&
@@ -801,7 +816,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             errors.AddRange(tempErrors);
 
             tempErrors.Clear();
-            List<Assignment> moduleExecutionTimeAssignments = !bPlp.Contains("ModuleExecutionTimeDynamicModel") ? new List<Assignment>() :  LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            List<Assignment> moduleExecutionTimeAssignments = !bPlp.Contains("ModuleExecutionTimeDynamicModel") ? new List<Assignment>() : LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
             errors.AddRange(tempErrors);
             plp.ModuleExecutionTimeDynamicModel.AddRange(moduleExecutionTimeAssignments);
             foreach (Assignment oAssignment in plp.ModuleExecutionTimeDynamicModel)
@@ -950,7 +965,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                         errors.Add(plpDescription + ", 'TempVar', field 'Type' is mandatory (when 'TempVar' is defined)!");
                     }
 
-                    if (oAssignment.TempVariable.Type != ENUM_VARIABLE_TYPE_NAME && oAssignment.TempVariable.Type != "bool" && oAssignment.TempVariable.Type != "int" && GlobalEnumTypes.Where(x=> x.TypeName.Equals(oAssignment.TempVariable.Type)).FirstOrDefault() == null)
+                    if (oAssignment.TempVariable.Type != ENUM_VARIABLE_TYPE_NAME && oAssignment.TempVariable.Type != "bool" && oAssignment.TempVariable.Type != "int" && GlobalEnumTypes.Where(x => x.TypeName.Equals(oAssignment.TempVariable.Type)).FirstOrDefault() == null)
                     {
                         errors.Add(plpDescription + ", 'TempVar', valid values for field 'Type' are: 'enum','int' or 'bool'!");
                     }

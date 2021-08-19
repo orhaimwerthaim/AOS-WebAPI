@@ -8,8 +8,8 @@ namespace WebApiCSharp.Models
     { 
         public int ActionID { get; set; }
 
-
-
+        public string ActionDescription { get; set; }
+ 
         public string ActionName { get; set; }
 
         public List<ActionConstantParameter> ActionConstantParameters { get; set; }

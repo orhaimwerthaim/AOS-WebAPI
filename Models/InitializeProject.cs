@@ -36,11 +36,13 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
+        public int NumOfParticles { get; set; }
         public List<int> ActionsToSimulate { get; set; } 
         public bool IsInternalSimulation { get; set; }
         public float PlanningTimePerMoveInSeconds{ get; set; }
         public SolverConfiguration()
-        {  
+        {
+            NumOfParticles = 5000;
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();
             IsInternalSimulation = false;

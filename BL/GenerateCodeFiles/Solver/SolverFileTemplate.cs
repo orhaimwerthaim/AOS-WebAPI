@@ -2161,18 +2161,8 @@ class AOSUtils
 	public:
 	static bool Bernoulli(double);
 };
+ 
 
-class ActionDescription; 
-
-class Prints
-{
-	public:
-" + GetPrintEnvironmentEnumPrintFunctionDeclarations(data) + @"
-	static std::string PrintActionDescription(ActionDescription*);
-	static std::string PrintActionType(ActionType);
-	static std::string PrintState(" + data.ProjectNameWithCapitalLetter + @"State state);
-	static std::string PrintObs(int action, int obs);
-};
 
 
 
@@ -2337,6 +2327,17 @@ class ActionManager {
 public:
 	static std::vector<ActionDescription*> actions;
     static void Init(" + data.ProjectNameWithCapitalLetter + @"State* state);
+};
+
+
+class Prints
+{
+	public:
+" + GetPrintEnvironmentEnumPrintFunctionDeclarations(data) + @"
+	static std::string PrintActionDescription(ActionDescription*);
+	static std::string PrintActionType(ActionType);
+	static std::string PrintState(" + data.ProjectNameWithCapitalLetter + @"State state);
+	static std::string PrintObs(int action, int obs);
 };
 }
 #endif //ACTION_MANAGER_H
@@ -2738,11 +2739,26 @@ void ActionManager::Init(" + data.ProjectNameWithCapitalLetter + @"State* state)
 	int id = 0;
 " + GetAddingActionForActionManagerCPP(data, out totalNumberOfActionsInProject) + @"
 
-	for(int j=0;j< ActionManager::actions.size();j++)
-	{
-        MongoDB_Bridge::RegisterAction(ActionManager::actions[j]->actionId, enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[ActionManager::actions[j]->actionType], ActionManager::actions[j]->GetActionParametersJson_ForActionRegistration());
+        for(int j=0;j< ActionManager::actions.size();j++)
+        {
+            std::string actDesc = Prints::PrintActionDescription(ActionManager::actions[j]);
+            MongoDB_Bridge::RegisterAction(ActionManager::actions[j]->actionId, enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[ActionManager::actions[j]->actionType], ActionManager::actions[j]->GetActionParametersJson_ForActionRegistration(), actDesc);
+        }
     }
 }
+
+ 
+" + GetGlobalVarEnumsPrintFunctions(data) + GetPrintActionDescriptionFunction(data) + @"
+
+std::string Prints::PrintObs(int action, int obs)
+{
+	" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums eObs = (" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs;
+	return enum_map_" + data.ProjectName + @"::vecResponseEnumToString[eObs]; 
+}
+" + GetPrintStateFunction(data) + @"
+
+" + GetPrintActionType(data) + @"
+
 }";
             return file;
         }
@@ -2798,7 +2814,10 @@ void ActionManager::Init(" + data.ProjectNameWithCapitalLetter + @"State* state)
                             result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "ActionManager::actions.push_back(&" + actionVarName + ");");
                             result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "i++;");
                             result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "indexes.pop_back();");
-                            result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "}");
+                            for (int j = i; j > 0; j--)
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(j + 1, 4, "}");
+                            }
                         }
                     }
                 }
@@ -2994,7 +3013,12 @@ namespace despot {
                         List<CompoundVarTypePLP> compType = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oVar.Type)).ToList();
                         if (compType.Count == 0)
                         {
-                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << " + actionDescVarName + "->" + oVar.Name + ";");
+                            //                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << " + actionDescVarName + "->" + oVar.Name + ";");
+
+
+                            bool primitive = GenerateFilesUtils.IsPrimitiveType(oVar.Type) || oVar.Type.Equals(PLPsData.ANY_VALUE_TYPE_NAME);
+                            string print = primitive ? (actionDescVarName + "->" + oVar.Name + "." + oVar.Name) : ("Prints::Print" + oVar.Type + "((" + oVar.Type + ")" + actionDescVarName + "->" + oVar.Name + ");");
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << \"" + oVar.Name + ":\" << " + print + ";");
                         }
                         else
                         {
@@ -3002,7 +3026,7 @@ namespace despot {
                             {
                                 bool primitive = GenerateFilesUtils.IsPrimitiveType(constPar.Type) || constPar.Type.Equals(PLPsData.ANY_VALUE_TYPE_NAME);
                                 string print = primitive ? (actionDescVarName + "->" + oVar.Name + "." + constPar.Name) : ("Prints::Print" + constPar.Type + "((" + constPar.Type + ")" + actionDescVarName + "->" + oVar.Name + "." + constPar.Name + ");");
-                                result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << \"" + constPar.Name + ":\" << "+print+";");
+                                result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << \"" + constPar.Name + ":\" << " + print + ";");
                             }
                         }
 
@@ -3253,23 +3277,28 @@ namespace despot {
         }
         private static string GetCheckPreconditionsForModelCpp(PLPsData data)
         {
-            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + "State& state, double &reward, bool &meetPrecondition, int actionId) const");
+            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + "State& state, double &reward, bool &__meetPrecondition, int actionId) const");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "meetPrecondition = false;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "__meetPrecondition = true;");
             foreach (PLP plp in data.PLPs.Values)
             {
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(actType == " + plp.Name + "Action)");
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "{");
 
-                result += GenerateFilesUtils.GetIndentationStr(4, 4, "if(" + HandleCodeLine(data, plp.Preconditions_GlobalVariableConditionCode, plp.Name) + " && " + HandleCodeLine(data, plp.Preconditions_PlannerAssistancePreconditions, plp.Name) + ")");
-                result += GenerateFilesUtils.GetIndentationStr(4, 4, "{");
-                result += GenerateFilesUtils.GetIndentationStr(5, 4, "meetPrecondition = true;");
-                result += GenerateFilesUtils.GetIndentationStr(4, 4, "}");
-                result += GenerateFilesUtils.GetIndentationStr(4, 4, "else");
-                result += GenerateFilesUtils.GetIndentationStr(4, 4, "{");
-                result += GenerateFilesUtils.GetIndentationStr(5, 4, "reward += " + plp.Preconditions_ViolatingPreconditionPenalty + ";");
-                result += GenerateFilesUtils.GetIndentationStr(4, 4, "}");
+
+                List<Assignment> allAssign = new List<Assignment>();
+                allAssign.AddRange(plp.Preconditions_GlobalVariablePreconditionAssignments);
+                allAssign.AddRange(plp.Preconditions_PlannerAssistancePreconditionsAssignments);
+                result += GetAssignmentsCode(data, plp.Name, allAssign, 4, 4);
+                //result += GenerateFilesUtils.GetIndentationStr(4, 4, "if(" + HandleCodeLine(data, plp.Preconditions_GlobalVariableConditionCode, plp.Name) + " && " + HandleCodeLine(data, plp.Preconditions_PlannerAssistancePreconditions, plp.Name) + ")");
+                result += GenerateFilesUtils.GetIndentationStr(4, 4, "if(!__meetPrecondition) reward += " + plp.Preconditions_ViolatingPreconditionPenalty + ";");
+                // result += GenerateFilesUtils.GetIndentationStr(5, 4, "meetPrecondition = true;");
+                // result += GenerateFilesUtils.GetIndentationStr(4, 4, "}");
+                // result += GenerateFilesUtils.GetIndentationStr(4, 4, "else");
+                // result += GenerateFilesUtils.GetIndentationStr(4, 4, "{");
+                // result += GenerateFilesUtils.GetIndentationStr(5, 4, "reward += " + plp.Preconditions_ViolatingPreconditionPenalty + ";");
+                // result += GenerateFilesUtils.GetIndentationStr(4, 4, "}");
 
 
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "}");
@@ -3354,8 +3383,8 @@ namespace despot {
             {
                 if (assign.TempVariable.Type != null)
                 {
-                    string TempVarType = assign.TempVariable.Type == PLPsData.ENUM_VARIABLE_TYPE_NAME ? assign.TempVariable.EnumName : assign.TempVariable.Type;
-                    result += GenerateFilesUtils.GetIndentationStr(indentCount, indentSize, data.ProjectNameWithCapitalLetter + "ResponseModuleAndTempEnums " + assign.TempVariable.VariableName + ";");
+                    string TempVarType = assign.TempVariable.Type == PLPsData.ENUM_VARIABLE_TYPE_NAME ? data.ProjectNameWithCapitalLetter + "ResponseModuleAndTempEnums " : assign.TempVariable.Type;
+                    result += GenerateFilesUtils.GetIndentationStr(indentCount, indentSize, TempVarType + " " + assign.TempVariable.VariableName + ";");
                 }
                 foreach (string codeLine in assign.AssignmentCode.Split(";"))
                 {
@@ -3460,7 +3489,7 @@ namespace despot {
             return result;
         }
 
-        public static string GetModelCppFile(PLPsData data)
+        public static string GetModelCppFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"#include """ + data.ProjectName + @".h""
 #include <despot/core/pomdp.h> 
@@ -3486,7 +3515,7 @@ bool AOSUtils::Bernoulli(double p)
 /* ==============================================================================
  *" + data.ProjectNameWithCapitalLetter + @"Belief class
  * ==============================================================================*/
-int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = 5000;
+int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = "+initProj.SolverConfiguration.NumOfParticles+@";
 
 
 " + data.ProjectNameWithCapitalLetter + @"Belief::" + data.ProjectNameWithCapitalLetter + @"Belief(vector<State*> particles, const DSPOMDP* model,
@@ -3494,22 +3523,12 @@ int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = 5000;
 	ParticleBelief(particles, model, prior),
 	" + data.ProjectName + @"_(static_cast<const " + data.ProjectNameWithCapitalLetter + @"*>(model)) {
 }
- 
-" + GetGlobalVarEnumsPrintFunctions(data) + GetPrintActionDescriptionFunction(data) + @"
 
-std::string Prints::PrintObs(int action, int obs)
-{
-	" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums eObs = (" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs;
-	return enum_map_" + data.ProjectName + @"::vecResponseEnumToString[eObs]; 
-}
-" + GetPrintStateFunction(data) + @"
 	
  	std::string " + data.ProjectNameWithCapitalLetter + @"::GetActionDescription(int actionId) const
 	 {
 		 return Prints::PrintActionDescription(ActionManager::actions[actionId]);
 	 }
-
-" + GetPrintActionType(data) + @"
 
 
 void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates) {
@@ -3651,13 +3670,7 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 	" + data.ProjectNameWithCapitalLetter + @"State &state__ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(s_state__);
 	 logd << ""[" + data.ProjectNameWithCapitalLetter + @"::Step] Selected Action:"" << Prints::PrintActionDescription(ActionManager::actions[actionId]) << ""||State""<< Prints::PrintState(state__);
 	CheckPreconditions(state__, reward, meetPrecondition, actionId);
-	if (!meetPrecondition)
-	{
-		__moduleExecutionTime = 0;
-		observation = illegalActionObs;
-		return false;
-	}
-
+	 
 	State *s_state = Copy(&s_state__);
 	" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
 
@@ -3675,6 +3688,13 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 	Free(s_state);
 	Free(s_state_);
 	bool finalState = ProcessSpecialStates(state__, reward);
+
+    if (!meetPrecondition)
+	{
+		__moduleExecutionTime = 0;
+		observation = illegalActionObs;
+		return false;
+	}
 	return finalState;
 }
 

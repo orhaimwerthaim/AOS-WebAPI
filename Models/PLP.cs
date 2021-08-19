@@ -19,8 +19,8 @@ namespace WebApiCSharp.Models
 
           public List<ResponseRule> ResponseRules{ get; set; }
 
-        public string Preconditions_GlobalVariableConditionCode{ get; set; }
-          public string Preconditions_PlannerAssistancePreconditions{ get; set; }
+        public List<Assignment> Preconditions_GlobalVariablePreconditionAssignments{ get; set; }
+          public List<Assignment> Preconditions_PlannerAssistancePreconditionsAssignments{ get; set; }
 
           public int Preconditions_ViolatingPreconditionPenalty{ get; set; }
 
@@ -32,6 +32,8 @@ namespace WebApiCSharp.Models
             LocalVariablesInitializationFromGlobalVariables = new List<LocalVariablesInitializationFromGlobalVariable>();
             ModuleExecutionTimeDynamicModel = new List<Assignment>();
             DynamicModel_VariableAssignments = new List<Assignment>();
+            Preconditions_GlobalVariablePreconditionAssignments = new List<Assignment>();
+            Preconditions_PlannerAssistancePreconditionsAssignments = new List<Assignment>();
             ResponseRules = new List<ResponseRule>();
             EnumResponse = new List<string>(); 
         }
