@@ -36,12 +36,17 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
+        public bool Verbosity { get; set; }
         public int NumOfParticles { get; set; }
+
+        public int NumOfBeliefStateParticlesToSaveInDB { get; set; }
         public List<int> ActionsToSimulate { get; set; } 
         public bool IsInternalSimulation { get; set; }
         public float PlanningTimePerMoveInSeconds{ get; set; }
         public SolverConfiguration()
         {
+            Verbosity = false;
+            NumOfBeliefStateParticlesToSaveInDB = 0;
             NumOfParticles = 5000;
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();

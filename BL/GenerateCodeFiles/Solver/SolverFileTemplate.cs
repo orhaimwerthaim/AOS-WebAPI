@@ -278,21 +278,23 @@ struct Config {
 	int max_policy_sim_len; // Maximum number of steps for simulating the default policy
 	double noise;
 	bool silence;
+    bool saveBeliefToDB;
 
 	Config() :
 		search_depth(" + data.Horizon + @"),
-		discount(" + data.Horizon + @"),
+		discount(" + data.Discount + @"),
 		root_seed(42),
 		time_per_move(" + initProj.SolverConfiguration.PlanningTimePerMoveInSeconds + @"),
 		num_scenarios(500),
 		pruning_constant(0),
 		xi(0.95),
-		sim_len(90),
+		sim_len(1000),
 		default_action(""""),
 		max_policy_sim_len(10),
 		noise(0.1),
-		silence(false),
-		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @")
+		silence(" + (initProj.SolverConfiguration.Verbosity ? "false" : "true") + @"),
+		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
+        saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @")
 		{
 		
 	}
@@ -306,7 +308,7 @@ struct Config {
         }
 
 
-        public static string GetPOMCP_File(string debugPDF_Path, int debugPDF_Depth)
+        public static string GetPOMCP_File(string debugPDF_Path, int debugPDF_Depth, InitializeProject initProj)
         {
             string file = @"#include <despot/solver/pomcp.h>
 #include <despot/util/logging.h>
@@ -398,6 +400,11 @@ ValuedAction POMCP::Search(double timeout) {
 	 
 	std::vector<int>*	simulatedActionSequence = actionSeq.size() > 0 ? &actionSeq : NULL;	 
 	
+    if(Globals::config.saveBeliefToDB)
+	{
+		vector<State*> temp = belief_->Sample(" + initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB + @");
+		Prints::GetJsonForBelief(temp);
+	}
 
 	int hist_size = history_.Size();
 	bool done = false;
@@ -439,19 +446,19 @@ ValuedAction POMCP::Search(double timeout) {
 	//untill here
 	
 	
-	logi << ""[POMCP::Search] Search statistics"" << endl
-		<< ""OptimalAction = "" << astar << endl 
-		<< ""# Simulations = "" << root_->count() << endl
-		<< ""Time: CPU / Real = "" << ((clock() - start_cpu) / CLOCKS_PER_SEC) << "" / "" << (get_time_second() - start_real) << endl
-		<< ""# active particles = "" << model_->NumActiveParticles() << endl
-		<< ""Tree size = "" << root_->Size() << endl;
+	// logi << ""[POMCP::Search] Search statistics"" << endl
+	// 	<< ""OptimalAction = "" << astar << endl 
+	// 	<< ""# Simulations = "" << root_->count() << endl
+	// 	<< ""Time: CPU / Real = "" << ((clock() - start_cpu) / CLOCKS_PER_SEC) << "" / "" << (get_time_second() - start_real) << endl
+	// 	<< ""# active particles = "" << model_->NumActiveParticles() << endl
+	// 	<< ""Tree size = "" << root_->Size() << endl;
 
-	if (astar.action == -1) {
-		for (int action = 0; action < model_->NumActions(); action++) {
-			cout << ""action "" << action << "": "" << root_->Child(action)->count()
-				<< "" "" << root_->Child(action)->value() << endl;
-		}
-	}
+	// if (astar.action == -1) {
+	// 	for (int action = 0; action < model_->NumActions(); action++) {
+	// 		cout << ""action "" << action << "": "" << root_->Child(action)->count()
+	// 			<< "" "" << root_->Child(action)->value() << endl;
+	// 	}
+	// }
 
 	std::string dot = POMCP::GenerateDotGraph(root_," + debugPDF_Depth + @", model_);
 	// delete root_;
@@ -473,7 +480,8 @@ void POMCP::belief(Belief* b) {
 }
 
 
-void POMCP::Update(int action, OBS_TYPE obs, std::map<std::string, bool> updatesFromAction)
+//void POMCP::Update(int action, OBS_TYPE obs, std::map<std::string, bool> updatesFromAction)
+void POMCP::Update(int action, OBS_TYPE obs)
 {
 	double start = get_time_second();
 
@@ -493,16 +501,17 @@ void POMCP::Update(int action, OBS_TYPE obs, std::map<std::string, bool> updates
 
 	prior_->Add(action, obs);
 	history_.Add(action, obs);
-	belief_->Update(action, obs, updatesFromAction);
+	//belief_->Update(action, obs, updatesFromAction);
+	belief_->Update(action, obs);
 
 	logi << ""[POMCP::Update] Updated belief, history and root with action ""
 		<< action << "", observation "" << obs
 		<< "" in "" << (get_time_second() - start) << ""s"" << endl;
 }
-void POMCP::Update(int action, OBS_TYPE obs) {
-	std::map<std::string, bool> updatesFromAction;
-	POMCP::Update(action, obs, updatesFromAction);
-}
+// void POMCP::Update(int action, OBS_TYPE obs) {
+// 	std::map<std::string, bool> updatesFromAction;
+// 	POMCP::Update(action, obs, updatesFromAction);
+// }
 
 int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant)
 {
@@ -543,16 +552,16 @@ int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant, const D
 			best_action = action;
 		}
 		//logi << ""[POMCP::UpperBoundAction]:Depth:"" << vnode->depth() << ""Action:""<< action <<"",N:"" << vnode->count() << "",V:"" << vnode->value() << endl;
-		if (vnode->depth() < 1 && model)
-			logi << ""[POMCP::UpperBoundAction]:Depth:""<< vnode->depth() <<"",N:"" << vnode->count() <<"",V:"" << vnode->value() << model->GetActionDescription(action) << "",UCB:""<< ub<< endl;   
+		//if (vnode->depth() < 1 && model)
+		//	logi << ""[POMCP::UpperBoundAction]:Depth:""<< vnode->depth() <<"",N:"" << vnode->count() <<"",V:"" << vnode->value() << model->GetActionDescription(action) << "",UCB:""<< ub<< endl;   
 
 			// if(model)
 			// logd << ""[POMCP::UpperBoundAction]: Best Action is: ""<< model->GetActionDescription(best_action) << ""|With value:""<<best_ub <<endl;	
 	}
 	
 	assert(best_action != -1);
-	if(model)
-		logi << ""[POMCP::UpperBoundAction]:Selected Action:""<< model->GetActionDescription(best_action) <<endl;
+	//if(model)
+	//	logi << ""[POMCP::UpperBoundAction]:Selected Action:""<< model->GetActionDescription(best_action) <<endl;
 	return best_action;
 }
 
@@ -978,7 +987,7 @@ void POMCP::GenerateDotGraphVnode(VNode* vnode, int& currentNodeID, stringstream
         }
 
 
-        public static string GetSimpleTuiCppFile(PLPsData data)
+        public static string GetSimpleTuiCppFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"#include <despot/simple_tui.h>
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
@@ -1205,7 +1214,7 @@ void SimpleTUI::OptionParse(option::Option *options, int &num_runs,
     solver_type = options[E_SOLVER].arg;
 
 //  int verbosity = 0;
-  int verbosity = 3;//TODO:: remove debug log
+  int verbosity = " + (initProj.SolverConfiguration.Verbosity ? "3" : "0") + @";//TODO:: remove debug log
   if (options[E_VERBOSITY])
     verbosity = atoi(options[E_VERBOSITY].arg);
   logging::level(verbosity);
@@ -1805,42 +1814,30 @@ bool Evaluator::RunStep(int step, int round) {
 	start_t = get_time_second();
 
 	//TODO:: remove prints
-	logi << ""--------------------------------------EXECUTED---------------------------------------------------------------------------"" << endl;
-	model_->PrintState(*state_);
+    *out_ << ""-----------------------------------Round "" << round
+				<< "" Step "" << step << ""-----------------------------------""
+				<< endl;
+	logi << ""--------------------------------------EXECUTION---------------------------------------------------------------------------"" << endl;
+	if (!Globals::config.silence && out_) {
+		*out_ << endl << ""Action = "";
+		model_->PrintAction(action, *out_);
+	}
+    logi << endl
+		 << ""Before:"" << endl;
+    model_->PrintState(*state_);
 	std::map<std::string, bool> updatesFromAction;
 	bool terminal = ExecuteAction(action, reward, obs, updatesFromAction);
+    logi << endl
+		 << ""After:"" << endl;
 	model_->PrintState(*state_);
-	logi << ""action:"" << action << "", reward:""
-		 << "", reward:"" << reward << "", observation:"" << enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs] << endl;
+	logi << endl << ""Reward:"" << reward << endl <<  ""Observation:"" << enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs] << endl;
 	end_t = get_time_second();
 	logi << ""[RunStep] Time spent in ExecuteAction(): "" << (end_t - start_t)
 		<< endl;
-	logi << ""-------------------------------------END-EXECUTED---------------------------------------------------------------------------"" << endl;
+	logi << ""-------------------------------------END-EXECUTION---------------------------------------------------------------------------"" << endl;
 	start_t = get_time_second();
-	*out_ << ""-----------------------------------Round "" << round
-				<< "" Step "" << step << ""-----------------------------------""
-				<< endl;
-	if (!Globals::config.silence && out_) {
-		*out_ << ""- Action = "";
-		model_->PrintAction(action, *out_);
-	}
-
-	if (state_ != NULL) {
-		if (!Globals::config.silence && out_) {
-			*out_ << ""- State:\n"";
-			model_->PrintState(*state_, *out_);
-		}
-	}
-
-	if (!Globals::config.silence && out_) {
-		*out_ << endl << ""- Observation = "" << enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs];
-	}
-
-	if (state_ != NULL) {
-		if (!Globals::config.silence && out_)
-			*out_ << ""- ObsProb = "" << model_->ObsProb(obs, *state_, action)
-				<< endl;
-	}
+	
+	
 
 	ReportStepReward();
 	end_t = get_time_second();
@@ -1862,7 +1859,8 @@ bool Evaluator::RunStep(int step, int round) {
 	start_t = get_time_second();
 	if(action_sequence_to_sim.size() == 0)
 	{
-		solver_->Update(action, obs, updatesFromAction);
+		solver_->Update(action, obs);
+		//solver_->Update(action, obs, updatesFromAction);
 	}
 	end_t = get_time_second();
 	logi << ""[RunStep] Time spent in Update(): "" << (end_t - start_t) << endl;
@@ -2002,6 +2000,7 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 		total_discounted_reward_ += Globals::Discount(step_) * reward;
 		total_undiscounted_reward_ += reward;
 
+        MongoDB_Bridge::currentActionSequenceId++;
 		return terminal;
 	}
 	else
@@ -2017,6 +2016,8 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 		updates = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
 		obs = enum_map_" + data.ProjectName + @"::vecStringToResponseEnum[obsStr];
+
+        MongoDB_Bridge::currentActionSequenceId++;
 		return false;
 	}
 }
@@ -2177,7 +2178,8 @@ public:
 	static int num_particles; 
 	" + data.ProjectNameWithCapitalLetter + @"Belief(std::vector<State*> particles, const DSPOMDP* model, Belief* prior =
 		NULL);
-	void Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates);
+	void Update(int actionId, OBS_TYPE obs);
+	//void Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates);
 };
 
 /* ==============================================================================
@@ -2226,18 +2228,18 @@ public:
 	virtual State* Copy(const State* particle) const;
 	virtual void Free(State* particle) const;
 	int NumActiveParticles() const;
-
-
-public:
+ 	static void CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + @"State& state, double &reward, bool &meetPrecondition, int actionId);
+    static void CheckIsPreferredAction(const " + data.ProjectNameWithCapitalLetter + @"State& state, bool &isPreferredAction, int actionId);
+     
+ 
 	" + data.ProjectNameWithCapitalLetter + @"(); 
 
 private:
-	void CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + @"State& farstate, double &reward, bool &meetPrecondition, int actionId) const;
 	void SampleModuleExecutionTime(const " + data.ProjectNameWithCapitalLetter + @"State& state, double rand_num, int actionId, int &moduleExecutionTime) const;
-	void ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& initState, " + data.ProjectNameWithCapitalLetter + @"State& afterExState, double rand_num, int actionId, double& reward,
+	void ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& initState, " + data.ProjectNameWithCapitalLetter + @"State& afterExState, double rand_num, int actionId,
 		const int &moduleExecutionTime) const;
 	void ModuleDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State &initState, const " + data.ProjectNameWithCapitalLetter + @"State &afterExState, " + data.ProjectNameWithCapitalLetter + @"State &nextState, double rand_num, int actionId, double &reward,
-								 OBS_TYPE &observation, const int &moduleExecutionTime) const;
+								 OBS_TYPE &observation, const int &moduleExecutionTime, const bool &__meetPrecondition) const;
 	bool ProcessSpecialStates(const " + data.ProjectNameWithCapitalLetter + @"State &state, double &reward) const;
 
 	mutable MemoryPool<" + data.ProjectNameWithCapitalLetter + @"State> memory_pool_;
@@ -2338,6 +2340,8 @@ class Prints
 	static std::string PrintActionType(ActionType);
 	static std::string PrintState(" + data.ProjectNameWithCapitalLetter + @"State state);
 	static std::string PrintObs(int action, int obs);
+    static std::string GetJsonForBelief(vector<State *> particles);
+    static std::string GetStateJson(State &state);
 };
 }
 #endif //ACTION_MANAGER_H
@@ -2739,13 +2743,13 @@ void ActionManager::Init(" + data.ProjectNameWithCapitalLetter + @"State* state)
 	int id = 0;
 " + GetAddingActionForActionManagerCPP(data, out totalNumberOfActionsInProject) + @"
 
-        for(int j=0;j< ActionManager::actions.size();j++)
-        {
-            std::string actDesc = Prints::PrintActionDescription(ActionManager::actions[j]);
-            MongoDB_Bridge::RegisterAction(ActionManager::actions[j]->actionId, enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[ActionManager::actions[j]->actionType], ActionManager::actions[j]->GetActionParametersJson_ForActionRegistration(), actDesc);
-        }
+    for(int j=0;j< ActionManager::actions.size();j++)
+    {
+        std::string actDesc = Prints::PrintActionDescription(ActionManager::actions[j]);
+        MongoDB_Bridge::RegisterAction(ActionManager::actions[j]->actionId, enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[ActionManager::actions[j]->actionType], ActionManager::actions[j]->GetActionParametersJson_ForActionRegistration(), actDesc);
     }
 }
+
 
  
 " + GetGlobalVarEnumsPrintFunctions(data) + GetPrintActionDescriptionFunction(data) + @"
@@ -2757,8 +2761,42 @@ std::string Prints::PrintObs(int action, int obs)
 }
 " + GetPrintStateFunction(data) + @"
 
+
+    std::string Prints::GetStateJson(State& _state)
+    {
+        const " + data.ProjectNameWithCapitalLetter + @"State& state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(_state);
+        json j;
+    j[""agentOneLoc""] = Prints::PrinttCell(state.agentOneLoc);
+    j[""agentTwoLoc""] = Prints::PrinttCell(state.agentTwoLoc);
+    j[""isAgentOneTurn""] = Prints::PrinttCell(state.bOneLoc);
+    //j[""stateTest""] = state;
+
+
+
+     
+
+    std::string str(j.dump().c_str());
+    return str;
+     
+    }
+
+
 " + GetPrintActionType(data) + @"
 
+std::string Prints::GetJsonForBelief(vector<State*> particles)
+{
+    json j;
+    j[""ActionSequnceId""] =  MongoDB_Bridge::currentActionSequenceId;
+
+    for (int i = 0; i < particles.size(); i++)
+    {
+        j[""BeliefeState""][i] = json::parse(Prints::GetStateJson(*particles[0])); 
+    }
+    
+    std::string str(j.dump().c_str());
+    MongoDB_Bridge::SaveBeliefState(str);
+    return str;
+}
 }";
             return file;
         }
@@ -2769,6 +2807,8 @@ std::string Prints::PrintObs(int action, int obs)
             string result = "";
             foreach (PLP plp in data.PLPs.Values)
             {
+                string indexesName = plp.Name + "Indexes";
+                string CounterName = plp.Name + "ActCounter";
                 if (plp.GlobalVariableModuleParameters.Count == 0)
                 {
                     totalNumberOfActionsInProject += 1;
@@ -2792,31 +2832,35 @@ std::string Prints::PrintObs(int action, int obs)
                     }
                     totalNumberOfActionsInProject += totalActionNumberForPLP;
                     result += "    " + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription* " + plp.Name + "Actions = new " + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription[" + totalActionNumberForPLP + "];" + Environment.NewLine;
-                    result += "    std::vector<std::string> indexes;" + Environment.NewLine;
-                    result += "    int i = 0;" + Environment.NewLine;
+
+                    result += "    std::vector<std::string> " + indexesName + ";" + Environment.NewLine;
+                    result += "    int " + CounterName + " = 0;" + Environment.NewLine;
+                    int numOfParameters = 0;
                     for (int i = 0; i < parameters.Length; i++)
                     {
                         GlobalVariableModuleParameter oPar = parameters[i].Key;
-                        string it = "it" + (i + 1).ToString();
+                        string it = plp.Name + "It" + (i + 1).ToString();
                         result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "map<std::string, " + oPar.Type + ">::iterator " + it + ";");
                         result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "for (" + it + " = state->" + oPar.Type + "ObjectsForActions.begin(); " + it + " != state->" + oPar.Type + "ObjectsForActions.end(); " + it + "++)");
                         result += GenerateFilesUtils.GetIndentationStr(i + 1, 4, "{");
-                        result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "indexes.push_back(" + it + "->first);");
+                        numOfParameters++;
+                        result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, indexesName + ".push_back(" + it + "->first);");
 
                         if (i == parameters.Length - 1)
                         {
                             string actionVarName = "o" + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "Action";
-                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription &" + actionVarName + " = " + plp.Name + "Actions[i];");
-                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, actionVarName + ".SetActionParametersByState(state, indexes);");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription &" + actionVarName + " = " + plp.Name + "Actions[" + CounterName + "];");
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, actionVarName + ".SetActionParametersByState(state, " + indexesName + ");");
                             result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, actionVarName + ".actionId = id++;");
                             result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, actionVarName + ".actionType = " + plp.Name + "Action;");
 
                             result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "ActionManager::actions.push_back(&" + actionVarName + ");");
-                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "i++;");
-                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, "indexes.pop_back();");
-                            for (int j = i; j > 0; j--)
+                            result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, CounterName + "++;");
+
+                            for (int j = numOfParameters; j > 0; j--)
                             {
-                                result += GenerateFilesUtils.GetIndentationStr(j + 1, 4, "}");
+                                result += GenerateFilesUtils.GetIndentationStr(i + 2, 4, indexesName + ".pop_back();");
+                                result += GenerateFilesUtils.GetIndentationStr(j, 4, "}");
                             }
                         }
                     }
@@ -3190,7 +3234,7 @@ namespace despot {
             {
                 if (gVarDec.IsActionParameterValue && handeled.Add(gVarDec.Type))
                 {
-                    foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(gVarDec.Type)))
+                    foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(gVarDec.Type) && x.IsActionParameterValue))
                     {
                         result += GenerateFilesUtils.GetIndentationStr(1, 4, "startState->" + gVarDec.Type + "ObjectsForActions[\"state." +
                                 gVarDec2.Name + "\"] = (state." + gVarDec2.Name + ");");
@@ -3275,9 +3319,35 @@ namespace despot {
             } while (found);
             return code;
         }
+
+        //preferred_actions_
+        private static string GetIsPreferredActionForModelCpp(PLPsData data)
+        {
+            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckIsPreferredAction(const " + data.ProjectNameWithCapitalLetter + "State& state, bool &__isPreferredAction, int actionId)");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "__isPreferredAction = false;");
+            foreach (PLP plp in data.PLPs.Values)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(actType == " + plp.Name + "Action)");
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "{");
+
+
+                List<Assignment> allAssign = new List<Assignment>();
+                allAssign.AddRange(plp.Preconditions_PlannerAssistancePreconditionsAssignments);
+                result += GetAssignmentsCode(data, plp.Name, allAssign, 4, 4);
+
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "}");
+            }
+
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+
+
+            return result;
+        }
         private static string GetCheckPreconditionsForModelCpp(PLPsData data)
         {
-            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + "State& state, double &reward, bool &__meetPrecondition, int actionId) const");
+            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + "State& state, double &reward, bool &__meetPrecondition, int actionId)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "__meetPrecondition = true;");
@@ -3289,7 +3359,6 @@ namespace despot {
 
                 List<Assignment> allAssign = new List<Assignment>();
                 allAssign.AddRange(plp.Preconditions_GlobalVariablePreconditionAssignments);
-                allAssign.AddRange(plp.Preconditions_PlannerAssistancePreconditionsAssignments);
                 result += GetAssignmentsCode(data, plp.Name, allAssign, 4, 4);
                 //result += GenerateFilesUtils.GetIndentationStr(4, 4, "if(" + HandleCodeLine(data, plp.Preconditions_GlobalVariableConditionCode, plp.Name) + " && " + HandleCodeLine(data, plp.Preconditions_PlannerAssistancePreconditions, plp.Name) + ")");
                 result += GenerateFilesUtils.GetIndentationStr(4, 4, "if(!__meetPrecondition) reward += " + plp.Preconditions_ViolatingPreconditionPenalty + ";");
@@ -3401,7 +3470,7 @@ namespace despot {
             string result = "";
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::ModuleDynamicModel(const " +
                 data.ProjectNameWithCapitalLetter + "State &state, const " + data.ProjectNameWithCapitalLetter + @"State &state_, " +
-                data.ProjectNameWithCapitalLetter + "State &state__, double rand_num, int actionId, double &__reward, OBS_TYPE &observation, const int &__moduleExecutionTime) const");
+                data.ProjectNameWithCapitalLetter + "State &state__, double rand_num, int actionId, double &__reward, OBS_TYPE &observation, const int &__moduleExecutionTime, const bool &__meetPrecondition) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
 
 
@@ -3446,7 +3515,7 @@ namespace despot {
         private static string GetExtrinsicChangesDynamicModelFunction(PLPsData data)
         {
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, double& reward, const int &__moduleExecutionTime)  const");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, const int &__moduleExecutionTime)  const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             foreach (Assignment assign in data.ExtrinsicChangesDynamicModel)
@@ -3515,7 +3584,7 @@ bool AOSUtils::Bernoulli(double p)
 /* ==============================================================================
  *" + data.ProjectNameWithCapitalLetter + @"Belief class
  * ==============================================================================*/
-int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = "+initProj.SolverConfiguration.NumOfParticles+@";
+int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = " + initProj.SolverConfiguration.NumOfParticles + @";
 
 
 " + data.ProjectNameWithCapitalLetter + @"Belief::" + data.ProjectNameWithCapitalLetter + @"Belief(vector<State*> particles, const DSPOMDP* model,
@@ -3530,8 +3599,8 @@ int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = "+initProj
 		 return Prints::PrintActionDescription(ActionManager::actions[actionId]);
 	 }
 
-
-void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates) {
+//void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates) {
+void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs) {
 	history_.Add(actionId, obs);
 
 	vector<State*> updated;
@@ -3546,15 +3615,15 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 		if (!terminal && o == obs) 
 			{
 				" + data.ProjectNameWithCapitalLetter + @"State &" + data.ProjectName + @"_particle = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particle);
-				if(!Globals::IsInternalSimulation() && updates.size() > 0)
-				{
-					" + data.ProjectNameWithCapitalLetter + @"State::SetAnyValueLinks(&" + data.ProjectName + @"_particle);
-					map<std::string, bool>::iterator it;
-					for (it = updates.begin(); it != updates.end(); it++)
-					{
-						*(" + data.ProjectName + @"_particle.anyValueUpdateDic[it->first]) = it->second; 
-					} 
-				}
+				//if(!Globals::IsInternalSimulation() && updates.size() > 0)
+				//{
+				//	" + data.ProjectNameWithCapitalLetter + @"State::SetAnyValueLinks(&" + data.ProjectName + @"_particle);
+				//	map<std::string, bool>::iterator it;
+				//	for (it = updates.begin(); it != updates.end(); it++)
+				//	{
+				//		*(" + data.ProjectName + @"_particle.anyValueUpdateDic[it->first]) = it->second; 
+				//	} 
+				//}
 				updated.push_back(particle);
 		} else {
 			" + data.ProjectName + @"_->Free(particle);
@@ -3573,6 +3642,44 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 	for (int i = 0; i < particles_.size(); i++)
 		particles_[i]->weight = 1.0 / particles_.size();
 }
+
+/* ==============================================================================
+ * " + data.ProjectNameWithCapitalLetter + @"POMCPPrior class
+ * ==============================================================================*/
+
+class " + data.ProjectNameWithCapitalLetter + @"POMCPPrior: public POMCPPrior {
+private:
+	const " + data.ProjectNameWithCapitalLetter + @"* " + data.ProjectName + @"_;
+
+public:
+	" + data.ProjectNameWithCapitalLetter + @"POMCPPrior(const " + data.ProjectNameWithCapitalLetter + @"* model) :
+		POMCPPrior(model),
+		" + data.ProjectName + @"_(model) {
+	}
+
+	void ComputePreference(const State& state) {
+		const " + data.ProjectNameWithCapitalLetter + @"State& " + data.ProjectName + @"_state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(state);
+		legal_actions_.clear();
+		preferred_actions_.clear();
+
+		for (int a = 0; a < " + data.NumberOfActions + @"; a++) {
+			double reward = 0;
+			bool meetPrecondition = false;
+            bool isPreferredAction = false;
+			" + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(" + data.ProjectName + @"_state, reward, meetPrecondition, a);
+            " + data.ProjectNameWithCapitalLetter + @"::CheckIsPreferredAction(" + data.ProjectName + @"_state, isPreferredAction, a);
+            
+			if(meetPrecondition)
+			{
+			    legal_actions_.push_back(a);
+			}
+            if(meetPrecondition && isPreferredAction)
+			{
+			    preferred_actions_.push_back(a);
+			}
+		}
+	}
+};
 
 /* ==============================================================================
  * " + data.ProjectNameWithCapitalLetter + @" class
@@ -3612,7 +3719,7 @@ Belief* " + data.ProjectNameWithCapitalLetter + @"::InitialBelief(const State* s
  
 
 POMCPPrior* " + data.ProjectNameWithCapitalLetter + @"::CreatePOMCPPrior(string name) const { 
-		return new UniformPOMCPPrior(this);
+		return new " + data.ProjectNameWithCapitalLetter + @"POMCPPrior(this);
 }
 
 void " + data.ProjectNameWithCapitalLetter + @"::PrintState(const State& state, ostream& ostr) const {
@@ -3677,14 +3784,16 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 	
 	SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
 
-	ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, reward, __moduleExecutionTime);
+	ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime);
 
 	State *s_state_ = Copy(&s_state__);
 	" + data.ProjectNameWithCapitalLetter + @"State &state_ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state_);
 
-	ModuleDynamicModel(state, state_, state__, rand_num, actionId, reward,
-					   observation, __moduleExecutionTime);
-	
+    double tReward = 0;
+	ModuleDynamicModel(state, state_, state__, rand_num, actionId, tReward,
+					   observation, __moduleExecutionTime, meetPrecondition);
+	reward += tReward;
+
 	Free(s_state);
 	Free(s_state_);
 	bool finalState = ProcessSpecialStates(state__, reward);
@@ -3699,6 +3808,7 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 }
 
 " + GetCheckPreconditionsForModelCpp(data) + Environment.NewLine +
+ GetIsPreferredActionForModelCpp(data) + Environment.NewLine +
  GetSampleModuleExecutionTimeFunction(data) + Environment.NewLine +
  GetExtrinsicChangesDynamicModelFunction(data) + Environment.NewLine +
  GetModuleDynamicModelFunction(data) + Environment.NewLine +
