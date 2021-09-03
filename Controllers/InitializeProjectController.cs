@@ -30,19 +30,26 @@ namespace WebApiCSharp.Controllers
 
         [HttpPost]
         public IActionResult Create(InitializeProject initProj)
-        {
+        { 
             List<string> errors = new List<string>();
-            string buildOutput;
-            string runOutput;
+            string buildSolverOutput;
+            string buildRosMiddlewareOutput;
             initProj.MiddlewareConfiguration = (initProj.MiddlewareConfiguration == null) ? new MiddlewareConfiguration() : initProj.MiddlewareConfiguration;
             initProj.SolverConfiguration = (initProj.SolverConfiguration == null) ? new SolverConfiguration() : initProj.SolverConfiguration;
+            initProj.RunWithoutRebuild = initProj.RunWithoutRebuild == null ? false : initProj.RunWithoutRebuild;
+            if(initProj.RosTarget != null)
+            {
+                initProj.RosTarget.TargetProjectInitializationTimeInSeconds ??= 5;
+            }
 
-            InitializeProjectBL.InitializeProject(initProj, out errors, out buildOutput, out runOutput);
+
+            InitializeProjectBL.InitializeProject(initProj, out errors, out buildSolverOutput, out buildRosMiddlewareOutput);
+            
             if(errors.Count > 0)
             {
                 return BadRequest(new {Errors = errors});
             }
-            return CreatedAtAction(nameof(Create), new {BuildOutput = buildOutput, RunOutput = runOutput});
+            return CreatedAtAction(nameof(Create), new {BuildSolverOutput = buildSolverOutput,BuildRosMiddlewareOutput = buildRosMiddlewareOutput});
         }
 
         

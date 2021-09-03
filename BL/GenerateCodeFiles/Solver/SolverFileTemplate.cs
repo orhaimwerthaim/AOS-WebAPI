@@ -255,7 +255,7 @@ install(FILES ""${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake""
         #endregion
 
 
-        public static string GetConfigHeaderFile(PLPsData data, InitializeProject initProj)
+        public static string GetConfigHeaderFile(PLPsData data, InitializeProject initProj, Solver solverData)
         {
             string file = @"#ifndef CONFIG_H
 #define CONFIG_H
@@ -265,6 +265,7 @@ install(FILES ""${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake""
 namespace despot {
 
 struct Config {
+    int solverId;
 	bool internalSimulation; 
 	int search_depth;
 	double discount;
@@ -281,6 +282,7 @@ struct Config {
     bool saveBeliefToDB;
 
 	Config() :
+        solverId("+solverData.SolverId+@"),
 		search_depth(" + data.Horizon + @"),
 		discount(" + data.Discount + @"),
 		root_seed(42),
@@ -1773,6 +1775,20 @@ Evaluator::~Evaluator() {
 
 
 bool Evaluator::RunStep(int step, int round) {
+    bool shutDown = false;
+	bool isFirst = false;
+	int solverId = Globals::config.solverId;
+
+	MongoDB_Bridge::GetSolverDetails(shutDown, isFirst, solverId);
+	if(shutDown)
+	{
+		return true;
+	}
+	else
+	{
+		MongoDB_Bridge::UpdateSolverDetails(isFirst, solverId);
+	}
+
 	if (target_finish_time_ != -1 && get_time_second() > target_finish_time_) {
 		if (!Globals::config.silence && out_)
 			*out_ << ""Exit. (Total time ""
@@ -2240,7 +2256,7 @@ private:
 		const int &moduleExecutionTime) const;
 	void ModuleDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State &initState, const " + data.ProjectNameWithCapitalLetter + @"State &afterExState, " + data.ProjectNameWithCapitalLetter + @"State &nextState, double rand_num, int actionId, double &reward,
 								 OBS_TYPE &observation, const int &moduleExecutionTime, const bool &__meetPrecondition) const;
-	bool ProcessSpecialStates(const " + data.ProjectNameWithCapitalLetter + @"State &state, double &reward) const;
+	bool ProcessSpecialStates(" + data.ProjectNameWithCapitalLetter + @"State &state, double &reward) const;
 
 	mutable MemoryPool<" + data.ProjectNameWithCapitalLetter + @"State> memory_pool_;
 	static std::default_random_engine generator;
@@ -2517,6 +2533,11 @@ namespace despot
                     CompoundVarTypePLP_Variable oComVar = complType.Variables[i];
                     result += "		" + oComVar.Type + " " + oComVar.Name + ";" + Environment.NewLine;
                 }
+                result += @"		inline bool operator==(const " + complType.TypeName + "& other)const{return " +
+                    String.Join(" && ", complType.Variables.Select(x => "(*this)." + x.Name + " == other." + x.Name)) + ";};" + Environment.NewLine;
+                result += @"		inline bool operator!=(const " + complType.TypeName + "& other)const{return !(*this == other);};" + Environment.NewLine;
+                //inline bool operator==(const tLocation& other)const{return (*this).x == other.x && (*this).y == other.y;};
+                //inline bool operator!=(const tLocation& other)const{return !(*this == other);};
                 result += @"		" + complType.TypeName + @"(); 
 	};
 
@@ -2568,6 +2589,10 @@ namespace despot
         private static string GetVariableDeclarationsForStateHeaderFile(PLPsData data)
         {
             string result = "";
+
+            //
+            result += "    bool OneTimeRewardUsed[" + data.SpecialStates.Count + "]={" + string.Join(",", data.SpecialStates.Select(x => "true")) + "};" + Environment.NewLine;
+
             foreach (EnumVarTypePLP oEnumType in data.GlobalEnumTypes)
             {
                 result += "    std::vector<" + oEnumType.TypeName + "> " + oEnumType.TypeName + "Objects;" + Environment.NewLine;
@@ -2717,6 +2742,159 @@ public:
 
             return result;
         }
+
+        public static string GetPomcpHeaderFile(PLPsData data)
+        {
+            string file = "";
+            file = @"#ifndef POMCP_H
+#define POMCP_H
+
+#include <despot/core/pomdp.h>
+#include <despot/core/node.h>
+#include <despot/core/globals.h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>
+namespace despot {
+
+/* =============================================================================
+ * POMCPPrior class
+ * =============================================================================*/
+ 
+class POMCPPrior
+{
+protected:
+	const DSPOMDP* model_;
+	History history_;
+	double exploration_constant_;
+	std::vector<int> preferred_actions_;
+	std::vector<int> legal_actions_;
+
+public:
+	POMCPPrior(const DSPOMDP* model);
+	virtual ~POMCPPrior();
+
+	inline void exploration_constant(double constant) {
+		exploration_constant_ = constant;
+	}
+
+	inline double exploration_constant() const {
+		return exploration_constant_;
+	}
+
+	inline virtual int SmartCount(int action) const {
+		return 10;
+	}
+
+	inline virtual double SmartValue(int action) const {
+		return 1;
+	}
+
+	inline virtual const History& history() const {
+		return history_;
+	}
+
+	inline virtual void history(History h) {
+		history_ = h;
+	}
+
+	inline virtual void Add(int action, OBS_TYPE obs) {
+		history_.Add(action, obs);
+	}
+
+	inline virtual void PopLast() {
+		history_.RemoveLast();
+	}
+
+  inline virtual void PopAll() {
+		history_.Truncate(0);
+	}
+
+	virtual void ComputePreference(const State& state) = 0;
+
+	const std::vector<int>& preferred_actions() const;
+	const std::vector<int>& legal_actions() const;
+
+	int GetAction(const State& state);
+};
+
+/* =============================================================================
+ * UniformPOMCPPrior class
+ * =============================================================================*/
+
+class UniformPOMCPPrior: public POMCPPrior {
+public:
+	UniformPOMCPPrior(const DSPOMDP* model);
+	virtual ~UniformPOMCPPrior();
+
+	void ComputePreference(const State& state);
+};
+
+/* =============================================================================
+ * POMCP class
+ * =============================================================================*/
+
+
+
+class POMCP: public Solver {
+protected:
+	VNode* root_;
+	POMCPPrior* prior_;
+	bool reuse_;
+
+public:
+	POMCP(const DSPOMDP* model, POMCPPrior* prior, Belief* belief = NULL);
+	virtual ValuedAction Search();
+	virtual ValuedAction Search(double timeout);
+
+	void reuse(bool r);
+	virtual void belief(Belief* b);
+	virtual void Update(int action, OBS_TYPE obs);
+	//virtual void Update(int action, OBS_TYPE obs, std::map<std::string, bool> updatesFromAction);
+	static VNode* CreateVNode(int depth, const State*, POMCPPrior* prior,
+		const DSPOMDP* model);
+	static double Simulate(State* particle, VNode* root, const DSPOMDP* model,
+		POMCPPrior* prior, std::vector<int>* simulateActionSequence);
+	static double Simulate(State* particle, RandomStreams& streams,
+		VNode* vnode, const DSPOMDP* model, POMCPPrior* prior);
+	static double Rollout(State* particle, int depth, const DSPOMDP* model,
+		POMCPPrior* prior, std::vector<int>* simulateActionSequence);
+	static double Rollout(State* particle, RandomStreams& streams, int depth,
+		const DSPOMDP* model, POMCPPrior* prior);
+	static ValuedAction Evaluate(VNode* root, std::vector<State*>& particles,
+		RandomStreams& streams, const DSPOMDP* model, POMCPPrior* prior);
+	static int UpperBoundAction(const VNode* vnode, double explore_constant, const DSPOMDP* model, Belief* b);
+	static int UpperBoundAction(const VNode* vnode, double explore_constant);
+	static ValuedAction OptimalAction(const VNode* vnode);
+	static int Count(const VNode* vnode);
+	 std::string GenerateDotGraph(VNode *root, int depthLimit, const DSPOMDP* model);
+	 void GenerateDotGraphVnode(VNode *vnode, int &currentNodeID, std::stringstream &ssNodes, std::stringstream &ssEdges, int depthLimit, const DSPOMDP* model);
+};
+
+/* =============================================================================
+ * DPOMCP class
+ * =============================================================================*/
+
+class DPOMCP: public POMCP {
+public:
+	DPOMCP(const DSPOMDP* model, POMCPPrior* prior, Belief* belief = NULL);
+
+	virtual ValuedAction Search(double timeout);
+	static VNode* ConstructTree(std::vector<State*>& particles,
+		RandomStreams& streams, const DSPOMDP* model, POMCPPrior* prior,
+		History& history, double timeout);
+
+	virtual void belief(Belief* b);
+	virtual void Update(int action, OBS_TYPE obs);
+	
+};
+
+
+} // namespace despot
+
+#endif
+";
+            return file;
+        }
+
         public static string GetActionManagerCPpFile(PLPsData data, out int totalNumberOfActionsInProject)
         {
             string file = @"
@@ -2766,9 +2944,9 @@ std::string Prints::PrintObs(int action, int obs)
     {
         const " + data.ProjectNameWithCapitalLetter + @"State& state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(_state);
         json j;
-    j[""agentOneLoc""] = Prints::PrinttCell(state.agentOneLoc);
-    j[""agentTwoLoc""] = Prints::PrinttCell(state.agentTwoLoc);
-    j[""isAgentOneTurn""] = Prints::PrinttCell(state.bOneLoc);
+    //j[""agentOneLoc""] = Prints::PrinttCell(state.agentOneLoc);
+    //j[""agentTwoLoc""] = Prints::PrinttCell(state.agentTwoLoc);
+    //j[""isAgentOneTurn""] = Prints::PrinttCell(state.bOneLoc);
     //j[""stateTest""] = state;
 
 
@@ -3405,18 +3583,30 @@ namespace despot {
             return result;
         }
 
+
         private static string GetProcessSpecialStatesFunction(PLPsData data)
         {
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "bool " + data.ProjectNameWithCapitalLetter + "::ProcessSpecialStates(const " + data.ProjectNameWithCapitalLetter + "State &state, double &reward) const");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "bool " + data.ProjectNameWithCapitalLetter + "::ProcessSpecialStates(" + data.ProjectNameWithCapitalLetter + "State &state, double &reward) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "bool isFinalState = false;");
-            foreach (SpecialState spState in data.SpecialStates)
+            for (int i = 0; i < data.SpecialStates.Count; i++)
             {
-                result += GenerateFilesUtils.GetIndentationStr(1, 4, "if (" + HandleCodeLine(data, spState.StateConditionCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ")");
+                SpecialState spState = data.SpecialStates[i];
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(state.OneTimeRewardUsed[" + i + "])");
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
-                result += GenerateFilesUtils.GetIndentationStr(2, 4, "reward += " + spState.Reward + ";");
-                result += GenerateFilesUtils.GetIndentationStr(2, 4, "isFinalState = " + spState.IsGoalState.ToString().ToLower() + ";");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "if (" + HandleCodeLine(data, spState.StateConditionCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ")");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
+                if (spState.IsOneTimeReward && !spState.IsGoalState)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "state.OneTimeRewardUsed[" + i + "] = false;");
+                }
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "reward += " + spState.Reward + ";");
+                if (spState.IsGoalState)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "isFinalState = true;");
+                }
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
             }
 

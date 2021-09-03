@@ -379,6 +379,15 @@ include_directories(
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"\" and " + (string.IsNullOrEmpty(responseRule.Condition) ? "True" : responseRule.Condition) + ":");
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "moduleResponse = \"" + glue.Name + "_" + responseRule.Response + "\"");
                 }
+
+                foreach (var responseRule in plp.ResponseRules)
+                {
+                    foreach (var assign in responseRule.ResponseAssignmentsToGlobalVar)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"" + glue.Name + "_" + responseRule.Response + "\":");
+                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "assignGlobalVar[\""+assign.GlobalVarName+"\"] = " + assign.Value);
+                    }
+                }
                 result += Environment.NewLine;
             }
             return result;
@@ -624,6 +633,7 @@ class ListenToMongoDbCommands:
                                   ""EndTime"": datetime.datetime.utcnow(),
                                   ""ActionForExecutionId"": self.currentActionFotExecutionId}
             aos_ModuleResponses_collection.insert_one(moduleResponseItem)
+            return
 
         moduleResponse = """"
         assignGlobalVar = {}
@@ -754,12 +764,28 @@ if __name__ == '__main__':
                 result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.updateGlobalVarLowLevelValue(\"" + assignment.Key + "\"," + value + ")");
             }
 
+            foreach(var anyValueVar in data.AnyValueStateVariableNames)
+            {
+                bool added = false;
+                foreach (var assignment in assignments)
+                {
+                    added |= assignment.Key.Equals(anyValueVar);
+                    if(added)break;
+                }
+                if(!added)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.updateGlobalVarLowLevelValue(\"" + anyValueVar + "\", None)");
+                }
+            }
+
 
             result += @"
     def updateGlobalVarLowLevelValue(self, varName, value):
+        isInit = value is not None
         aos_GlobalVariablesAssignments_collection.replace_one({""GlobalVariableName"": varName},{""GlobalVariableName"": varName, ""LowLevelValue"": value,
-                                                                                               ""IsInitialized"": True, ""UpdatingActionSequenceId"": ""initialization"",
+                                                                                               ""IsInitialized"": isInit, ""UpdatingActionSequenceId"": ""initialization"",
                                                                                                ""ModuleResponseId"": ""initialization""},upsert=True)
+
 
 ";
             return result;

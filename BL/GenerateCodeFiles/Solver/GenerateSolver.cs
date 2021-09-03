@@ -23,16 +23,25 @@ namespace WebApiCSharp.GenerateCodeFiles
         private string ProjectModelPrimitivesPath;
         private string ProjectHeaderModelPrimitivesPath;
 
-        
+        private string ProjectHeaderModelPrimitivesBasePath;
 
-        public GenerateSolver(PLPsData data, InitializeProject initProj)
+        private string ProjectModelPrimitivesBasePath;
+
+
+
+        public GenerateSolver(PLPsData data, InitializeProject initProj, Solver solverData)
         {
             int totalNumberOfActionsInProject;
             plpsData = data;
             projectNameWithCapitalFirstLetter = char.ToUpper(plpsData.ProjectName[0]) + plpsData.ProjectName.Substring(1);
+            
+            ProjectHeaderModelPrimitivesBasePath = conf.SolverPath + "/include/despot/model_primitives";
+            ProjectHeaderModelPrimitivesPath = ProjectHeaderModelPrimitivesBasePath + "/" + plpsData.ProjectName;
 
-            ProjectHeaderModelPrimitivesPath = conf.SolverPath + "/include/despot/model_primitives/" + plpsData.ProjectName;
-            ProjectModelPrimitivesPath = conf.SolverPath + "/src/model_primitives/" + plpsData.ProjectName;
+            ProjectModelPrimitivesBasePath = conf.SolverPath + "/src/model_primitives";
+            ProjectModelPrimitivesPath = ProjectModelPrimitivesBasePath + "/" + plpsData.ProjectName;
+
+
             ProjectExamplePathSrc = conf.SolverPath + "/examples/cpp_models/" + plpsData.ProjectName + "/src";
             ProjectExamplePath = conf.SolverPath + "/examples/cpp_models/" + plpsData.ProjectName;
 
@@ -41,24 +50,24 @@ namespace WebApiCSharp.GenerateCodeFiles
             CleanAndGenerateDirecotories();
 
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/actionManager.h", SolverFileTemplate.GetActionManagerHeaderFile(data));
-            Dictionary<string,Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar;
+            Dictionary<string, Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar;
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/enum_map_" + data.ProjectName + ".h", SolverFileTemplate.GetEnumMapHeaderFile(data, out enumMappingsForModuleResponseAndTempVar));
             SolverFileTemplate.EnumMappingsForModuleResponseAndTempVar = enumMappingsForModuleResponseAndTempVar;
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/state_var_types.h", SolverFileTemplate.GetStateVarTypesHeaderFile(data));
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/state.h", SolverFileTemplate.GetStateHeaderFile(data));
-            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/config.h", SolverFileTemplate.GetConfigHeaderFile(data, initProj));
-
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/config.h", SolverFileTemplate.GetConfigHeaderFile(data, initProj, solverData));
+//
 
             GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/Makefile", SolverFileTemplate.GetProjectExample_MakeFile());
             GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/CMakeLists.txt", SolverFileTemplate.GetProjectExample_CMakeLists(plpsData.ProjectName));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/CMakeLists.txt", SolverFileTemplate.GetBasePath_CMakeLists(plpsData.ProjectName));
 
-
+GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp.h", SolverFileTemplate.GetPomcpHeaderFile(data));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/solver/pomcp.cpp", SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath, conf.SolverGraphPDF_Depth, initProj));
-            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/evaluator.cpp", SolverFileTemplate.GetEvaluatorCppFile(data,  initProj));
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/evaluator.cpp", SolverFileTemplate.GetEvaluatorCppFile(data, initProj));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/simple_tui.cpp", SolverFileTemplate.GetSimpleTuiCppFile(data, initProj));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/evaluator.h", SolverFileTemplate.GetEvaluatorHeaderFile(data));
- 
+
 
             GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/actionManager.cpp", SolverFileTemplate.GetActionManagerCPpFile(data, out totalNumberOfActionsInProject));
             data.NumberOfActions = totalNumberOfActionsInProject;
@@ -74,14 +83,21 @@ namespace WebApiCSharp.GenerateCodeFiles
 
 
         }
- 
+
         private void CleanAndGenerateDirecotories()
         {
+            GenerateFilesUtils.DeleteAndCreateDirectory(ProjectHeaderModelPrimitivesBasePath);
+            GenerateFilesUtils.DeleteAndCreateDirectory(ProjectModelPrimitivesBasePath);
             GenerateFilesUtils.DeleteAndCreateDirectory(ProjectExamplePath);
             Directory.CreateDirectory(ProjectExamplePathSrc);
             GenerateFilesUtils.DeleteAndCreateDirectory(ProjectModelPrimitivesPath);
             GenerateFilesUtils.DeleteAndCreateDirectory(ProjectHeaderModelPrimitivesPath);
 
+
+
+
+            GenerateFilesUtils.DeleteAndCreateDirectory(ProjectHeaderModelPrimitivesPath);
+ 
         }
 
     }

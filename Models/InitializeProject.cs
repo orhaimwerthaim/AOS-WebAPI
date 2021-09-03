@@ -8,6 +8,8 @@ namespace WebApiCSharp.Models
     { 
         public string PLPsDirectoryPath { get; set; }
 
+        public bool? RunWithoutRebuild { get; set; }
+
         public RosTargetProject RosTarget { get; set; } 
         public SolverConfiguration SolverConfiguration{ get; set; }
         public MiddlewareConfiguration MiddlewareConfiguration{ get; set; } 
@@ -18,7 +20,7 @@ namespace WebApiCSharp.Models
         public string WorkspaceDirectortyPath { get; set; }
 
         public string TargetProjectLaunchFile { get; set; }
-        public int TargetProjectInitializationTimeInSeconds { get; set; }
+        public double? TargetProjectInitializationTimeInSeconds { get; set; }
         public List<string> RosTargetProjectPackages { get; set; }
 
         

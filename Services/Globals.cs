@@ -12,6 +12,7 @@ namespace WebApiCSharp.Services
     { 
         public const string LOCAL_VARIABLES_COLLECTION_NAME = "LocalVariables";
         public const string PLPS_COLLECTION_NAME = "PLPs";
+        public const string SOLVERS_COLLECTION_NAME = "Solvers";
         public const string ACTIONS_COLLECTION_NAME = "Actions";
         public const string GLOBAL_VARIABLES_ASSIGNMENTS_COLLECTION_NAME = "GlobalVariablesAssignments";
         public const string ACTIONS_FOR_EXECUTION_COLLECTION_NAME = "ActionsForExecution";

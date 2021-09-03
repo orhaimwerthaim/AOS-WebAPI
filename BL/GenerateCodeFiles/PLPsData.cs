@@ -39,6 +39,8 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public List<GlobalVariableDeclaration> GlobalVariableDeclarations = new List<GlobalVariableDeclaration>();
 
+        public List<string> AnyValueStateVariableNames = new List<string>();
+
         #endregion
         public const string GLOBAL_VARIABLE_STATE_REF = "state.";
         public const string PLP_TYPE_NAME_ENVIRONMENT = "Environment";
@@ -392,6 +394,8 @@ namespace WebApiCSharp.GenerateCodeFiles
             return errors;
         }
 
+        
+
         private List<string> GetBeliefStateAssignments_ExtrinsicChangesDynamicModel_AndSpecialStates()
         {
             List<string> errors = new List<string>();
@@ -418,14 +422,15 @@ namespace WebApiCSharp.GenerateCodeFiles
                 {
                     BsonDocument docState = bState.AsBsonDocument;
                     SpecialState spState = new SpecialState();
-                    spState.IsGoalState = docState["IsGoalState"].AsBoolean;
+                    spState.IsGoalState = !docState.Contains("IsGoalState") ? false : docState["IsGoalState"].AsBoolean;
                     spState.StateConditionCode = docState["StateConditionCode"].ToString();
+                    spState.IsOneTimeReward = !docState.Contains("IsOneTimeReward") ? true : docState["IsOneTimeReward"].AsBoolean;
                     spState.Reward = docState["Reward"].AsDouble;
                     SpecialStates.Add(spState);
                 }
                 catch (Exception e)
                 {
-                    errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"SpecialStates.IsGoalState\" must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
+                    errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"SpecialStates.IsGoalState\" and \"IsOneTimeReward\"(default is 'true') must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
                 }
             }
             return errors;
@@ -515,8 +520,45 @@ namespace WebApiCSharp.GenerateCodeFiles
                     "', 'DefaultCode' and for 'Default' are defined, only one of them can be defined!");
                 }
             }
-
+            InitAnyValueStateVariablesListForCompundType();
             return errors;
+        }
+ 
+
+        private void InitAnyValueStateVariablesListForCompundType(string type = null, string varPrefixName = null)
+        {
+            if (type == null && varPrefixName == null)
+            {
+                foreach (var gVar in GlobalVariableDeclarations)
+                {
+                    if (gVar.Type.Equals(ANY_VALUE_TYPE_NAME))
+                    {
+                        AnyValueStateVariableNames.Add("state." + gVar.Name);
+                    }
+                    else if (!GenerateFilesUtils.IsPrimitiveType(gVar.Type))
+                    {
+                        InitAnyValueStateVariablesListForCompundType(gVar.Type, "state." + gVar.Name);
+                    }
+                }
+            }
+            else
+            {
+                var compType = GlobalCompoundTypes.Where(x => x.TypeName.Equals(type)).FirstOrDefault();
+                if(compType != null)
+                {
+                    foreach(var subField in compType.Variables)
+                    {
+                        if(subField.Type.Equals(ANY_VALUE_TYPE_NAME))
+                        {
+                            AnyValueStateVariableNames.Add(varPrefixName + "." + subField.Name);
+                        }
+                        else if (!GenerateFilesUtils.IsPrimitiveType(subField.Type))
+                        {
+                            InitAnyValueStateVariablesListForCompundType(subField.Type, varPrefixName + "." + subField.Name);
+                        }
+                    }
+                }
+            }
         }
 
         private string GetBsonStringField(BsonDocument doc, string field, string internalField = null)
@@ -1063,6 +1105,8 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string StateConditionCode;
         public double Reward;
         public bool IsGoalState;
+
+        public bool IsOneTimeReward;
     }
 
     public enum DistributionType { Normal, Discrete, Uniform };
