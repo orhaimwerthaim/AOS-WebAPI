@@ -1007,9 +1007,13 @@ namespace WebApiCSharp.GenerateCodeFiles
                         errors.Add(plpDescription + ", 'TempVar', field 'Type' is mandatory (when 'TempVar' is defined)!");
                     }
 
-                    if (oAssignment.TempVariable.Type != ENUM_VARIABLE_TYPE_NAME && oAssignment.TempVariable.Type != "bool" && oAssignment.TempVariable.Type != "int" && GlobalEnumTypes.Where(x => x.TypeName.Equals(oAssignment.TempVariable.Type)).FirstOrDefault() == null)
+                    if (oAssignment.TempVariable.Type != ENUM_VARIABLE_TYPE_NAME && oAssignment.TempVariable.Type != "bool" && 
+                        oAssignment.TempVariable.Type != "int" && 
+                         oAssignment.TempVariable.Type != "float" &&
+                          oAssignment.TempVariable.Type != "double" &&
+                          GlobalEnumTypes.Where(x => x.TypeName.Equals(oAssignment.TempVariable.Type)).FirstOrDefault() == null)
                     {
-                        errors.Add(plpDescription + ", 'TempVar', valid values for field 'Type' are: 'enum','int' or 'bool'!");
+                        errors.Add(plpDescription + ", 'TempVar', valid values for field 'Type' are: 'enum','int', 'float', 'double' or 'bool'!");
                     }
                     if (oAssignment.TempVariable.Type == ENUM_VARIABLE_TYPE_NAME)
                     {

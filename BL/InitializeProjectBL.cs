@@ -157,8 +157,9 @@ catkin_make";
         }
 
 
-        public static void InitializeProject(InitializeProject initProj, out List<String> errors, out string buildOutput, out string buildRosMiddlewareOutput)
+        public static void InitializeProject(InitializeProject initProj, out List<String> errors, out List<String> remarks, out string buildOutput, out string buildRosMiddlewareOutput)
         {
+            remarks = new List<string>();
             errors = new List<string>();
             buildOutput = "";
             buildRosMiddlewareOutput = "";
@@ -166,23 +167,30 @@ catkin_make";
             {
                 int solverId = -1;
                 List<String> tempErrors;
+                List<String> tempRemarks;
                 if (initProj.RunWithoutRebuild.Value)//stop solver if it is running
                 {
                     solverId = SolversService.GetNextNewSolverId() - 1;
                     SolversService.StopOrStartSolver(solverId, true, initProj.SolverConfiguration.PlanningTimePerMoveInSeconds);
                 }
-                AosGeneralService.DeleteCollectionsBeforeProjectInitialization();
-                errors.AddRange(LoadPLPs(initProj.PLPsDirectoryPath));
+                AosGeneralService.DeleteCollectionsBeforeProjectInitialization(); 
+                errors.AddRange(LoadPLPs(initProj.PLPsDirectoryPath, out tempRemarks));
+                remarks.AddRange(tempRemarks);
+
                 PLPsData plpData = new PLPsData(out tempErrors);
                 errors.AddRange(tempErrors);
 
                 if(initProj.RunWithoutRebuild.Value)
                 {
                     SolversService.StopOrStartSolver(solverId, false, initProj.SolverConfiguration.PlanningTimePerMoveInSeconds);//set solver to start mode at db
-                    RunSolver(plpData);//start solver process
-                    RunRosMiddleware(initProj);
-                    buildOutput = "request included 'RunWithoutRebuild'";
-                    buildRosMiddlewareOutput = "request included 'RunWithoutRebuild'";
+
+                    if (!initProj.OnlyGenerateCode.Value)
+                    {
+                        RunSolver(plpData);//start solver process
+                        RunRosMiddleware(initProj);
+                        buildOutput = "request included 'RunWithoutRebuild'";
+                        buildRosMiddlewareOutput = "request included 'RunWithoutRebuild'";
+                    }
                     return;
                 }
                 else
@@ -195,15 +203,20 @@ catkin_make";
                     Solver solver = new Solver() { ProjectName = plpData.ProjectName, SolverId = nextSolverId, ServerGeneratedSolverDateTime = DateTime.UtcNow };
                     solver = SolversService.Add(solver);
                     GenerateSolver generateSolver = new GenerateSolver(plpData, initProj, solver);
-                    buildOutput = BuildAosSolver();
-
                     new GenerateRosMiddleware(plpData, initProj);
 
-                    buildRosMiddlewareOutput = initProj.SolverConfiguration.IsInternalSimulation ? "InternalSimulation" : BuildRosMiddleware(initProj);
-                    RunSolver(plpData);
-                    if (!initProj.SolverConfiguration.IsInternalSimulation)
+                    if (!initProj.OnlyGenerateCode.Value)
                     {
-                        RunRosMiddleware(initProj);
+                        buildOutput = BuildAosSolver();
+
+
+
+                        buildRosMiddlewareOutput = initProj.SolverConfiguration.IsInternalSimulation ? "InternalSimulation" : BuildRosMiddleware(initProj);
+                        RunSolver(plpData);
+                        if (!initProj.SolverConfiguration.IsInternalSimulation)
+                        {
+                            RunRosMiddleware(initProj);
+                        }
                     }
                 }
             }
@@ -300,8 +313,9 @@ catkin_make";
             buildOutputRos = buildOutputRos.Contains("[100%] Built target") ? "[100%] Built target" : buildOutputRos;
             return buildOutputRos;
         }
-        private static List<String> LoadPLPs(string pLPsDirectoryPath)
+        private static List<String> LoadPLPs(string pLPsDirectoryPath, out List<string> remarks)
         {
+            remarks = new List<string>();
             List<String> errorMessages = new List<string>();
 
             if (!Directory.Exists(pLPsDirectoryPath))
@@ -320,17 +334,26 @@ catkin_make";
             {
                 try
                 {
-                    string fileContent = System.IO.File.ReadAllText(filePath);
-                    using (JsonDocument plp = JsonDocument.Parse(fileContent))
+                    FileInfo fi = new FileInfo(filePath);
+                    if (filePath.ToLower().EndsWith(".json"))
                     {
-                        List<String> plpParseErrors;
-                        if (!IsValidPLP(plp, out plpParseErrors))
+                        string fileContent = System.IO.File.ReadAllText(filePath);
+                        using (JsonDocument plp = JsonDocument.Parse(fileContent))
                         {
-                            errorMessages.Add("File '" + filePath + "' is not a valid PLP");
-                            errorMessages.AddRange(plpParseErrors);
-                            return errorMessages;
+                            List<String> plpParseErrors;
+                            if (!IsValidPLP(plp, out plpParseErrors))
+                            {
+                                errorMessages.Add("File '" + filePath + "' is not a valid PLP");
+                                errorMessages.AddRange(plpParseErrors);
+                                return errorMessages;
+                            }
+                            BsonDocument bPLP = PLPsService.Add(plp);
                         }
-                        BsonDocument bPLP = PLPsService.Add(plp);
+                        remarks.Add("File '" + filePath + "' was successfully loaded");
+                    }
+                    else
+                    {
+                        remarks.Add("File '" + filePath + "' was not loaded since it's extension is not '.json'");
                     }
                 }
                 catch (Exception e)

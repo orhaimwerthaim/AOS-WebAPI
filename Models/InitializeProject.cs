@@ -10,6 +10,8 @@ namespace WebApiCSharp.Models
 
         public bool? RunWithoutRebuild { get; set; }
 
+        public bool? OnlyGenerateCode { get; set; }
+
         public RosTargetProject RosTarget { get; set; } 
         public SolverConfiguration SolverConfiguration{ get; set; }
         public MiddlewareConfiguration MiddlewareConfiguration{ get; set; } 

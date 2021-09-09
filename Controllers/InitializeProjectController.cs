@@ -32,24 +32,26 @@ namespace WebApiCSharp.Controllers
         public IActionResult Create(InitializeProject initProj)
         { 
             List<string> errors = new List<string>();
+            List<string> remarks = new List<string>();
             string buildSolverOutput;
             string buildRosMiddlewareOutput;
             initProj.MiddlewareConfiguration = (initProj.MiddlewareConfiguration == null) ? new MiddlewareConfiguration() : initProj.MiddlewareConfiguration;
             initProj.SolverConfiguration = (initProj.SolverConfiguration == null) ? new SolverConfiguration() : initProj.SolverConfiguration;
             initProj.RunWithoutRebuild = initProj.RunWithoutRebuild == null ? false : initProj.RunWithoutRebuild;
+            initProj.OnlyGenerateCode ??= false;
             if(initProj.RosTarget != null)
             {
                 initProj.RosTarget.TargetProjectInitializationTimeInSeconds ??= 5;
             }
 
 
-            InitializeProjectBL.InitializeProject(initProj, out errors, out buildSolverOutput, out buildRosMiddlewareOutput);
+            InitializeProjectBL.InitializeProject(initProj, out errors, out remarks, out buildSolverOutput, out buildRosMiddlewareOutput);
             
             if(errors.Count > 0)
             {
-                return BadRequest(new {Errors = errors});
+                return BadRequest(new {Errors = errors, Remarks = remarks});
             }
-            return CreatedAtAction(nameof(Create), new {BuildSolverOutput = buildSolverOutput,BuildRosMiddlewareOutput = buildRosMiddlewareOutput});
+            return CreatedAtAction(nameof(Create), new {Remarks = remarks, BuildSolverOutput = buildSolverOutput,BuildRosMiddlewareOutput = buildRosMiddlewareOutput});
         }
 
         

@@ -280,8 +280,10 @@ struct Config {
 	double noise;
 	bool silence;
     bool saveBeliefToDB;
+    bool handsOnDebug;
 
 	Config() :
+        handsOnDebug(false),
         solverId("+solverData.SolverId+@"),
 		search_depth(" + data.Horizon + @"),
 		discount(" + data.Discount + @"),
@@ -344,8 +346,15 @@ const vector<int>& POMCPPrior::legal_actions() const {
 	return legal_actions_;
 }
 
+const vector<double>& POMCPPrior::weighted_preferred_actions() const {
+	return weighted_preferred_actions_;
+}
+
 int POMCPPrior::GetAction(const State& state) {
 	ComputePreference(state);
+
+	if (weighted_preferred_actions_.size() != 0)
+		return Random::RANDOM.NextCategory(weighted_preferred_actions_);
 
 	if (preferred_actions_.size() != 0)
 		return Random::RANDOM.NextElement(preferred_actions_);
@@ -1780,7 +1789,7 @@ bool Evaluator::RunStep(int step, int round) {
 	int solverId = Globals::config.solverId;
 
 	MongoDB_Bridge::GetSolverDetails(shutDown, isFirst, solverId);
-	if(shutDown)
+	if(shutDown && !Globals::config.handsOnDebug)
 	{
 		return true;
 	}
@@ -2245,7 +2254,7 @@ public:
 	virtual void Free(State* particle) const;
 	int NumActiveParticles() const;
  	static void CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + @"State& state, double &reward, bool &meetPrecondition, int actionId);
-    static void CheckIsPreferredAction(const " + data.ProjectNameWithCapitalLetter + @"State& state, bool &isPreferredAction, int actionId);
+    static void ComputePreferredActionValue(const " + data.ProjectNameWithCapitalLetter + @"State& state, double &__heuristicValue, int actionId);
      
  
 	" + data.ProjectNameWithCapitalLetter + @"(); 
@@ -2765,6 +2774,7 @@ protected:
 	const DSPOMDP* model_;
 	History history_;
 	double exploration_constant_;
+    std::vector<double> weighted_preferred_actions_;
 	std::vector<int> preferred_actions_;
 	std::vector<int> legal_actions_;
 
@@ -2812,6 +2822,7 @@ public:
 
 	const std::vector<int>& preferred_actions() const;
 	const std::vector<int>& legal_actions() const;
+    const std::vector<double>& weighted_preferred_actions() const;
 
 	int GetAction(const State& state);
 };
@@ -3499,12 +3510,12 @@ namespace despot {
         }
 
         //preferred_actions_
-        private static string GetIsPreferredActionForModelCpp(PLPsData data)
+        private static string GetComputePreferredActionValueForModelCpp(PLPsData data)
         {
-            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckIsPreferredAction(const " + data.ProjectNameWithCapitalLetter + "State& state, bool &__isPreferredAction, int actionId)");
+            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ComputePreferredActionValue(const " + data.ProjectNameWithCapitalLetter + "State& state, double &__heuristicValue, int actionId)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "__isPreferredAction = false;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "__heuristicValue = 0;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;"); 
             foreach (PLP plp in data.PLPs.Values)
             {
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(actType == " + plp.Name + "Action)");
@@ -3517,7 +3528,7 @@ namespace despot {
 
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "}");
             }
-
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "__heuristicValue = __heuristicValue < 0 ? 0 : __heuristicValue;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
 
 
@@ -3758,6 +3769,8 @@ namespace despot {
 #include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h> 
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
 #include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
+#include <algorithm>
+#include <cmath> 
 
 using namespace std;
 
@@ -3849,26 +3862,35 @@ public:
 
 	void ComputePreference(const State& state) {
 		const " + data.ProjectNameWithCapitalLetter + @"State& " + data.ProjectName + @"_state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(state);
-		legal_actions_.clear();
+		weighted_preferred_actions_.clear();
+        legal_actions_.clear();
 		preferred_actions_.clear();
+        std::vector<double> weighted_preferred_actions_un_normalized;
 
+        double heuristicValueTotal = 0;
 		for (int a = 0; a < " + data.NumberOfActions + @"; a++) {
+            weighted_preferred_actions_un_normalized.push_back(0);
 			double reward = 0;
-			bool meetPrecondition = false;
-            bool isPreferredAction = false;
+			bool meetPrecondition = false; 
 			" + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(" + data.ProjectName + @"_state, reward, meetPrecondition, a);
-            " + data.ProjectNameWithCapitalLetter + @"::CheckIsPreferredAction(" + data.ProjectName + @"_state, isPreferredAction, a);
-            
-			if(meetPrecondition)
-			{
-			    legal_actions_.push_back(a);
-			}
-            if(meetPrecondition && isPreferredAction)
-			{
-			    preferred_actions_.push_back(a);
-			}
-		}
-	}
+            if(meetPrecondition)
+            {
+                legal_actions_.push_back(a);
+                double __heuristicValue; 
+                " + data.ProjectNameWithCapitalLetter + @"::ComputePreferredActionValue(" + data.ProjectName + @"_state, __heuristicValue, a);
+                heuristicValueTotal += __heuristicValue;
+                weighted_preferred_actions_un_normalized[a]=__heuristicValue;
+            }
+        }
+
+        if(heuristicValueTotal > 0)
+        {
+            for (int a = 0; a < " + data.NumberOfActions + @"; a++) 
+            {
+                weighted_preferred_actions_.push_back(weighted_preferred_actions_un_normalized[a] / heuristicValueTotal);
+            } 
+        }
+    }
 };
 
 /* ==============================================================================
@@ -3998,7 +4020,7 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 }
 
 " + GetCheckPreconditionsForModelCpp(data) + Environment.NewLine +
- GetIsPreferredActionForModelCpp(data) + Environment.NewLine +
+ GetComputePreferredActionValueForModelCpp(data) + Environment.NewLine +
  GetSampleModuleExecutionTimeFunction(data) + Environment.NewLine +
  GetExtrinsicChangesDynamicModelFunction(data) + Environment.NewLine +
  GetModuleDynamicModelFunction(data) + Environment.NewLine +
