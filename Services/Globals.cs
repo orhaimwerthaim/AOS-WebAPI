@@ -17,5 +17,7 @@ namespace WebApiCSharp.Services
         public const string GLOBAL_VARIABLES_ASSIGNMENTS_COLLECTION_NAME = "GlobalVariablesAssignments";
         public const string ACTIONS_FOR_EXECUTION_COLLECTION_NAME = "ActionsForExecution";
         public const string MODULE_RESPONSES_COLLECTION_NAME = "ModuleResponses";
+
+        public const string BELIEF_STATES_COLLECTION_NAME = "BeliefStates";
     }
 }

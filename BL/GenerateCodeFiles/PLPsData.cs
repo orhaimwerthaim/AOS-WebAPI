@@ -520,41 +520,47 @@ namespace WebApiCSharp.GenerateCodeFiles
                     "', 'DefaultCode' and for 'Default' are defined, only one of them can be defined!");
                 }
             }
-            InitAnyValueStateVariablesListForCompundType();
+            FillGlobalVariableDeclarationsSubFields();
             return errors;
         }
- 
-
-        private void InitAnyValueStateVariablesListForCompundType(string type = null, string varPrefixName = null)
+  
+        private void FillGlobalVariableDeclarationsSubFields(GlobalVariableDeclaration parentVar = null)
         {
-            if (type == null && varPrefixName == null)
+            if (parentVar == null)
             {
                 foreach (var gVar in GlobalVariableDeclarations)
                 {
+                    gVar.StateVariableName = "state." + gVar.Name;
                     if (gVar.Type.Equals(ANY_VALUE_TYPE_NAME))
                     {
-                        AnyValueStateVariableNames.Add("state." + gVar.Name);
+                        AnyValueStateVariableNames.Add(gVar.StateVariableName);
                     }
                     else if (!GenerateFilesUtils.IsPrimitiveType(gVar.Type))
-                    {
-                        InitAnyValueStateVariablesListForCompundType(gVar.Type, "state." + gVar.Name);
+                    { 
+                        FillGlobalVariableDeclarationsSubFields(gVar);
                     }
                 }
             }
             else
             {
-                var compType = GlobalCompoundTypes.Where(x => x.TypeName.Equals(type)).FirstOrDefault();
+                var compType = GlobalCompoundTypes.Where(x => x.TypeName.Equals(parentVar.Type)).FirstOrDefault();
                 if(compType != null)
                 {
                     foreach(var subField in compType.Variables)
                     {
+                        
+                        GlobalVariableDeclaration subVar = new GlobalVariableDeclaration();
+                        subVar.Name = subField.Name;
+                        subVar.Default = subField.Default;
+                        subVar.StateVariableName = parentVar.StateVariableName + "." + subField.Name;
+                        parentVar.SubCompoundFeilds.Add(subVar);
                         if(subField.Type.Equals(ANY_VALUE_TYPE_NAME))
                         {
-                            AnyValueStateVariableNames.Add(varPrefixName + "." + subField.Name);
+                            AnyValueStateVariableNames.Add(subVar.StateVariableName);
                         }
                         else if (!GenerateFilesUtils.IsPrimitiveType(subField.Type))
                         {
-                            InitAnyValueStateVariablesListForCompundType(subField.Type, varPrefixName + "." + subField.Name);
+                            FillGlobalVariableDeclarationsSubFields(subVar);
                         }
                     }
                 }
@@ -1091,7 +1097,8 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string DefaultCode;
         public bool IsActionParameterValue;
 
-
+        public List<GlobalVariableDeclaration> SubCompoundFeilds = new List<GlobalVariableDeclaration>();
+        public string StateVariableName;
         public string UnderlineLocalVariableType;
 
     }

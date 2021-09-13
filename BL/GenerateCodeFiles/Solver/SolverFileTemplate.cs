@@ -414,7 +414,7 @@ ValuedAction POMCP::Search(double timeout) {
     if(Globals::config.saveBeliefToDB)
 	{
 		vector<State*> temp = belief_->Sample(" + initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB + @");
-		Prints::GetJsonForBelief(temp);
+		Prints::SaveBeliefParticles(temp);
 	}
 
 	int hist_size = history_.Size();
@@ -2015,12 +2015,20 @@ double POMDPEvaluator::EndRound() {
 
 bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates) {
 	ActionDescription &actDesc = *ActionManager::actions[action];
+    ActionType acType(actDesc.actionType);
+	std::string actionParameters = actDesc.GetActionParametersJson_ForActionExecution();
+		
+	std::string actionName = enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[acType];
+	  
+	bsoncxx::oid actionId = MongoDB_Bridge::SendActionToExecution(actDesc.actionId, actionName, actionParameters);
+
 	double random_num = random_.NextDouble();
 	if(Globals::IsInternalSimulation())
 	{
 		
 		bool terminal = model_->Step(*state_, random_num, action, reward, obs);
-
+		std::string obsStr = enum_map_"+data.ProjectName+@"::vecResponseEnumToString[("+data.ProjectNameWithCapitalLetter+@"ResponseModuleAndTempEnums)obs];
+		MongoDB_Bridge::SaveInternalActionResponse(actionName, actionId, obsStr);
 		reward_ = reward;
 		total_discounted_reward_ += Globals::Discount(step_) * reward;
 		total_undiscounted_reward_ += reward;
@@ -2029,14 +2037,7 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 		return terminal;
 	}
 	else
-	{
-		ActionType acType(actDesc.actionType);
-		std::string actionParameters = actDesc.GetActionParametersJson_ForActionExecution();
-		
-		std::string actionName = enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[acType];
-	  
-		bsoncxx::oid actionId = MongoDB_Bridge::SendActionToExecution(actDesc.actionId, actionName, actionParameters);
-
+	{ 
 		std::string obsStr = """";
 		updates = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
@@ -2365,8 +2366,9 @@ class Prints
 	static std::string PrintActionType(ActionType);
 	static std::string PrintState(" + data.ProjectNameWithCapitalLetter + @"State state);
 	static std::string PrintObs(int action, int obs);
-    static std::string GetJsonForBelief(vector<State *> particles);
+    static void SaveBeliefParticles(vector<State *> particles);
     static std::string GetStateJson(State &state);
+    static void GetStateFromJson(" + data.ProjectNameWithCapitalLetter + @"State &state, std::string jsonStr, int stateIndex);
 };
 }
 #endif //ACTION_MANAGER_H
@@ -2949,30 +2951,10 @@ std::string Prints::PrintObs(int action, int obs)
 	return enum_map_" + data.ProjectName + @"::vecResponseEnumToString[eObs]; 
 }
 " + GetPrintStateFunction(data) + @"
+ 
+" + GetPrintActionType(data) + GetStateJsonFunctionForActionManagerCPP(data) + GetStateFromJsonFunctionForActionManagerCPP(data) + @"
 
-
-    std::string Prints::GetStateJson(State& _state)
-    {
-        const " + data.ProjectNameWithCapitalLetter + @"State& state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(_state);
-        json j;
-    //j[""agentOneLoc""] = Prints::PrinttCell(state.agentOneLoc);
-    //j[""agentTwoLoc""] = Prints::PrinttCell(state.agentTwoLoc);
-    //j[""isAgentOneTurn""] = Prints::PrinttCell(state.bOneLoc);
-    //j[""stateTest""] = state;
-
-
-
-     
-
-    std::string str(j.dump().c_str());
-    return str;
-     
-    }
-
-
-" + GetPrintActionType(data) + @"
-
-std::string Prints::GetJsonForBelief(vector<State*> particles)
+void Prints::SaveBeliefParticles(vector<State*> particles)
 {
     json j;
     j[""ActionSequnceId""] =  MongoDB_Bridge::currentActionSequenceId;
@@ -2984,12 +2966,96 @@ std::string Prints::GetJsonForBelief(vector<State*> particles)
     
     std::string str(j.dump().c_str());
     MongoDB_Bridge::SaveBeliefState(str);
-    return str;
 }
 }";
             return file;
         }
 
+
+        private static string GetStateJsonFunctionForActionManagerCPP(PLPsData data)
+         {
+            string function = @"
+std::string Prints::GetStateJson(State& _state)
+    {
+        const " + data.ProjectNameWithCapitalLetter + @"State& state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(_state);
+        json j;
+" ;
+            foreach(var variable in data.GlobalVariableDeclarations)
+            {
+                function += AddStateJsonTransformVarLine(variable, false);
+            }
+
+            function += @"
+    std::string str(j.dump().c_str());
+    return str;
+     
+    }
+";
+            return function;
+        }
+
+        private static string AddStateJsonTransformVarLine(GlobalVariableDeclaration gVar, bool IsStateFromJson)
+        {
+            string result = "";
+            if(gVar.SubCompoundFeilds.Count == 0)
+            {
+                List<string> bits = gVar.StateVariableName.Split(".").ToList();
+                int skip = bits[0] == "state" ? 1 : 0;
+                string dictionarySection = string.Join("\"][\"", bits.Skip(skip).ToArray());
+                result += IsStateFromJson  
+                    ? GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];")
+                    : GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = " + gVar.StateVariableName + ";");
+            }
+            else
+            {
+                foreach(var subVar in gVar.SubCompoundFeilds)
+                {
+                    result += AddStateJsonTransformVarLine(subVar, IsStateFromJson);
+                }
+            }
+            return result;
+        }
+
+        private static string GetStateFromJsonFunctionForActionManagerCPP(PLPsData data)
+        {
+            string function = @"
+    void Prints::GetStateFromJson("+data.ProjectNameWithCapitalLetter+@"State& state, std::string jsonStr, int stateIndex)
+    {
+        
+        json j = json::parse(jsonStr);
+        j = j[""BeliefeState""];
+";
+            foreach(var variable in data.GlobalVariableDeclarations)
+            {
+                function += AddStateJsonTransformVarLine(variable, true);
+            }
+
+            function += @"
+    }
+
+";
+            return function;
+        }
+
+       /* private static string AddStateFromJsonVarLine(GlobalVariableDeclaration gVar)
+        {
+            string result = "";
+            if(gVar.SubCompoundFeilds.Count == 0)
+            {
+                List<string> bits = gVar.StateVariableName.Split(".").ToList();
+                int skip = bits[0] == "state" ? 1 : 0;
+                string dictionarySection = string.Join("\"][\"", bits.Skip(skip).ToArray());
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];");
+            }
+            else
+            {
+                foreach(var subVar in gVar.SubCompoundFeilds)
+                {
+                    result += AddStateFromJsonVarLine(subVar);
+                }
+            }
+            return result;
+        } */
         private static string GetAddingActionForActionManagerCPP(PLPsData data, out int totalNumberOfActionsInProject)
         {
             totalNumberOfActionsInProject = 0;

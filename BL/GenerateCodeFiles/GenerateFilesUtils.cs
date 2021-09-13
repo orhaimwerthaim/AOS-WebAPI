@@ -48,9 +48,9 @@ namespace WebApiCSharp.GenerateCodeFiles
             return resPath;
         }
 
-        public static bool IsPrimitiveType(string type)
+        public static bool IsPrimitiveType(string type, bool IncludeIsAnyValue = false)
         {
-            return PLPsData.PRIMITIVE_TYPES.Any(x => x.Equals(type));
+            return PLPsData.PRIMITIVE_TYPES.Any(x => x.Equals(type)) || (IncludeIsAnyValue && type.Equals(PLPsData.ANY_VALUE_TYPE_NAME)) ;
         }
 
         public static string ToUpperFirstLetter(string str)

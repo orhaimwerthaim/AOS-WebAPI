@@ -50,7 +50,7 @@ namespace WebApiCSharp.Models
         public SolverConfiguration()
         {
             Verbosity = false;
-            NumOfBeliefStateParticlesToSaveInDB = 0;
+            NumOfBeliefStateParticlesToSaveInDB = 5000;
             NumOfParticles = 5000;
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();
