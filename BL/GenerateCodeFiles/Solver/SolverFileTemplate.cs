@@ -410,12 +410,7 @@ ValuedAction POMCP::Search(double timeout) {
 	std::vector<int> actionSeq (actArr, actArr + sizeof(actArr) / sizeof(actArr[0]) );
 	 
 	std::vector<int>*	simulatedActionSequence = actionSeq.size() > 0 ? &actionSeq : NULL;	 
-	
-    if(Globals::config.saveBeliefToDB)
-	{
-		vector<State*> temp = belief_->Sample(" + initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB + @");
-		Prints::SaveBeliefParticles(temp);
-	}
+	 
 
 	int hist_size = history_.Size();
 	bool done = false;
@@ -1525,6 +1520,7 @@ public:
 class Evaluator {
 	private:
 	std::vector<int> action_sequence_to_sim;
+    void SaveBeliefToDB();
 protected:
 	DSPOMDP* model_;
 	std::string belief_type_;
@@ -1783,6 +1779,15 @@ Evaluator::~Evaluator() {
 }
 
 
+void Evaluator::SaveBeliefToDB()
+{
+	if(Globals::config.saveBeliefToDB)
+	{
+		vector<State*> temp = solver_->belief()->Sample(5000);
+		Prints::SaveBeliefParticles(temp);
+	}
+}
+
 bool Evaluator::RunStep(int step, int round) {
     bool shutDown = false;
 	bool isFirst = false;
@@ -1851,6 +1856,12 @@ bool Evaluator::RunStep(int step, int round) {
 		 << ""Before:"" << endl;
     model_->PrintState(*state_);
 	std::map<std::string, bool> updatesFromAction;
+
+	if(MongoDB_Bridge::currentActionSequenceId == 0)
+	{
+		Evaluator::SaveBeliefToDB();
+	}
+
 	bool terminal = ExecuteAction(action, reward, obs, updatesFromAction);
     logi << endl
 		 << ""After:"" << endl;
@@ -1875,7 +1886,8 @@ bool Evaluator::RunStep(int step, int round) {
 			<< endl;
 		if (!Globals::config.silence && out_)
 			*out_ << endl;
-		step_++;
+		step_++; 
+
 		return true;
 	}
 
@@ -1886,6 +1898,7 @@ bool Evaluator::RunStep(int step, int round) {
 	{
 		solver_->Update(action, obs);
 		//solver_->Update(action, obs, updatesFromAction);
+		Evaluator::SaveBeliefToDB();
 	}
 	end_t = get_time_second();
 	logi << ""[RunStep] Time spent in Update(): "" << (end_t - start_t) << endl;
@@ -2014,6 +2027,7 @@ double POMDPEvaluator::EndRound() {
 }
 
 bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates) {
+	MongoDB_Bridge::currentActionSequenceId++;
 	ActionDescription &actDesc = *ActionManager::actions[action];
     ActionType acType(actDesc.actionType);
 	std::string actionParameters = actDesc.GetActionParametersJson_ForActionExecution();
@@ -2023,17 +2037,17 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 	bsoncxx::oid actionId = MongoDB_Bridge::SendActionToExecution(actDesc.actionId, actionName, actionParameters);
 
 	double random_num = random_.NextDouble();
+    bool terminal = false;
 	if(Globals::IsInternalSimulation())
 	{
 		
-		bool terminal = model_->Step(*state_, random_num, action, reward, obs);
+		terminal = model_->Step(*state_, random_num, action, reward, obs);
 		std::string obsStr = enum_map_"+data.ProjectName+@"::vecResponseEnumToString[("+data.ProjectNameWithCapitalLetter+@"ResponseModuleAndTempEnums)obs];
 		MongoDB_Bridge::SaveInternalActionResponse(actionName, actionId, obsStr);
 		reward_ = reward;
 		total_discounted_reward_ += Globals::Discount(step_) * reward;
 		total_undiscounted_reward_ += reward;
-
-        MongoDB_Bridge::currentActionSequenceId++;
+ 
 		return terminal;
 	}
 	else
@@ -2042,10 +2056,8 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 		updates = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
 		obs = enum_map_" + data.ProjectName + @"::vecStringToResponseEnum[obsStr];
-
-        MongoDB_Bridge::currentActionSequenceId++;
-		return false;
 	}
+    return terminal;
 }
 
 double POMDPEvaluator::End() {
@@ -2201,6 +2213,8 @@ class " + data.ProjectNameWithCapitalLetter + @"Belief: public ParticleBelief {
 protected:
 	const " + data.ProjectNameWithCapitalLetter + @"* " + data.ProjectName + @"_;
 public:
+	static std::string beliefFromDB;
+	static int currentInitParticleIndex;
 	static int num_particles; 
 	" + data.ProjectNameWithCapitalLetter + @"Belief(std::vector<State*> particles, const DSPOMDP* model, Belief* prior =
 		NULL);
@@ -2965,7 +2979,11 @@ void Prints::SaveBeliefParticles(vector<State*> particles)
     }
     
     std::string str(j.dump().c_str());
-    MongoDB_Bridge::SaveBeliefState(str);
+
+    j[""ActionSequnceId""] = -1;
+
+    std::string currentBeliefStr(j.dump().c_str());
+    MongoDB_Bridge::SaveBeliefState(str, currentBeliefStr);
 }
 }";
             return file;
@@ -3024,7 +3042,8 @@ std::string Prints::GetStateJson(State& _state)
         
         json j = json::parse(jsonStr);
         j = j[""BeliefeState""];
-";
+
+"; 
             foreach(var variable in data.GlobalVariableDeclarations)
             {
                 function += AddStateJsonTransformVarLine(variable, true);
@@ -3442,10 +3461,13 @@ namespace despot {
             return code;
         }
 
-        private static string GetModelCppCreatStartStateFunction(PLPsData data)
+
+
+
+        private static string GetModelCppCreatStartStateFunction(PLPsData data, InitializeProject initProj)
         {
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "State* " + data.ProjectNameWithCapitalLetter + "::CreateStartState(string tyep) const {");
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "State* " + data.ProjectNameWithCapitalLetter + "::CreateStartState(string type) const {");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, data.ProjectNameWithCapitalLetter + "State* startState = memory_pool_.Allocate();");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, data.ProjectNameWithCapitalLetter + "State& state = *startState;");
 
@@ -3457,33 +3479,50 @@ namespace despot {
                 }
             }
 
-            foreach (GlobalVariableDeclaration oVar in data.GlobalVariableDeclarations)
+            if (initProj.SolverConfiguration.LoadBeliefFromDB)
             {
-                bool isCompundType = data.GlobalCompoundTypes.Any(x => x.TypeName.Equals(oVar.Type));
-                if (oVar.Type == PLPsData.ANY_VALUE_TYPE_NAME)
+                result += @"
+    if(" + data.ProjectNameWithCapitalLetter + @"Belief::beliefFromDB == """")
+    {
+
+        " + data.ProjectNameWithCapitalLetter + @"Belief::beliefFromDB = MongoDB_Bridge::SampleFromBeliefState(0, " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles);
+    }
+    int totalNumOfStatesInBelief = " + BeliefStateService.GetNumOfStatesSavedInCurrentBelief() + @";
+    int stateIndex = " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex == -1 ? 0 : " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex % totalNumOfStatesInBelief;
+    Prints::GetStateFromJson(state, " + data.ProjectNameWithCapitalLetter + @"Belief::beliefFromDB, stateIndex);
+";
+            }
+            else
+            {
+
+
+                foreach (GlobalVariableDeclaration oVar in data.GlobalVariableDeclarations)
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = false;");
-                }
-                if (isCompundType)
-                {
-                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + oVar.Type + "();");
-                }
-                if (oVar.Default != null)
-                {
-                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + HandleCodeLine(data, oVar.Default, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
-                }
-                if (oVar.DefaultCode != null)
-                {
-                    foreach (string codeLine in oVar.DefaultCode.Split(";"))
+                    bool isCompundType = data.GlobalCompoundTypes.Any(x => x.TypeName.Equals(oVar.Type));
+                    if (oVar.Type == PLPsData.ANY_VALUE_TYPE_NAME)
                     {
-                        if (codeLine.Length > 0)
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = false;");
+                    }
+                    if (isCompundType)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + oVar.Type + "();");
+                    }
+                    if (oVar.Default != null)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + HandleCodeLine(data, oVar.Default, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                    }
+                    if (oVar.DefaultCode != null)
+                    {
+                        foreach (string codeLine in oVar.DefaultCode.Split(";"))
                         {
-                            result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                            if (codeLine.Length > 0)
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                            }
                         }
                     }
                 }
             }
-
             HashSet<string> handeled = new HashSet<string>();
             foreach (GlobalVariableDeclaration gVarDec in data.GlobalVariableDeclarations)
             {
@@ -3497,9 +3536,12 @@ namespace despot {
                 }
             }
 
-            foreach (Assignment assign in data.InitialBeliefAssignments)
+            if (!initProj.SolverConfiguration.LoadBeliefFromDB)
             {
-                result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, assign.AssignmentCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT));
+                foreach (Assignment assign in data.InitialBeliefAssignments)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, assign.AssignmentCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT));
+                }
             }
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "if (ActionManager::actions.size() == 0)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
@@ -3837,6 +3879,7 @@ namespace despot {
 #include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
 #include <algorithm>
 #include <cmath> 
+#include <despot/util/mongoDB_Bridge.h>
 
 using namespace std;
 
@@ -3854,7 +3897,8 @@ bool AOSUtils::Bernoulli(double p)
  *" + data.ProjectNameWithCapitalLetter + @"Belief class
  * ==============================================================================*/
 int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = " + initProj.SolverConfiguration.NumOfParticles + @";
-
+std::string " + data.ProjectNameWithCapitalLetter + @"Belief::beliefFromDB = """";
+int " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex = -1;
 
 " + data.ProjectNameWithCapitalLetter + @"Belief::" + data.ProjectNameWithCapitalLetter + @"Belief(vector<State*> particles, const DSPOMDP* model,
 	Belief* prior) :
@@ -3910,6 +3954,7 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 
 	for (int i = 0; i < particles_.size(); i++)
 		particles_[i]->weight = 1.0 / particles_.size();
+ 
 }
 
 /* ==============================================================================
@@ -3980,16 +4025,17 @@ double " + data.ProjectNameWithCapitalLetter + @"::ObsProb(OBS_TYPE obs, const S
 
 std::default_random_engine " + data.ProjectNameWithCapitalLetter + @"::generator;
 
-" + GetModelCppFileDistributionVariableDefinition(data) + Environment.NewLine + GetModelCppCreatStartStateFunction(data) + @"
+" + GetModelCppFileDistributionVariableDefinition(data) + Environment.NewLine + GetModelCppCreatStartStateFunction(data, initProj) + @"
 
 Belief* " + data.ProjectNameWithCapitalLetter + @"::InitialBelief(const State* start, string type) const {
 	int N = " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles;
 	vector<State*> particles(N);
 	for (int i = 0; i < N; i++) {
+        " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex = i;
 		particles[i] = CreateStartState();
 		particles[i]->weight = 1.0 / N;
 	}
-
+    " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex = -1;
 	return new " + data.ProjectNameWithCapitalLetter + @"Belief(particles, this);
 }
  

@@ -44,7 +44,11 @@ namespace WebApiCSharp.Controllers
                 initProj.RosTarget.TargetProjectInitializationTimeInSeconds ??= 5;
             }
 
-
+            if(initProj.SolverConfiguration.LoadBeliefFromDB && BeliefStateService.GetNumOfStatesSavedInCurrentBelief() == 0)
+            {
+                errors.Add("The request contains SolverConfiguration.LoadBeliefFromDB=='true', but there is no saved belief.");
+                return StatusCode(501, new { Errors = errors, Remarks = remarks });
+            }
             InitializeProjectBL.InitializeProject(initProj, out errors, out remarks, out buildSolverOutput, out buildRosMiddlewareOutput);
             
             if(errors.Count > 0)

@@ -28,16 +28,18 @@ namespace WebApiCSharp.Controllers
 
 
         [HttpGet] 
-        public dynamic Get(string skip, string take)
+        public dynamic Get(string belief_size)
         {
-            int _skip = string.IsNullOrEmpty(skip) ? 0 : Convert.ToInt32(skip);
-            int _take = string.IsNullOrEmpty(take) ? 50 : Convert.ToInt32(take);
+            int _belief_size = string.IsNullOrEmpty(belief_size) ? 0 : Convert.ToInt32(belief_size); 
             this.Response.ContentType = "application/json";
             
-            string jsonString = BeliefStateService.GetOne(_skip, _take).ToJson();
+            string jsonString = BeliefStateService.GetBeliefForExecution(0, _belief_size).ToJson();
 
             int ind = jsonString.IndexOf("\"BeliefeState");
             jsonString = "{"+jsonString.Substring(ind);
+
+
+            jsonString = ExecutionOutcomeService.Get(_belief_size);
             return Content(jsonString);
         }
 

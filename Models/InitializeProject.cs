@@ -40,6 +40,7 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
+        public bool LoadBeliefFromDB { get; set; }
         public bool Verbosity { get; set; }
         public int NumOfParticles { get; set; }
 
@@ -49,6 +50,7 @@ namespace WebApiCSharp.Models
         public float PlanningTimePerMoveInSeconds{ get; set; }
         public SolverConfiguration()
         {
+            LoadBeliefFromDB = false;
             Verbosity = false;
             NumOfBeliefStateParticlesToSaveInDB = 5000;
             NumOfParticles = 5000;
