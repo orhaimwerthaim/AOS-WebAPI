@@ -78,16 +78,40 @@ namespace WebApiCSharp.Models
     {
         public string AssignmentName;
         public string AssignmentCode;
-
+        public EStateType LatestReachableState;
         public TempVar TempVariable;
+
+        public List<IterateStateVars> IterateStateVariables;
 
         public Assignment()
         {
             TempVariable = new TempVar();
+            IterateStateVariables = new List<IterateStateVars>();
+            LatestReachableState = EStateType.eError;
         }
 
 
     }
+
+    public enum EStateType
+    {
+        eError,
+        ePreviousState,
+        eAfterExtrinsicChangesState,
+        eNextState
+    }
+    public class IterateStateVars
+    {
+        public bool ItemInMutableFunction;
+        public string Type;
+        public string ItemName;
+        public string ConditionCode;
+        public string WhenConditionTrueCode;
+
+        public EStateType StateType;
+
+    }
+
 
     public class TempVar
     {

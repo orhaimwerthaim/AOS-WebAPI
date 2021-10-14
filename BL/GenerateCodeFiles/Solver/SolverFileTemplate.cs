@@ -284,7 +284,7 @@ struct Config {
 
 	Config() :
         handsOnDebug(false),
-        solverId("+solverData.SolverId+@"),
+        solverId(" + solverData.SolverId + @"),
 		search_depth(" + data.Horizon + @"),
 		discount(" + data.Discount + @"),
 		root_seed(42),
@@ -2042,7 +2042,7 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 	{
 		
 		terminal = model_->Step(*state_, random_num, action, reward, obs);
-		std::string obsStr = enum_map_"+data.ProjectName+@"::vecResponseEnumToString[("+data.ProjectNameWithCapitalLetter+@"ResponseModuleAndTempEnums)obs];
+		std::string obsStr = enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs];
 		MongoDB_Bridge::SaveInternalActionResponse(actionName, actionId, obsStr);
 		reward_ = reward;
 		total_discounted_reward_ += Globals::Discount(step_) * reward;
@@ -2624,6 +2624,7 @@ namespace despot
             }
 
             HashSet<string> paramTypes = new HashSet<string>();
+            HashSet<string> compTypes = new HashSet<string>();
             foreach (GlobalVariableDeclaration oVarDec in data.GlobalVariableDeclarations)
             {
 
@@ -2631,6 +2632,16 @@ namespace despot
                 {
                     paramTypes.Add(oVarDec.Type);
                 }
+                else
+                {
+                    var comp = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oVarDec.Type)).FirstOrDefault();
+                    if (comp != null) compTypes.Add(comp.TypeName);
+                }
+
+            }
+            foreach (string compType in compTypes)
+            {
+                result += "    std::vector<" + compType + "*> " + compType + "Objects;" + Environment.NewLine;
             }
             foreach (string paramType in paramTypes)
             {
@@ -2991,14 +3002,14 @@ void Prints::SaveBeliefParticles(vector<State*> particles)
 
 
         private static string GetStateJsonFunctionForActionManagerCPP(PLPsData data)
-         {
+        {
             string function = @"
 std::string Prints::GetStateJson(State& _state)
     {
         const " + data.ProjectNameWithCapitalLetter + @"State& state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(_state);
         json j;
-" ;
-            foreach(var variable in data.GlobalVariableDeclarations)
+";
+            foreach (var variable in data.GlobalVariableDeclarations)
             {
                 function += AddStateJsonTransformVarLine(variable, false);
             }
@@ -3015,18 +3026,18 @@ std::string Prints::GetStateJson(State& _state)
         private static string AddStateJsonTransformVarLine(GlobalVariableDeclaration gVar, bool IsStateFromJson)
         {
             string result = "";
-            if(gVar.SubCompoundFeilds.Count == 0)
+            if (gVar.SubCompoundFeilds.Count == 0)
             {
                 List<string> bits = gVar.StateVariableName.Split(".").ToList();
                 int skip = bits[0] == "state" ? 1 : 0;
                 string dictionarySection = string.Join("\"][\"", bits.Skip(skip).ToArray());
-                result += IsStateFromJson  
+                result += IsStateFromJson
                     ? GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];")
                     : GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = " + gVar.StateVariableName + ";");
             }
             else
             {
-                foreach(var subVar in gVar.SubCompoundFeilds)
+                foreach (var subVar in gVar.SubCompoundFeilds)
                 {
                     result += AddStateJsonTransformVarLine(subVar, IsStateFromJson);
                 }
@@ -3037,14 +3048,14 @@ std::string Prints::GetStateJson(State& _state)
         private static string GetStateFromJsonFunctionForActionManagerCPP(PLPsData data)
         {
             string function = @"
-    void Prints::GetStateFromJson("+data.ProjectNameWithCapitalLetter+@"State& state, std::string jsonStr, int stateIndex)
+    void Prints::GetStateFromJson(" + data.ProjectNameWithCapitalLetter + @"State& state, std::string jsonStr, int stateIndex)
     {
         
         json j = json::parse(jsonStr);
         j = j[""BeliefeState""];
 
-"; 
-            foreach(var variable in data.GlobalVariableDeclarations)
+";
+            foreach (var variable in data.GlobalVariableDeclarations)
             {
                 function += AddStateJsonTransformVarLine(variable, true);
             }
@@ -3056,25 +3067,25 @@ std::string Prints::GetStateJson(State& _state)
             return function;
         }
 
-       /* private static string AddStateFromJsonVarLine(GlobalVariableDeclaration gVar)
-        {
-            string result = "";
-            if(gVar.SubCompoundFeilds.Count == 0)
-            {
-                List<string> bits = gVar.StateVariableName.Split(".").ToList();
-                int skip = bits[0] == "state" ? 1 : 0;
-                string dictionarySection = string.Join("\"][\"", bits.Skip(skip).ToArray());
-                result += GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];");
-            }
-            else
-            {
-                foreach(var subVar in gVar.SubCompoundFeilds)
-                {
-                    result += AddStateFromJsonVarLine(subVar);
-                }
-            }
-            return result;
-        } */
+        /* private static string AddStateFromJsonVarLine(GlobalVariableDeclaration gVar)
+         {
+             string result = "";
+             if(gVar.SubCompoundFeilds.Count == 0)
+             {
+                 List<string> bits = gVar.StateVariableName.Split(".").ToList();
+                 int skip = bits[0] == "state" ? 1 : 0;
+                 string dictionarySection = string.Join("\"][\"", bits.Skip(skip).ToArray());
+                 result += GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];");
+             }
+             else
+             {
+                 foreach(var subVar in gVar.SubCompoundFeilds)
+                 {
+                     result += AddStateFromJsonVarLine(subVar);
+                 }
+             }
+             return result;
+         } */
         private static string GetAddingActionForActionManagerCPP(PLPsData data, out int totalNumberOfActionsInProject)
         {
             totalNumberOfActionsInProject = 0;
@@ -3523,15 +3534,28 @@ namespace despot {
                     }
                 }
             }
-            HashSet<string> handeled = new HashSet<string>();
+            HashSet<string> handeledForActionObjects = new HashSet<string>();
+            HashSet<string> handeledForObjects = new HashSet<string>();
             foreach (GlobalVariableDeclaration gVarDec in data.GlobalVariableDeclarations)
             {
-                if (gVarDec.IsActionParameterValue && handeled.Add(gVarDec.Type))
+                if (gVarDec.IsActionParameterValue && handeledForActionObjects.Add(gVarDec.Type))
                 {
                     foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(gVarDec.Type) && x.IsActionParameterValue))
                     {
                         result += GenerateFilesUtils.GetIndentationStr(1, 4, "startState->" + gVarDec.Type + "ObjectsForActions[\"state." +
                                 gVarDec2.Name + "\"] = (state." + gVarDec2.Name + ");");
+                    }
+                }
+
+                if (!gVarDec.IsActionParameterValue && handeledForObjects.Add(gVarDec.Type))
+                {
+                    var comp = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(gVarDec.Type)).FirstOrDefault();
+                    if (comp != null)
+                    {
+                        foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(comp.TypeName) && !x.IsActionParameterValue))
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(1, 4, "startState->" + comp.TypeName + "Objects.push_back(&(" + gVarDec2.StateVariableName + "));");
+                        }
                     }
                 }
             }
@@ -3623,7 +3647,7 @@ namespace despot {
             string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ComputePreferredActionValue(const " + data.ProjectNameWithCapitalLetter + "State& state, double &__heuristicValue, int actionId)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "__heuristicValue = 0;");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;"); 
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             foreach (PLP plp in data.PLPs.Values)
             {
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(actType == " + plp.Name + "Action)");
@@ -3763,6 +3787,43 @@ namespace despot {
                 {
                     string TempVarType = assign.TempVariable.Type == PLPsData.ENUM_VARIABLE_TYPE_NAME ? data.ProjectNameWithCapitalLetter + "ResponseModuleAndTempEnums " : assign.TempVariable.Type;
                     result += GenerateFilesUtils.GetIndentationStr(indentCount, indentSize, TempVarType + " " + assign.TempVariable.VariableName + ";");
+                }
+
+                if (assign.IterateStateVariables.Count > 0)
+                {
+                    for (int i = 0; i < assign.IterateStateVariables.Count; i++)
+                    {
+                        IterateStateVars oIter = assign.IterateStateVariables[i];
+                        bool canChange = oIter.StateType == assign.LatestReachableState && oIter.ItemInMutableFunction;
+
+                        result += GenerateFilesUtils.GetIndentationStr(indentCount + i, indentSize,
+                            "for (int ind" + i + " = 0; ind" + i + " < state."+oIter.Type+"Objects.size(); ind" + i + "++)");
+
+                        result += GenerateFilesUtils.GetIndentationStr(indentCount + i, indentSize, "{");
+
+                        result += GenerateFilesUtils.GetIndentationStr(indentCount + i + 1, indentSize,
+                            oIter.Type + " " + (canChange ? "&" : "") + oIter.ItemName + " = *(" + (oIter.StateType == EStateType.eNextState ? "state__" :
+                            oIter.StateType == EStateType.eAfterExtrinsicChangesState ? "state_" : "state") + "." + oIter.Type + "Objects[ind" + i + "]);");
+
+                        if (!string.IsNullOrEmpty(oIter.ConditionCode))
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(indentCount + i + 1, indentSize, "if (" + oIter.ConditionCode + ")");
+                            result += GenerateFilesUtils.GetIndentationStr(indentCount + i + 1, indentSize, "{");
+                            foreach (string codeLine in oIter.WhenConditionTrueCode.Split(";"))
+                            {
+                                if (codeLine.Length > 0)
+                                {
+                                    result += GenerateFilesUtils.GetIndentationStr(indentCount + 2, indentSize, HandleCodeLine(data, codeLine, fromFile) + ";");
+                                }
+                            }
+                            result += GenerateFilesUtils.GetIndentationStr(indentCount + i + 1, indentSize, "}");
+                        }
+                    }
+
+                    for (int i = assign.IterateStateVariables.Count-1; i >= 0 ; i--)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(indentCount + i, indentSize, "}");
+                    }
                 }
                 foreach (string codeLine in assign.AssignmentCode.Split(";"))
                 {
@@ -4080,6 +4141,9 @@ State* " + data.ProjectNameWithCapitalLetter + @"::Copy(const State* particle) c
 	" + data.ProjectNameWithCapitalLetter + @"State* state = memory_pool_.Allocate();
 	*state = *static_cast<const " + data.ProjectNameWithCapitalLetter + @"State*>(particle);
 	state->SetAllocated();
+
+"+GetSetObjectRefenceForCopyFunction(data)+@"
+
 	return state;
 }
 
@@ -4150,6 +4214,31 @@ std::string " + data.ProjectNameWithCapitalLetter + @"::PrintStateStr(const Stat
 ";
 
             return file;
+        }
+
+        private static string GetSetObjectRefenceForCopyFunction(PLPsData data)
+        {
+            string result = "";
+
+            HashSet<string> handeledForObjects = new HashSet<string>(); 
+            foreach (GlobalVariableDeclaration gVarDec in data.GlobalVariableDeclarations)
+            { 
+
+                if (!gVarDec.IsActionParameterValue && handeledForObjects.Add(gVarDec.Type))
+                {
+                    var comp = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(gVarDec.Type)).FirstOrDefault();
+                    if (comp != null)
+                    {
+                        int i = 0;
+                        foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(comp.TypeName) && !x.IsActionParameterValue))
+                        {
+                            result += GenerateFilesUtils.GetIndentationStr(1, 4, "state->" + comp.TypeName + "Objects["+i+"] = &(" + gVarDec2.StateVariableName.Replace(".","->") + ");");
+                            i++;
+                        }
+                    }
+                }
+            }
+            return result;
         }
     }
 

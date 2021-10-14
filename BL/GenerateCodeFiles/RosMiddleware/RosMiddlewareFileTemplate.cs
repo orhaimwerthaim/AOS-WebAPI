@@ -268,36 +268,39 @@ include_directories(
 
                     foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
                     {
-                        LocalVariableTypePLP underlineType = null;
-                        if (oGlVar.FromGlobalVariable.StartsWith(PLPsData.GLOBAL_VARIABLE_STATE_REF))
-                        {
-                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "globVarName = \"" + oGlVar.FromGlobalVariable + "\"");
-                        }
-                        else
-                        {
-                            //globVarName = "oDesiredLocation.actual_location".replace("oDesiredLocation", params["ParameterLinks"]["oDesiredLocation"])
-                            string baseGlobalParameter = plp.GlobalVariableModuleParameters
-                                .Where(x => oGlVar.FromGlobalVariable.StartsWith(x.Name + ".") || oGlVar.FromGlobalVariable.Equals(x.Name))
-                                .Select(x => x.Name).FirstOrDefault();
-                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "globVarName = \"" + oGlVar.FromGlobalVariable + "\".replace(\"" + baseGlobalParameter + "\", params[\"ParameterLinks\"][\"" + baseGlobalParameter + "\"], 1)");
-                        }
-                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "dbVar = aos_GlobalVariablesAssignments_collection.find_one({\"GlobalVariableName\": globVarName})");
-
-                        underlineType = GetUnderlineLocalVariableTypeByVarName(data, plp, oGlVar.FromGlobalVariable);
+                        LocalVariableTypePLP underlineType = GetUnderlineLocalVariableTypeByVarName(data, plp, oGlVar.FromGlobalVariable);
+ 
                         if (underlineType != null)
                         {
+                            if (oGlVar.FromGlobalVariable.StartsWith(PLPsData.GLOBAL_VARIABLE_STATE_REF))
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(3, 4, "globVarName = \"" + oGlVar.FromGlobalVariable + "\"");
+                            }
+                            else
+                            {
+                                //globVarName = "oDesiredLocation.actual_location".replace("oDesiredLocation", params["ParameterLinks"]["oDesiredLocation"])
+                                string baseGlobalParameter = plp.GlobalVariableModuleParameters
+                                    .Where(x => oGlVar.FromGlobalVariable.StartsWith(x.Name + ".") || oGlVar.FromGlobalVariable.Equals(x.Name))
+                                    .Select(x => x.Name).FirstOrDefault();
+                                result += GenerateFilesUtils.GetIndentationStr(3, 4, "globVarName = \"" + oGlVar.FromGlobalVariable + "\".replace(\"" + baseGlobalParameter + "\", params[\"ParameterLinks\"][\"" + baseGlobalParameter + "\"], 1)");
+                            }
+
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "dbVar = aos_GlobalVariablesAssignments_collection.find_one({\"GlobalVariableName\": globVarName})");
                             result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = " + underlineType.TypeName + "()");
                             foreach (LocalVariableCompoundTypeField field in underlineType.SubFields)
                             {
                                 //obj_location.z=cupAccurateLocation[""LowLevelValue""][""z""]
                                 result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + "." + field.FieldName + " = dbVar[\"LowLevelValue\"][\"" + field.FieldName + "\"]");
                             }
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oGlVar.InputLocalVariable + "\"] = " + underlineType.TypeName + "ToDict(" + oGlVar.InputLocalVariable + ")");
                         }
                         else
                         {
-                            result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = dbVar[\"LowLevelValue\"]");
+                            string[] bits = oGlVar.FromGlobalVariable.Split(".");
+                            string varDesc = "[\"" + String.Join("\"][\"", bits) + "\"]";
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = params[\"ParameterValues\"]" + varDesc);
                         }
-                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oGlVar.InputLocalVariable + "\"] = " + underlineType.TypeName + "ToDict(" + oGlVar.InputLocalVariable + ")");
+                        //  result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oGlVar.InputLocalVariable + "\"] = " + underlineType.TypeName + "ToDict(" + oGlVar.InputLocalVariable + ")");
                         //self._topicListener.localVarNamesAndValues["navigate"]["desired_location"]
                     }
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "except:");
@@ -385,7 +388,7 @@ include_directories(
                     foreach (var assign in responseRule.ResponseAssignmentsToGlobalVar)
                     {
                         result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"" + glue.Name + "_" + responseRule.Response + "\":");
-                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "assignGlobalVar[\""+assign.GlobalVarName+"\"] = " + assign.Value);
+                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "assignGlobalVar[\"" + assign.GlobalVarName + "\"] = " + assign.Value);
                     }
                 }
                 result += Environment.NewLine;
@@ -764,15 +767,15 @@ if __name__ == '__main__':
                 result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.updateGlobalVarLowLevelValue(\"" + assignment.Key + "\"," + value + ")");
             }
 
-            foreach(var anyValueVar in data.AnyValueStateVariableNames)
+            foreach (var anyValueVar in data.AnyValueStateVariableNames)
             {
                 bool added = false;
                 foreach (var assignment in assignments)
                 {
                     added |= assignment.Key.Equals(anyValueVar);
-                    if(added)break;
+                    if (added) break;
                 }
-                if(!added)
+                if (!added)
                 {
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.updateGlobalVarLowLevelValue(\"" + anyValueVar + "\", None)");
                 }

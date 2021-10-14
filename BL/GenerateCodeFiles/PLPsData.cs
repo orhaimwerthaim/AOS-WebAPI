@@ -54,8 +54,10 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public const string ENUM_VARIABLE_TYPE_NAME = "enum";
         public const string INT_VARIABLE_TYPE_NAME = "int";
+
+        public const string FLOAT_VARIABLE_TYPE_NAME = "float";
         public const string BOOL_VARIABLE_TYPE_NAME = "bool";
-        public static readonly string[] PRIMITIVE_TYPES = { ENUM_VARIABLE_TYPE_NAME, INT_VARIABLE_TYPE_NAME, BOOL_VARIABLE_TYPE_NAME };
+        public static readonly string[] PRIMITIVE_TYPES = { FLOAT_VARIABLE_TYPE_NAME, ENUM_VARIABLE_TYPE_NAME, INT_VARIABLE_TYPE_NAME, BOOL_VARIABLE_TYPE_NAME };
         public const string MODULE_EXECUTION_TIME_VARIABLE_NAME = "__moduleExecutionTime";
         public const string MODULE_REWARD_VARIABLE_NAME = "__reward";
 
@@ -403,14 +405,14 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             tempErrors.Clear();
             List<Assignment> extrinsicChangesDynamicModel = LoadAssignment(environmentPLP["ExtrinsicChangesDynamicModel"].AsBsonArray, environmentPLP_Name,
-                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors);
+                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.eAfterExtrinsicChangesState);
             errors.AddRange(tempErrors);
             ExtrinsicChangesDynamicModel.AddRange(extrinsicChangesDynamicModel);
 
 
             tempErrors.Clear();
             List<Assignment> initialBeliefStateAssignments = LoadAssignment(environmentPLP["InitialBeliefStateAssignments"].AsBsonArray, environmentPLP_Name,
-                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors);
+                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.ePreviousState);
             errors.AddRange(tempErrors);
             InitialBeliefAssignments.AddRange(initialBeliefStateAssignments);
 
@@ -836,11 +838,11 @@ namespace WebApiCSharp.GenerateCodeFiles
             }
 
             tempErrors.Clear();
-            plp.Preconditions_GlobalVariablePreconditionAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("GlobalVariablePreconditionAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["GlobalVariablePreconditionAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            plp.Preconditions_GlobalVariablePreconditionAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("GlobalVariablePreconditionAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["GlobalVariablePreconditionAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.ePreviousState, true);
             errors.AddRange(tempErrors);
 
             tempErrors.Clear();
-            plp.Preconditions_PlannerAssistancePreconditionsAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("PlannerAssistancePreconditionsAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["PlannerAssistancePreconditionsAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            plp.Preconditions_PlannerAssistancePreconditionsAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("PlannerAssistancePreconditionsAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["PlannerAssistancePreconditionsAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.ePreviousState, true);
             errors.AddRange(tempErrors);
 
             List<Assignment> preconditions = new List<Assignment>(); 
@@ -864,7 +866,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             errors.AddRange(tempErrors);
 
             tempErrors.Clear();
-            List<Assignment> moduleExecutionTimeAssignments = !bPlp.Contains("ModuleExecutionTimeDynamicModel") ? new List<Assignment>() : LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            List<Assignment> moduleExecutionTimeAssignments = !bPlp.Contains("ModuleExecutionTimeDynamicModel") ? new List<Assignment>() : LoadAssignment(bPlp["ModuleExecutionTimeDynamicModel"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.ePreviousState);
             errors.AddRange(tempErrors);
             plp.ModuleExecutionTimeDynamicModel.AddRange(moduleExecutionTimeAssignments);
             foreach (Assignment oAssignment in plp.ModuleExecutionTimeDynamicModel)
@@ -887,7 +889,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             }
 
             tempErrors.Clear();
-            List<Assignment> nextStateAssignments = LoadAssignment(bPlp["DynamicModel"]["NextStateAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors);
+            List<Assignment> nextStateAssignments = LoadAssignment(bPlp["DynamicModel"]["NextStateAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.eNextState);
             errors.AddRange(tempErrors);
             plp.DynamicModel_VariableAssignments.AddRange(nextStateAssignments);
 
@@ -982,7 +984,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         {
             return GetIntFieldFromBson(plp.Name, plp.Type, bson, firstField, secondField, out errors);
         }
-        private List<Assignment> LoadAssignment(BsonArray bAssignmentsArray, string plpName, string plpType, out List<string> errors)
+        private List<Assignment> LoadAssignment(BsonArray bAssignmentsArray, string plpName, string plpType, out List<string> errors, EStateType assignmentLatestPointInTime, bool isCheckPrecondition = false)
         {
             List<Assignment> assignments = new List<Assignment>();
             string plpDescription = GetPLPDescriptionForError(plpName, plpType);
@@ -991,10 +993,48 @@ namespace WebApiCSharp.GenerateCodeFiles
             {
                 BsonDocument docAssignment = bVal.AsBsonDocument;
                 Assignment oAssignment = new Assignment();
-
+                oAssignment.LatestReachableState = assignmentLatestPointInTime;
                 oAssignment.AssignmentName = docAssignment["AssignmentName"].ToString();
-                oAssignment.AssignmentCode = docAssignment["AssignmentCode"].ToString().Replace(" ", "");
+                oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString().Replace(" ", "") : "";
 
+                string iterateVar = docAssignment.Contains("IteratePreviousStateVars") ? "IteratePreviousStateVars" :
+                    docAssignment.Contains("IterateNextStateVars") ? "IterateNextStateVars" : null;
+
+                if(iterateVar != null)
+                {
+                    
+                    BsonArray bIterationsArray = docAssignment[iterateVar].AsBsonArray;
+                    foreach (BsonValue bIter in bIterationsArray)
+                    {
+                        IterateStateVars oIter = new IterateStateVars();
+                        oIter.ItemInMutableFunction = !isCheckPrecondition;
+                        BsonDocument docIter = bIter.AsBsonDocument;
+                        oIter.Type = GetBsonStringField(docIter, "Type");
+                        oIter.ItemName = GetBsonStringField(docIter, "ItemName");
+                        oIter.ConditionCode = GetBsonStringField(docIter, "ConditionCode");
+                        oIter.WhenConditionTrueCode = GetBsonStringField(docIter, "WhenConditionTrueCode");
+                        oIter.StateType = iterateVar.Equals("IteratePreviousStateVars") ? EStateType.ePreviousState
+                                :iterateVar.Equals("IterateNextStateVars") ? EStateType.eNextState : 
+                                iterateVar.Equals("IterateAfterExtrinsicChangesStateVars") ? EStateType.eAfterExtrinsicChangesState : EStateType.eError;
+
+                        if(string.IsNullOrEmpty(oIter.Type) || string.IsNullOrEmpty(oIter.ItemName))
+                        {
+                            errors.Add(plpDescription + ", '"+iterateVar+"', fields 'Type' and 'ItemName' are mandatory!");
+                        }
+
+                        if(assignmentLatestPointInTime.Equals(EStateType.ePreviousState) && oIter.StateType != EStateType.ePreviousState)
+                        {
+                            errors.Add(plpDescription + ", '"+iterateVar+"', in this area you can only use 'IteratePreviousStateVars'!");
+                        }
+
+                         if(assignmentLatestPointInTime.Equals(EStateType.eAfterExtrinsicChangesState) && oIter.StateType == EStateType.eNextState)
+                        {
+                            errors.Add(plpDescription + ", '"+iterateVar+"', in this area you cannot iterate the next state with 'IterateNextStateVars'!");
+                        }
+
+                        oAssignment.IterateStateVariables.Add(oIter);
+                    }
+                }
                 if (docAssignment.Contains("TempVar"))
                 {
 
