@@ -11,11 +11,11 @@ namespace WebApiCSharp.Services
 {
     public class ExecutionOutcomeService : ServiceBase
     {
-        public static string Get(int belief_size)
+        public static string Get(int belief_size, string initilaBeliefJson)
         {
             try
             {
-                string startRes = "{\"ExecutionOutcome\":[";
+                string startRes = "{\"ExecutionOutcome\":[" + initilaBeliefJson + ",";
                 string result = startRes;
                 List<SolverAction> solverActions = SolverActionsService.Get();
                 List<BsonDocument> actions = ActionsForExecutionService.Get();
@@ -25,8 +25,10 @@ namespace WebApiCSharp.Services
                 while(true)
                 {
                     string actionRes = GetJsonForActionSequnceId(actionSequnceId, actions, responses, belief, solverActions);
-                    if(string.IsNullOrEmpty(actionRes)) 
+                    if (string.IsNullOrEmpty(actionRes))
+                    { 
                         break;
+                    }
                     else
                     {
                         result += result.Length == startRes.Length ? "" : ",";
@@ -35,7 +37,8 @@ namespace WebApiCSharp.Services
 
                     actionSequnceId++;
                 }
-                return result + "]}";
+                bool removeDelimiter = result.EndsWith(",");
+                return  (removeDelimiter ? result.Substring(0, result.Length-1) : result) + "]}";
             }
             catch (Exception ex)
             {
@@ -107,7 +110,8 @@ namespace WebApiCSharp.Services
 
             int ind = beliefJson.IndexOf("\"BeliefeState") + ("\"BeliefeState\":").Length;
             beliefJson = beliefJson.Substring(ind, beliefJson.Length - ind - 1);
-            jsonRes += ", \"BeliefStatesAfterExecution\" : " + beliefJson;
+            string deslimiter = beliefJson.Replace(" ", "").StartsWith(":") ? "" : ":";
+            jsonRes += ", \"BeliefStatesAfterExecution\" " + deslimiter + beliefJson;
 
             jsonRes += "}";
 

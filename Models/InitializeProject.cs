@@ -40,19 +40,20 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
-        public bool LoadBeliefFromDB { get; set; }
-        public bool Verbosity { get; set; }
+        public bool LoadBeliefFromDB { get; set; } 
         public int NumOfParticles { get; set; }
 
         public int NumOfBeliefStateParticlesToSaveInDB { get; set; }
         public List<int> ActionsToSimulate { get; set; } 
         public bool IsInternalSimulation { get; set; }
         public float PlanningTimePerMoveInSeconds{ get; set; }
+
+        public bool DebugOn{ get; set; }
         public SolverConfiguration()
         {
-            LoadBeliefFromDB = false;
-            Verbosity = false;
-            NumOfBeliefStateParticlesToSaveInDB = 5000;
+            DebugOn = false;
+            LoadBeliefFromDB = false; 
+            NumOfBeliefStateParticlesToSaveInDB = 250;
             NumOfParticles = 5000;
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();

@@ -30,12 +30,12 @@ public static int GetNumOfStatesSavedInCurrentBelief()
                         return 0;*/
         }
 
-        public static List<BsonDocument> GetBeliefForExecution(int skip, int take)
+        public static List<BsonDocument> GetBeliefForExecution(int skip, int take, int? actionSequnceId = null)
         {
             try
             {
                 //var filter = Builders<BsonDocument>.Filter.Eq("ActionSequnceId" , 1);
-                var filter = Builders<BsonDocument>.Filter.Empty;
+                var filter = actionSequnceId == null ? Builders<BsonDocument>.Filter.Empty : Builders<BsonDocument>.Filter.Eq("ActionSequnceId" , actionSequnceId.Value);
                 var project = Builders<BsonDocument>.Projection.Slice("BeliefeState", skip, take);
                 var result = BeliefStateCollection.Find(filter).Project(project).ToList();
                 return result; 
@@ -47,11 +47,12 @@ public static int GetNumOfStatesSavedInCurrentBelief()
             }
         }
 
-        public static List<BsonDocument> Get(int skip, int take)
+        public static List<BsonDocument> Get(int skip, int take, int? actionSequnceId = null)
         {
             try
             {
-                var filter = Builders<BsonDocument>.Filter.Eq("ActionSequnceId" , 1);
+                var filter = actionSequnceId == null ? Builders<BsonDocument>.Filter.Empty : Builders<BsonDocument>.Filter.Eq("ActionSequnceId" , actionSequnceId.Value);
+                //var filter = Builders<BsonDocument>.Filter.Eq("ActionSequnceId" , 1);
                 var project = Builders<BsonDocument>.Projection.Slice("BeliefeState", skip, take);
                 var result = BeliefStateCollection.Find(filter).Project(project).ToList();
                 return result; 

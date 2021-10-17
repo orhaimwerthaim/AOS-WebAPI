@@ -296,7 +296,7 @@ struct Config {
 		default_action(""""),
 		max_policy_sim_len(10),
 		noise(0.1),
-		silence(" + (initProj.SolverConfiguration.Verbosity ? "false" : "true") + @"),
+		silence(" + (initProj.SolverConfiguration.DebugOn ? "false" : "true") + @"),
 		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
         saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @")
 		{
@@ -1220,7 +1220,7 @@ void SimpleTUI::OptionParse(option::Option *options, int &num_runs,
     solver_type = options[E_SOLVER].arg;
 
 //  int verbosity = 0;
-  int verbosity = " + (initProj.SolverConfiguration.Verbosity ? "3" : "0") + @";//TODO:: remove debug log
+  int verbosity = " + (initProj.SolverConfiguration.DebugOn ? "3" : "0") + @";//TODO:: remove debug log
   if (options[E_VERBOSITY])
     verbosity = atoi(options[E_VERBOSITY].arg);
   logging::level(verbosity);
@@ -1783,7 +1783,7 @@ void Evaluator::SaveBeliefToDB()
 {
 	if(Globals::config.saveBeliefToDB)
 	{
-		vector<State*> temp = solver_->belief()->Sample(5000);
+		vector<State*> temp = solver_->belief()->Sample("+initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB+@");
 		Prints::SaveBeliefParticles(temp);
 	}
 }
@@ -3532,7 +3532,7 @@ namespace despot {
                             }
                         }
                     }
-                }
+                } 
             }
             HashSet<string> handeledForActionObjects = new HashSet<string>();
             HashSet<string> handeledForObjects = new HashSet<string>();
@@ -3562,11 +3562,13 @@ namespace despot {
 
             if (!initProj.SolverConfiguration.LoadBeliefFromDB)
             {
-                foreach (Assignment assign in data.InitialBeliefAssignments)
+                result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, data.InitialBeliefAssignments, 1, 4);
+                /*foreach (Assignment assign in data.InitialBeliefAssignments)
                 {
                     result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, assign.AssignmentCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT));
-                }
-            }
+                }*/
+            } 
+
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "if (ActionManager::actions.size() == 0)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionManager::Init(const_cast <" + data.ProjectNameWithCapitalLetter + @"State*> (startState));");
@@ -3797,7 +3799,7 @@ namespace despot {
                         bool canChange = oIter.StateType == assign.LatestReachableState && oIter.ItemInMutableFunction;
 
                         result += GenerateFilesUtils.GetIndentationStr(indentCount + i, indentSize,
-                            "for (int ind" + i + " = 0; ind" + i + " < state."+oIter.Type+"Objects.size(); ind" + i + "++)");
+                            "for (int ind" + i + " = 0; ind" + i + " < state." + oIter.Type + "Objects.size(); ind" + i + "++)");
 
                         result += GenerateFilesUtils.GetIndentationStr(indentCount + i, indentSize, "{");
 
@@ -3820,7 +3822,7 @@ namespace despot {
                         }
                     }
 
-                    for (int i = assign.IterateStateVariables.Count-1; i >= 0 ; i--)
+                    for (int i = assign.IterateStateVariables.Count - 1; i >= 0; i--)
                     {
                         result += GenerateFilesUtils.GetIndentationStr(indentCount + i, indentSize, "}");
                     }
@@ -4142,7 +4144,7 @@ State* " + data.ProjectNameWithCapitalLetter + @"::Copy(const State* particle) c
 	*state = *static_cast<const " + data.ProjectNameWithCapitalLetter + @"State*>(particle);
 	state->SetAllocated();
 
-"+GetSetObjectRefenceForCopyFunction(data)+@"
+" + GetSetObjectRefenceForCopyFunction(data) + @"
 
 	return state;
 }
@@ -4220,9 +4222,9 @@ std::string " + data.ProjectNameWithCapitalLetter + @"::PrintStateStr(const Stat
         {
             string result = "";
 
-            HashSet<string> handeledForObjects = new HashSet<string>(); 
+            HashSet<string> handeledForObjects = new HashSet<string>();
             foreach (GlobalVariableDeclaration gVarDec in data.GlobalVariableDeclarations)
-            { 
+            {
 
                 if (!gVarDec.IsActionParameterValue && handeledForObjects.Add(gVarDec.Type))
                 {
@@ -4232,7 +4234,7 @@ std::string " + data.ProjectNameWithCapitalLetter + @"::PrintStateStr(const Stat
                         int i = 0;
                         foreach (GlobalVariableDeclaration gVarDec2 in data.GlobalVariableDeclarations.Where(x => x.Type.Equals(comp.TypeName) && !x.IsActionParameterValue))
                         {
-                            result += GenerateFilesUtils.GetIndentationStr(1, 4, "state->" + comp.TypeName + "Objects["+i+"] = &(" + gVarDec2.StateVariableName.Replace(".","->") + ");");
+                            result += GenerateFilesUtils.GetIndentationStr(1, 4, "state->" + comp.TypeName + "Objects[" + i + "] = &(" + gVarDec2.StateVariableName.Replace(".", "->") + ");");
                             i++;
                         }
                     }

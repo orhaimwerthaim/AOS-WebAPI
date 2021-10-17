@@ -269,7 +269,7 @@ include_directories(
                     foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
                     {
                         LocalVariableTypePLP underlineType = GetUnderlineLocalVariableTypeByVarName(data, plp, oGlVar.FromGlobalVariable);
- 
+
                         if (underlineType != null)
                         {
                             if (oGlVar.FromGlobalVariable.StartsWith(PLPsData.GLOBAL_VARIABLE_STATE_REF))
@@ -745,6 +745,7 @@ if __name__ == '__main__':
             string result = "";
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "class AOS_InitEnvironmentFile:");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self):");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "pass");
 
             Dictionary<string, LocalVariableConstant> constants = new Dictionary<string, LocalVariableConstant>();
             foreach (var lConst in data.LocalVariableConstants)

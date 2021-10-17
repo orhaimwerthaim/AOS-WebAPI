@@ -33,13 +33,15 @@ namespace WebApiCSharp.Controllers
             int _belief_size = string.IsNullOrEmpty(belief_size) ? 0 : Convert.ToInt32(belief_size); 
             this.Response.ContentType = "application/json";
             
-            string jsonString = BeliefStateService.GetBeliefForExecution(0, _belief_size).ToJson();
-
+            string jsonString = BeliefStateService.GetBeliefForExecution(0, _belief_size, 0).ToJson();
             int ind = jsonString.IndexOf("\"BeliefeState");
-            jsonString = "{"+jsonString.Substring(ind);
+            jsonString = ind > -1 ? jsonString.Substring(ind) : "\"BeliefeState\":[]}]";
+            jsonString = "{"+jsonString.Replace("BeliefeState", "InitialBeliefeState");
+            jsonString = jsonString.Substring(0, jsonString.LastIndexOf(']'));
 
 
-            jsonString = ExecutionOutcomeService.Get(_belief_size);
+            jsonString = ExecutionOutcomeService.Get(_belief_size, jsonString);
+            //jsonString = jsonString + ", " + jsonString2 + "}";
             return Content(jsonString);
         }
 
