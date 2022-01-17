@@ -53,7 +53,7 @@ namespace WebApiCSharp.Models
         {
             DebugOn = false;
             LoadBeliefFromDB = false; 
-            NumOfBeliefStateParticlesToSaveInDB = 250;
+            NumOfBeliefStateParticlesToSaveInDB = 1;
             NumOfParticles = 5000;
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();

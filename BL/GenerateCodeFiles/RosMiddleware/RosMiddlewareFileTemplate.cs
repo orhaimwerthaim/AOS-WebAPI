@@ -303,7 +303,7 @@ include_directories(
                         //  result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oGlVar.InputLocalVariable + "\"] = " + underlineType.TypeName + "ToDict(" + oGlVar.InputLocalVariable + ")");
                         //self._topicListener.localVarNamesAndValues["navigate"]["desired_location"]
                     }
-                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "except:");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "except Exception as e:");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "responseNotByLocalVariables = \"illegalActionObs\"");
                 }
 
@@ -327,7 +327,8 @@ include_directories(
 
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + glue.Name + " service terminated\")");
-                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "except:");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "except Exception as e:");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerError(str(e),traceback.format_exc(e))");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "print(\"Service call failed\")");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "");
                 }
@@ -603,6 +604,7 @@ include_directories(
 import datetime
 import rospy  
 import pymongo
+import traceback
 " + GetImportsForMiddlewareNode(data, initProj) + @"
  
 DEBUG = " + (initProj.MiddlewareConfiguration.DebugOn ? "True" : "False") + @"
@@ -614,8 +616,13 @@ aosStats_local_var_collection = aos_statisticsDB[""LocalVariables""]
 aos_GlobalVariablesAssignments_collection = aosDB[""GlobalVariablesAssignments""]
 aos_ModuleResponses_collection = aosDB[""ModuleResponses""]
 collActionForExecution = aosDB[""ActionsForExecution""]
+collErros = aosDB[""Errors""]
 collActions = aosDB[""Actions""]
 
+def registerError(errorStr,trace):
+    error = {""Component"": ""aosRosMiddleware"", ""Error"": errorStr,""Trace"":trace,
+             ""Time"": datetime.datetime.utcnow()}
+    collErros.insert_one(error)
 
 
 " + GetLocalVariableTypeClasses(data) + @"
@@ -708,10 +715,13 @@ class ListenToMongoDbCommands:
 
 
 if __name__ == '__main__':
-    rospy.init_node('aos_ros_middleware_auto', anonymous=True)
-    AOS_InitEnvironmentFile()
-    topicListener = AOS_TopicListenerServer()
-    commandlistener = ListenToMongoDbCommands(topicListener)
+    try:
+        rospy.init_node('aos_ros_middleware_auto', anonymous=True)
+        AOS_InitEnvironmentFile()
+        topicListener = AOS_TopicListenerServer()
+        commandlistener = ListenToMongoDbCommands(topicListener)
+    except Exception as e:
+        registerError(str(e), traceback.format_exc(e))
     ";
             return file;
         }
