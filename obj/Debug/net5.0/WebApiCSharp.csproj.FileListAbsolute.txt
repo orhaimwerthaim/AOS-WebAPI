@@ -23,7 +23,6 @@
 /home/or/Projects/WebApiCSharp/bin/Debug/net5.0/runtimes/linux/native/libmongocrypt.so
 /home/or/Projects/WebApiCSharp/bin/Debug/net5.0/runtimes/osx/native/libmongocrypt.dylib
 /home/or/Projects/WebApiCSharp/bin/Debug/net5.0/runtimes/win/native/mongocrypt.dll
-/home/or/Projects/WebApiCSharp/obj/Debug/net5.0/WebApiCSharp.csprojAssemblyReference.cache
 /home/or/Projects/WebApiCSharp/obj/Debug/net5.0/WebApiCSharp.GeneratedMSBuildEditorConfig.editorconfig
 /home/or/Projects/WebApiCSharp/obj/Debug/net5.0/WebApiCSharp.AssemblyInfoInputs.cache
 /home/or/Projects/WebApiCSharp/obj/Debug/net5.0/WebApiCSharp.AssemblyInfo.cs
@@ -39,3 +38,4 @@
 /home/or/Projects/WebApiCSharp/obj/Debug/net5.0/ref/WebApiCSharp.dll
 /home/or/Projects/WebApiCSharp/obj/Debug/net5.0/WebApiCSharp.pdb
 /home/or/Projects/WebApiCSharp/obj/Debug/net5.0/WebApiCSharp.genruntimeconfig.cache
+/home/or/Projects/WebApiCSharp/obj/Debug/net5.0/WebApiCSharp.csproj.AssemblyReference.cache

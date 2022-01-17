@@ -1783,7 +1783,7 @@ void Evaluator::SaveBeliefToDB()
 {
 	if(Globals::config.saveBeliefToDB)
 	{
-		vector<State*> temp = solver_->belief()->Sample("+initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB+@");
+		vector<State*> temp = solver_->belief()->Sample(" + initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB + @");
 		Prints::SaveBeliefParticles(temp);
 	}
 }
@@ -3023,7 +3023,7 @@ std::string Prints::GetStateJson(State& _state)
             return function;
         }
 
-        private static string AddStateJsonTransformVarLine(GlobalVariableDeclaration gVar, bool IsStateFromJson)
+        private static string AddStateJsonTransformVarLine(GlobalVariableDeclaration gVar, bool IsStateFromJson, bool isForPrintStateFunc = false)
         {
             string result = "";
             if (gVar.SubCompoundFeilds.Count == 0)
@@ -3031,15 +3031,16 @@ std::string Prints::GetStateJson(State& _state)
                 List<string> bits = gVar.StateVariableName.Split(".").ToList();
                 int skip = bits[0] == "state" ? 1 : 0;
                 string dictionarySection = string.Join("\"][\"", bits.Skip(skip).ToArray());
-                result += IsStateFromJson
+                result += !isForPrintStateFunc && IsStateFromJson
                     ? GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];")
-                    : GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = " + gVar.StateVariableName + ";");
+                    : (!isForPrintStateFunc ? GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = " + gVar.StateVariableName + ";")
+                        : GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + gVar.StateVariableName + ":\";") + GenerateFilesUtils.GetIndentationStr(2, 4, "ss << " + gVar.StateVariableName + ";"));
             }
             else
             {
                 foreach (var subVar in gVar.SubCompoundFeilds)
                 {
-                    result += AddStateJsonTransformVarLine(subVar, IsStateFromJson);
+                    result += AddStateJsonTransformVarLine(subVar, IsStateFromJson, isForPrintStateFunc);
                 }
             }
             return result;
@@ -3303,17 +3304,22 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"STATE: \";");
             foreach (GlobalVariableDeclaration oStateVar in data.GlobalVariableDeclarations)
             {
+                if(!oStateVar.IsActionParameterValue)
+                {
+                    result += AddStateJsonTransformVarLine(oStateVar, false, true);
+                }
                 if (data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oStateVar.Type)).Count() == 0)
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + oStateVar.Name + ":\";");
-                    if (data.GlobalEnumTypes.Where(x => x.TypeName.Equals(oStateVar.Type)).Count() > 0)
-                    {
-                        result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  Prints::Print" + oStateVar.Type + "(state." + oStateVar.Name + ");");
-                    }
-                    else
-                    {
-                        result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  state." + oStateVar.Name + ";");
-                    }
+                    
+                    // result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + oStateVar.Name + ":\";");
+                    // if (data.GlobalEnumTypes.Where(x => x.TypeName.Equals(oStateVar.Type)).Count() > 0)
+                    // {
+                    //     result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  Prints::Print" + oStateVar.Type + "(state." + oStateVar.Name + ");");
+                    // }
+                    // else
+                    // {
+                    //     result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  state." + oStateVar.Name + ";");
+                    // }
                 }
             }
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "return ss.str();");
@@ -3532,7 +3538,7 @@ namespace despot {
                             }
                         }
                     }
-                } 
+                }
             }
             HashSet<string> handeledForActionObjects = new HashSet<string>();
             HashSet<string> handeledForObjects = new HashSet<string>();
@@ -3567,7 +3573,7 @@ namespace despot {
                 {
                     result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, assign.AssignmentCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT));
                 }*/
-            } 
+            }
 
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "if (ActionManager::actions.size() == 0)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
@@ -4190,9 +4196,9 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 
     if (!meetPrecondition)
 	{
-		__moduleExecutionTime = 0;
-		observation = illegalActionObs;
-		return false;
+		//__moduleExecutionTime = 0;
+		//observation = illegalActionObs;
+		//return false;
 	}
 	return finalState;
 }
