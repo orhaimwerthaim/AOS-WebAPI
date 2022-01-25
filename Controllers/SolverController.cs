@@ -75,5 +75,13 @@ namespace WebApiCSharp.Controllers
 
             return NoContent();
         }
+
+        [HttpDelete]
+        public IActionResult DeleteAll()
+        {
+            SolversService.RemoveAllSolversAndGetNextSolverID();
+
+            return NoContent();
+        }
     }
 }

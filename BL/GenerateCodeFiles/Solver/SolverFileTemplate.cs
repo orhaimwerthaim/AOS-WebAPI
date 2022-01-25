@@ -465,9 +465,12 @@ ValuedAction POMCP::Search(double timeout) {
 	// 			<< "" "" << root_->Child(action)->value() << endl;
 	// 	}
 	// }
-
-	std::string dot = POMCP::GenerateDotGraph(root_," + debugPDF_Depth + @", model_);
-	// delete root_;
+    if(" + debugPDF_Depth + @" > 0)
+    {
+	    //std::string dot = POMCP::GenerateDotGraph(root_," + debugPDF_Depth + @", model_);
+        std::string dot = POMCP::GenerateDebugJson(root_," + debugPDF_Depth + @", model_);
+	}
+    // delete root_;
 	return astar;
 }
 
@@ -914,7 +917,7 @@ void DPOMCP::Update(int action, OBS_TYPE obs) {
 		<< action << "", observation "" << obs
 		<< "" in "" << (get_time_second() - start) << ""s"" << endl;
 }
-
+/*
 std::string POMCP::GenerateDotGraph(VNode* root, int depthLimit, const DSPOMDP* model)
 {
 	stringstream ssNodes;
@@ -951,7 +954,7 @@ void POMCP::GenerateDotGraphVnode(VNode* vnode, int& currentNodeID, stringstream
 	{ 
 		stateDesc = """";
 		
-		/* */ }
+		 }
 	// if(vnode->particles().size() == 0)
 	// 	stateDesc = """";
 	// else 
@@ -986,6 +989,80 @@ void POMCP::GenerateDotGraphVnode(VNode* vnode, int& currentNodeID, stringstream
 		}
 	}
 }
+*/
+
+std::string POMCP::GenerateDebugJson(VNode* root, int depthLimit, const DSPOMDP* model)
+{
+	stringstream ssNodes;
+	stringstream ssEdges; 
+	
+	ssNodes << ""{\""observation\"":\""root\"""" << endl;
+	ssEdges << """";
+	int currentNodeID = 0;
+	POMCP::GenerateDebugJsonVnode(root, ssNodes, depthLimit, model_);
+
+	
+	ofstream MyFile(""/home/or/Projects/debug.json"");
+	MyFile << ssNodes.str();
+	MyFile.close();
+	//run: ""dot -Tpdf  debug.dot > debug.pdf""
+	system(""(cd /home/or/Projects;dot -Tpdf  debug.dot > debug.pdf)"");
+	return ssNodes.str();
+}
+
+void POMCP::GenerateDebugJsonVnode(VNode* vnode, stringstream &ss, int depthLimit, const DSPOMDP* model)
+{
+	std::string stateDesc = """";
+	try 
+	{
+		if(vnode->belief() != NULL)
+			std::vector<State *> vs = vnode->belief()->Sample(1);
+		//stateDesc = model_->PrintStateStr(*());
+	} 
+	catch (std::exception& e)
+	{ 
+		stateDesc = """";
+		
+		 }
+	if(depthLimit >= 0 && vnode->depth() >= depthLimit)
+	{
+		ss << ""}"";
+		return;
+	}
+	ss << "",\""actions\"":["";
+	for (int i = 0; i < vnode->children().size(); i++)
+	{
+		if(i > 0)ss << "","";
+		ss << ""{"";
+		QNode *child = vnode->children()[i];
+		int N = child->count();
+		double V = child->value();
+		int action = i;
+		
+		ss << ""\""action\"":""<< ""\"""" << model->GetActionDescription(action)<< ""\"",""<< endl;
+		ss << ""\""count\"":""<< N << "","" << ""\""value\"":""<< V << "",""<< endl;
+
+		ss << ""\""observations\"":["";
+		int j = 0;
+		for (std::map<OBS_TYPE, VNode *>::iterator it = child->children().begin(); it != child->children().end(); ++it,j++)
+		{
+			OBS_TYPE obs = it->first;
+			if(j > 0)
+				ss << "","";
+			ss << ""{\""observation\"":""
+					<< ""\"""" << model_->PrintObs(action, obs) << ""\"""" << endl;
+
+			VNode *vnodeChild = it->second; 
+			POMCP::GenerateDebugJsonVnode(vnodeChild, ss, depthLimit, model);
+
+		}
+		ss << ""]"";
+		ss << ""}"";
+	}
+	ss << ""]"";
+	ss << ""}"";
+}
+
  
 } // namespace despot
 ";
@@ -2903,8 +2980,10 @@ public:
 	static int UpperBoundAction(const VNode* vnode, double explore_constant);
 	static ValuedAction OptimalAction(const VNode* vnode);
 	static int Count(const VNode* vnode);
-	 std::string GenerateDotGraph(VNode *root, int depthLimit, const DSPOMDP* model);
-	 void GenerateDotGraphVnode(VNode *vnode, int &currentNodeID, std::stringstream &ssNodes, std::stringstream &ssEdges, int depthLimit, const DSPOMDP* model);
+	 //std::string GenerateDotGraph(VNode *root, int depthLimit, const DSPOMDP* model);
+	 //void GenerateDotGraphVnode(VNode *vnode, int &currentNodeID, std::stringstream &ssNodes, std::stringstream &ssEdges, int depthLimit, const DSPOMDP* model);
+	 void GenerateDebugJsonVnode(VNode *vnode, std::stringstream &ss, int depthLimit, const DSPOMDP* model);
+	 std::string GenerateDebugJson(VNode *root, int depthLimit, const DSPOMDP* model);
 };
 
 /* =============================================================================

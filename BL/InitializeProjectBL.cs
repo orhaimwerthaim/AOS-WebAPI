@@ -96,6 +96,7 @@ catkin_make";
         }
         private static string BuildAosSolver()
         {
+            Directory.Delete(configuration.SolverPath + "/build/examples",true);//delete old builds
             countdownEvent = new CountdownEvent(1);
             GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/BuildSolverWrapper.sh", GetBuildSolverBashFile(), false);
             ProcessStartInfo sInfo = new ProcessStartInfo()
