@@ -304,6 +304,7 @@ include_directories(
                         //self._topicListener.localVarNamesAndValues["navigate"]["desired_location"]
                     }
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "except Exception as e:");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerError(str(e), traceback.format_exc(e), 'Action: "+glue.Name+", illegalActionObs')");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "responseNotByLocalVariables = \"illegalActionObs\"");
                 }
 
@@ -328,7 +329,7 @@ include_directories(
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + glue.Name + " service terminated\")");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "except Exception as e:");
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerError(str(e),traceback.format_exc(e))");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerError(str(e),traceback.format_exc(e),'Action: "+glue.Name+"')");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "print(\"Service call failed\")");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "");
                 }
@@ -619,9 +620,12 @@ collActionForExecution = aosDB[""ActionsForExecution""]
 collErros = aosDB[""Errors""]
 collActions = aosDB[""Actions""]
 
-def registerError(errorStr,trace):
+def registerError(errorStr,trace, comments=None):
     error = {""Component"": ""aosRosMiddleware"", ""Error"": errorStr,""Trace"":trace,
              ""Time"": datetime.datetime.utcnow()}
+    if comments is not None:
+        error = {""Component"": ""aosRosMiddleware"", ""Error"": errorStr, ""Trace"": trace,
+                 ""Time"": datetime.datetime.utcnow(), ""Comments"":comments}
     collErros.insert_one(error)
 
 

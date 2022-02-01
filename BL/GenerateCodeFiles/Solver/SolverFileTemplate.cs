@@ -4037,6 +4037,7 @@ namespace despot {
 bool AOSUtils::Bernoulli(double p)
 {
 	/* generate secret number between 1 and 100: */
+    srand((unsigned int)time(NULL));
 	int randInt = rand() % 100 + 1;
 	return (p * 100) >= randInt;
 }
@@ -4244,6 +4245,7 @@ int " + data.ProjectNameWithCapitalLetter + @"::NumActiveParticles() const {
 
 bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
 	OBS_TYPE& observation) const {
+    reward = 0;
 	bool isNextStateFinal = false;
 	Random random(rand_num);
 	int __moduleExecutionTime = -1;
