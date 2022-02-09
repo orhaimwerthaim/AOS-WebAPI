@@ -1,3 +1,5 @@
+using System.Reflection.Metadata.Ecma335;
+using System.Security.Principal;
 using MongoDB.Bson;
 using System;
 using MongoDB.Bson.Serialization.Attributes;
@@ -393,6 +395,11 @@ include_directories(
                         result += GenerateFilesUtils.GetIndentationStr(4, 4, "assignGlobalVar[\"" + assign.GlobalVarName + "\"] = " + assign.Value);
                     }
                 }
+
+                if(!String.IsNullOrEmpty(plp.ResponseFromStringLocalVariable))
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "moduleResponse = str(" + plp.ResponseFromStringLocalVariable + ")");
+                }
                 result += Environment.NewLine;
             }
             return result;
@@ -477,21 +484,22 @@ include_directories(
             foreach (var topic in topicsToListen)
             {
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "def cb_" + topic.Key.Replace("/", "_") + "(self, data):");
-
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "try:");
                 foreach (var glueTopic in topic.Value)
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "if self.listenTargetModule == \"" + glueTopic.Key + "\":");
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
-                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"handling topic call:" + glueTopic.Key + "\")");
-                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(data)");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if self.listenTargetModule == \"" + glueTopic.Key + "\":");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "if DEBUG:");
+                    result += GenerateFilesUtils.GetIndentationStr(5, 4, "print(\"handling topic call:" + glueTopic.Key + "\")");
+                    result += GenerateFilesUtils.GetIndentationStr(5, 4, "print(data)");
                     foreach (var localVar in glueTopic.Value)
                     {
-                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "#-----------------------------------------------------------------------");
-                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "value = self." + glueTopic.Key + "_get_value_" + localVar.LocalVarName + "(data)");
-                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "self.updateLocalVariableValue(\"" + localVar.LocalVarName + "\", value)");
+                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "#-----------------------------------------------------------------------");
+                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "value = self." + glueTopic.Key + "_get_value_" + localVar.LocalVarName + "(data)");
+                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "self.updateLocalVariableValue(\"" + localVar.LocalVarName + "\", value)");
                     }
                 }
-
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "except Exception as e:");
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerError(str(e), traceback.format_exc(e), 'topic "+topic.Key+"')");
 
 
                 result += Environment.NewLine;
@@ -605,6 +613,7 @@ include_directories(
 import datetime
 import rospy  
 import pymongo
+import operator
 import traceback
 " + GetImportsForMiddlewareNode(data, initProj) + @"
  

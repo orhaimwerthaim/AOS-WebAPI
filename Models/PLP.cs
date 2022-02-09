@@ -17,6 +17,8 @@ namespace WebApiCSharp.Models
 
           public string ResponseType{ get; set; } 
 
+            public string ResponseFromStringLocalVariable{get;set;}
+
           public List<ResponseRule> ResponseRules{ get; set; }
 
         public List<Assignment> Preconditions_GlobalVariablePreconditionAssignments{ get; set; }
@@ -28,6 +30,7 @@ namespace WebApiCSharp.Models
           public List<Assignment> DynamicModel_VariableAssignments { get; set; }
         public PLP()
         {
+            ResponseFromStringLocalVariable=null;
             GlobalVariableModuleParameters = new List<GlobalVariableModuleParameter>();
             LocalVariablesInitializationFromGlobalVariables = new List<LocalVariablesInitializationFromGlobalVariable>();
             ModuleExecutionTimeDynamicModel = new List<Assignment>();

@@ -6,12 +6,19 @@ namespace WebApiCSharp.Models
 {
     public class LocalVariable
     {
-        [BsonElement("Id")]
-        public int Id{get;set;}
+        [BsonElement("_id")]
+        public BsonObjectId Id{get;set;}
 
 
-        [BsonElement("username")]
+        [BsonElement("VarName")]
         public string Name{get;set;}
+
+
+        [BsonElement("Value")]
+        public object Value{get;set;}
+
+        [BsonElement("Module")]
+        public string Module{get;set;} 
  
 
     }

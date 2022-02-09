@@ -166,6 +166,19 @@ namespace WebApiCSharp.GenerateCodeFiles
                         string key = dist.FromFile + "_" + dist.FunctionDescription;
                         if (!DistributionSamples.ContainsKey(key))
                         {
+                            foreach (string par in dist.Parameters)
+                            {  
+                                if(GlobalCompoundTypes.Where(x => x.TypeName.Equals(par)).FirstOrDefault() != null)
+                                {
+                                    dist.HasParameterAsGlobalType = true;
+                                    break;
+                                }
+                                if(GlobalEnumTypes.Where(x => x.TypeName.Equals(par)).FirstOrDefault() != null)
+                                {
+                                    dist.HasParameterAsGlobalType = true;
+                                    break;
+                                }
+                            }
                             DistributionSamples.Add(key, dist);
                         }
                     }
@@ -203,6 +216,11 @@ namespace WebApiCSharp.GenerateCodeFiles
             }
 
             foreach (Assignment assign in InitialBeliefAssignments)
+            {
+                codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
+            }
+
+            foreach (Assignment assign in ExtrinsicChangesDynamicModel)
             {
                 codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
             }
@@ -800,7 +818,11 @@ namespace WebApiCSharp.GenerateCodeFiles
             }
 
             plp.ResponseType = bPlp["ModuleResponse"]["Type"].ToString();
-
+            if(bPlp["ModuleResponse"].AsBsonDocument.Contains("FromStringLocalVariable"))
+            {
+                plp.ResponseFromStringLocalVariable = bPlp["ModuleResponse"]["FromStringLocalVariable"].ToString();
+            }
+            
             if (bPlp["ModuleResponse"].AsBsonDocument.Contains("ResponseRules"))
             {
                 foreach (BsonValue bVal in bPlp["ModuleResponse"]["ResponseRules"].AsBsonArray)
@@ -995,6 +1017,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 Assignment oAssignment = new Assignment();
                 oAssignment.LatestReachableState = assignmentLatestPointInTime;
                 oAssignment.AssignmentName = docAssignment["AssignmentName"].ToString();
+                
                 oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString().Replace(" ", "") : "";
 
                 string iterateVar = docAssignment.Contains("IteratePreviousStateVars") ? "IteratePreviousStateVars" :
@@ -1167,7 +1190,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string FunctionDescription;
         public DistributionType Type;
         public List<string> Parameters;
-
+        public bool HasParameterAsGlobalType = false;
         public string FromFile;
 
         public DistributionSample()

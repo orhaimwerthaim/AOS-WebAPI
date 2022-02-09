@@ -79,7 +79,7 @@ namespace WebApiCSharp.Controllers
             if (lVar is null)
                 return NotFound();
 
-            LocalVariableService.Delete(new LocalVariable() { Id = id });
+         //   LocalVariableService.Delete(new LocalVariable() { Id = id });
 
             return NoContent();
         }

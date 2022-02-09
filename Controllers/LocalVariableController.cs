@@ -64,14 +64,14 @@ namespace WebApiCSharp.Controllers
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public IActionResult Delete(string id)
         {
-            var lVar = LocalVariableService.Get(id);
+           // var lVar = LocalVariableService.Get(id);
 
-            if (lVar is null)
-                return NotFound();
+            // if (lVar is null)
+            //     return NotFound();
 
-            LocalVariableService.Delete(new LocalVariable() { Id = id });
+           // LocalVariableService.Delete(new LocalVariable() { Id = BsonObjectId(id) });
 
             return NoContent();
         }

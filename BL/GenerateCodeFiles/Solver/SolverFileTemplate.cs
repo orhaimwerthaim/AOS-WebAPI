@@ -1,3 +1,5 @@
+using System.Data.Common;
+using System.Reflection;
 using MongoDB.Bson;
 using System;
 using MongoDB.Bson.Serialization.Attributes;
@@ -219,9 +221,6 @@ if(DESPOT_BUILD_EXAMPLES)
  # add_subdirectory(examples/cpp_models/" + projectName + @"_working_toy)
 endif()
 
-if(DESPOT_BUILD_POMDPX)
-  add_subdirectory(examples/pomdpx_models)
-endif()
 
 install(TARGETS ""${PROJECT_NAME}""
   EXPORT ""DespotTargets""
@@ -312,27 +311,37 @@ struct Config {
         }
 
 
-        public static string GetPOMCP_File(string debugPDF_Path, int debugPDF_Depth, InitializeProject initProj)
+        public static string GetPOMCP_File(string debugPDF_Path, int debugPDF_Depth, InitializeProject initProj, PLPsData data)
         {
             string file = @"#include <despot/solver/pomcp.h>
 #include <despot/util/logging.h>
 #include <iostream>
 #include <fstream>
 
+#ifdef WITH_ROOT_EPSILON_GREEDY 
+#include <random>
+#endif
+
 using namespace std;
 
 using namespace std;
 
 namespace despot {
-
+#ifdef WITH_ROOT_EPSILON_GREEDY 
+std::default_random_engine POMCP::generator;
+std::uniform_int_distribution<int> POMCP::rand_action_distribution(0,"+(data.NumberOfActions-1)+@");
+#endif
 /* =============================================================================
  * POMCPPrior class
  * =============================================================================*/
 
 POMCPPrior::POMCPPrior(const DSPOMDP* model) :
 	model_(model) {
-	exploration_constant_ = (model->GetMaxReward()
-		- model->GetMinRewardAction().value);
+	double x = (40 / Globals::config.search_depth) > 1 ? (40 / Globals::config.search_depth) : 1;
+    #ifdef WITH_ROOT_EPSILON_GREEDY
+	x = 1;
+	#endif
+	exploration_constant_ = (model->GetMaxReward() - model->GetMinRewardAction().value) * x;
 }
 
 POMCPPrior::~POMCPPrior() {
@@ -386,7 +395,7 @@ void UniformPOMCPPrior::ComputePreference(const State& state) {
 POMCP::POMCP(const DSPOMDP* model, POMCPPrior* prior, Belief* belief) :
 	Solver(model, belief),
 	root_(NULL) {
-	reuse_ = false;
+	reuse_ = true;
 	prior_ = prior;
 	assert(prior_ != NULL);
 }
@@ -420,8 +429,12 @@ ValuedAction POMCP::Search(double timeout) {
 		for (int i = 0; i < particles.size(); i++) {
 			State* particle = particles[i];
 			logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
-
+#ifdef WITH_ROOT_EPSILON_GREEDY
+            Simulate(particle, root_, model_, prior_, simulatedActionSequence,true);
+#else
 			Simulate(particle, root_, model_, prior_, simulatedActionSequence);
+ #endif
+			
  
 			num_sims++;
 			logd << ""[POMCP::Search] "" << num_sims << "" simulations done"" << endl;
@@ -521,7 +534,53 @@ void POMCP::Update(int action, OBS_TYPE obs)
 // 	std::map<std::string, bool> updatesFromAction;
 // 	POMCP::Update(action, obs, updatesFromAction);
 // }
+#ifdef WITH_ROOT_EPSILON_GREEDY
+        int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant, bool is_root_node) {
+#ifdef WITH_FULL_EPSILON_GREEDY
+			is_root_node = true;
+#endif
+			const vector<QNode *> &qnodes = vnode->children();
+			double best_ub = Globals::NEG_INFTY;
+			int best_action = -1;
+			 
+			float rand_ = ((float)rand() / RAND_MAX);
+			bool random_action = is_root_node && (rand_ > 0.8);
+			bool take_max = is_root_node && !random_action;
+			if (random_action)
+			{
 
+				int rand_act = rand_action_distribution(generator);
+				while (qnodes[rand_act]->value() < -900000)
+				{
+					rand_act = rand_action_distribution(generator);
+				}
+				return rand_act;
+			}
+
+			for (int action = 0; action < qnodes.size(); action++)
+			{
+				if (qnodes[action]->count() == 0)
+					return action;
+
+				double ub = qnodes[action]->value() + explore_constant * sqrt(log(vnode->count() + 1) / qnodes[action]->count());
+
+				if (take_max)
+				{
+					ub = qnodes[action]->value();
+				}
+
+				if (ub > best_ub)
+				{
+					best_ub = ub;
+					best_action = action;
+				}
+			}
+
+			assert(best_action != -1);
+			return best_action;
+		}
+
+#endif
 int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant)
 {
 	return UpperBoundAction(vnode, explore_constant, NULL, NULL);
@@ -680,7 +739,44 @@ double POMCP::Simulate(State* particle, RandomStreams& streams, VNode* vnode,
 
 	return reward;
 }
+#ifdef WITH_ROOT_EPSILON_GREEDY
+// static
+double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
+	POMCPPrior* prior, std::vector<int>* simulateActionSequence, bool is_root_node) {
+	assert(vnode != NULL);
+	if (vnode->depth() >= Globals::config.search_depth)
+		return 0;
 
+	double explore_constant = prior->exploration_constant();
+
+	int action = simulateActionSequence && simulateActionSequence->size() > vnode->depth() ? (*simulateActionSequence)[vnode->depth()] : UpperBoundAction(vnode, explore_constant,is_root_node);
+			
+	double reward;
+	OBS_TYPE obs;
+	bool terminal = model->Step(*particle, action, reward, obs);
+
+	QNode* qnode = vnode->Child(action);
+	if (!terminal) {
+		prior->Add(action, obs);
+		map<OBS_TYPE, VNode*>& vnodes = qnode->children();
+		if (vnodes[obs] != NULL) {
+			reward += Globals::Discount()
+				* Simulate(particle, vnodes[obs], model, prior,simulateActionSequence, false);
+		} else { // Rollout upon encountering a node not in curren tree, then add the node
+			vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
+				model);
+			reward += Globals::Discount()
+				* Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
+		}
+		prior->PopLast();
+	}
+
+	qnode->Add(reward);
+	vnode->Add(reward);
+
+	return reward;
+}
+#endif
 // static
 double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 	POMCPPrior* prior, std::vector<int>* simulateActionSequence) {
@@ -2861,6 +2957,13 @@ public:
             string file = "";
             file = @"#ifndef POMCP_H
 #define POMCP_H
+//#define WITH_ROOT_EPSILON_GREEDY
+//#define WITH_FULL_EPSILON_GREEDY
+
+
+#ifdef WITH_FULL_EPSILON_GREEDY
+#define WITH_ROOT_EPSILON_GREEDY
+#endif
 
 #include <despot/core/pomdp.h>
 #include <despot/core/node.h>
@@ -2966,8 +3069,6 @@ public:
 	//virtual void Update(int action, OBS_TYPE obs, std::map<std::string, bool> updatesFromAction);
 	static VNode* CreateVNode(int depth, const State*, POMCPPrior* prior,
 		const DSPOMDP* model);
-	static double Simulate(State* particle, VNode* root, const DSPOMDP* model,
-		POMCPPrior* prior, std::vector<int>* simulateActionSequence);
 	static double Simulate(State* particle, RandomStreams& streams,
 		VNode* vnode, const DSPOMDP* model, POMCPPrior* prior);
 	static double Rollout(State* particle, int depth, const DSPOMDP* model,
@@ -2978,6 +3079,17 @@ public:
 		RandomStreams& streams, const DSPOMDP* model, POMCPPrior* prior);
 	static int UpperBoundAction(const VNode* vnode, double explore_constant, const DSPOMDP* model, Belief* b);
 	static int UpperBoundAction(const VNode* vnode, double explore_constant);
+    static double Simulate(State* particle, VNode* root, const DSPOMDP* model,
+		POMCPPrior* prior, std::vector<int>* simulateActionSequence);
+
+#ifdef WITH_ROOT_EPSILON_GREEDY
+static std::default_random_engine generator;
+static std::uniform_int_distribution<int> rand_action_distribution;
+static int UpperBoundAction(const VNode* vnode, double explore_constant, bool is_root_node);
+static double Simulate(State* particle, VNode* root, const DSPOMDP* model,
+		POMCPPrior* prior, std::vector<int>* simulateActionSequence, bool is_root_node);
+#endif
+
 	static ValuedAction OptimalAction(const VNode* vnode);
 	static int Count(const VNode* vnode);
 	 //std::string GenerateDotGraph(VNode *root, int depthLimit, const DSPOMDP* model);
@@ -3065,7 +3177,7 @@ void Prints::SaveBeliefParticles(vector<State*> particles)
 
     for (int i = 0; i < particles.size(); i++)
     {
-        j[""BeliefeState""][i] = json::parse(Prints::GetStateJson(*particles[0])); 
+        j[""BeliefeState""][i] = json::parse(Prints::GetStateJson(*particles[i])); 
     }
     
     std::string str(j.dump().c_str());
@@ -3431,7 +3543,7 @@ namespace despot {
 
 
                             bool primitive = GenerateFilesUtils.IsPrimitiveType(oVar.Type) || oVar.Type.Equals(PLPsData.ANY_VALUE_TYPE_NAME);
-                            string print = primitive ? (actionDescVarName + "->" + oVar.Name + "." + oVar.Name) : ("Prints::Print" + oVar.Type + "((" + oVar.Type + ")" + actionDescVarName + "->" + oVar.Name + ");");
+                            string print = primitive ? (actionDescVarName + "->" + oVar.Name /*+ "." + oVar.Name*/) : ("Prints::Print" + oVar.Type + "((" + oVar.Type + ")" + actionDescVarName + "->" + oVar.Name + ");");
                             result += GenerateFilesUtils.GetIndentationStr(3, 4, "ss << \",\" << \"" + oVar.Name + ":\" << " + print + ";");
                         }
                         else
@@ -3534,14 +3646,17 @@ namespace despot {
                 switch (dist.Type)
                 {
                     case DistributionType.Discrete:
-                        if (environmentFileCode)
+                        if(environmentFileCode && dist.FromFile == PLPsData.PLP_TYPE_NAME_ENVIRONMENT && !dist.HasParameterAsGlobalType)
+                        {
+                            replacementCode = data.ProjectNameWithCapitalLetter + "::" + dist.C_VariableName + "(" + data.ProjectNameWithCapitalLetter + "::generator)";
+                        }
+                        else
+                        if (environmentFileCode && dist.FromFile == PLPsData.PLP_TYPE_NAME_ENVIRONMENT)
                         {
                             replacementCode = "state." + dist.Parameters[0] + "Objects[" + dist.C_VariableName + "(generator)];";
                         }
                         else
                         {
-
-
                             replacementCode = "(" + data.ProjectNameWithCapitalLetter + "ResponseModuleAndTempEnums)(" /*+ dist.FromFile + "_"*/ + dist.Parameters[0] + " + 1 + " + data.ProjectNameWithCapitalLetter + "::" + dist.C_VariableName + "(" + data.ProjectNameWithCapitalLetter + "::generator))";
                         }
                         break;
@@ -3930,10 +4045,11 @@ namespace despot {
                 data.ProjectNameWithCapitalLetter + "State &state__, double rand_num, int actionId, double &__reward, OBS_TYPE &observation, const int &__moduleExecutionTime, const bool &__meetPrecondition) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
 
-
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "std::hash<std::string> hasher;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "observation = -1;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "int startObs = observation;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "std::string __moduleResponseStr = \"NoStrResponse\";");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "OBS_TYPE &__moduleResponse = observation;");
             foreach (PLP plp in data.PLPs.Values)
             {
@@ -3959,6 +4075,15 @@ namespace despot {
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
             }
 
+            
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(__moduleResponseStr != \"NoStrResponse\")");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums responseHash = ("+ data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums)hasher(__moduleResponseStr);");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_iros::vecResponseEnumToString[responseHash] = __moduleResponseStr;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_iros::vecStringToResponseEnum[__moduleResponseStr] = responseHash;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "__moduleResponse = responseHash;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(startObs == __moduleResponse)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "stringstream ss;");
@@ -3975,16 +4100,18 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, const int &__moduleExecutionTime)  const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
-            foreach (Assignment assign in data.ExtrinsicChangesDynamicModel)
-            {
-                foreach (string codeLine in assign.AssignmentCode.Split(";"))
-                {
-                    if (codeLine.Length > 0)
-                    {
-                        result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
-                    }
-                }
-            }
+            
+            result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, data.ExtrinsicChangesDynamicModel, 2, 4);
+            // foreach (Assignment assign in data.ExtrinsicChangesDynamicModel)
+            // {
+            //     foreach (string codeLine in assign.AssignmentCode.Split(";"))
+            //     {
+            //         if (codeLine.Length > 0)
+            //         {
+            //             result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+            //         }
+            //     }
+            // }
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
             return result;
         }
@@ -4028,6 +4155,7 @@ namespace despot {
 #include <algorithm>
 #include <cmath> 
 #include <despot/util/mongoDB_Bridge.h>
+#include <functional> //for std::hash
 
 using namespace std;
 

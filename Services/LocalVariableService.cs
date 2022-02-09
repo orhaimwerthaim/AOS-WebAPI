@@ -50,8 +50,9 @@ namespace WebApiCSharp.Services
                 // IMongoDatabase db = client.GetDatabase("AOS"); 
                 //var cars2 = db.GetCollection<BsonDocument>("localVariables");
 
-                var c = LocalVarCollection.Find<LocalVariable>(c => c.Id == id).FirstOrDefault();
-                return c;
+                // var c = LocalVarCollection.Find<LocalVariable>(c => c.Id == id).FirstOrDefault();
+                // return c;
+                return null;
                 //   foreach(LocalVariable a in c.ToList())
                 //   {
                 //         string s =a.Name;
@@ -93,15 +94,16 @@ namespace WebApiCSharp.Services
         {
             try
             { 
-                var replaceResult = LocalVarCollection.ReplaceOne(doc => doc.Id == item.Id, item);
-                if (replaceResult.IsAcknowledged)
-                {
-                    return item;
-                }
-                else
-                {
-                    return null;
-                }
+                // var replaceResult = LocalVarCollection.ReplaceOne(doc => doc.Id == item.Id, item);
+                // if (replaceResult.IsAcknowledged)
+                // {
+                //     return item;
+                // }
+                // else
+                // {
+                //     return null;
+                // }
+                return null;
             }
             catch (MongoWriteException mwx)
             {
@@ -115,8 +117,9 @@ namespace WebApiCSharp.Services
 
         public static bool Delete(LocalVariable item)
         { 
-            var result = LocalVarCollection.DeleteOne(doc => doc.Id == item.Id);
-            return result.IsAcknowledged;
+            // var result = LocalVarCollection.DeleteOne(doc => doc.Id == item.Id);
+            // return result.IsAcknowledged;
+            return true;
         }
     }
 }
