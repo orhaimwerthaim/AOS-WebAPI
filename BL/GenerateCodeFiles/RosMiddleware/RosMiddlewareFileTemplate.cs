@@ -259,7 +259,7 @@ include_directories(
 
                 bool hasVar = false;
 
-                foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
+                foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in glue.LocalVariablesInitializationFromGlobalVariables)
                 {
                     hasVar = true;
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, oGlVar.InputLocalVariable + " = \"\"");
@@ -268,7 +268,7 @@ include_directories(
                 {
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "try:");
 
-                    foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in plp.LocalVariablesInitializationFromGlobalVariables)
+                    foreach (LocalVariablesInitializationFromGlobalVariable oGlVar in glue.LocalVariablesInitializationFromGlobalVariables)
                     {
                         LocalVariableTypePLP underlineType = GetUnderlineLocalVariableTypeByVarName(data, plp, oGlVar.FromGlobalVariable);
 
@@ -367,7 +367,7 @@ include_directories(
                     localVarNames.Add(oVar.LocalVarName);
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, oVar.LocalVarName + " = self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oVar.LocalVarName + "\"]");
                 }
-                foreach (var oVar in plp.LocalVariablesInitializationFromGlobalVariables)
+                foreach (var oVar in glue.LocalVariablesInitializationFromGlobalVariables)
                 {
                     localVarNames.Add(oVar.InputLocalVariable);
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, oVar.InputLocalVariable + " = self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oVar.InputLocalVariable + "\"]");
@@ -381,13 +381,13 @@ include_directories(
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(" + varName + ")");
                 }
 
-                foreach (var responseRule in plp.ResponseRules)
+                foreach (var responseRule in glue.ResponseRules)
                 {
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"\" and " + (string.IsNullOrEmpty(responseRule.Condition) ? "True" : responseRule.Condition) + ":");
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "moduleResponse = \"" + glue.Name + "_" + responseRule.Response + "\"");
                 }
 
-                foreach (var responseRule in plp.ResponseRules)
+                foreach (var responseRule in glue.ResponseRules)
                 {
                     foreach (var assign in responseRule.ResponseAssignmentsToGlobalVar)
                     {
@@ -396,9 +396,9 @@ include_directories(
                     }
                 }
 
-                if(!String.IsNullOrEmpty(plp.ResponseFromStringLocalVariable))
+                if(!String.IsNullOrEmpty(glue.ResponseFromStringLocalVariable))
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "moduleResponse = str(" + plp.ResponseFromStringLocalVariable + ")");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "moduleResponse = str(" + glue.ResponseFromStringLocalVariable + ")");
                 }
                 result += Environment.NewLine;
             }
@@ -423,7 +423,7 @@ include_directories(
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self):");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.localVarNamesAndValues = {", false);
 
-            List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.GlueLocalVariablesInitializations.Count > 0 || data.PLPs[x.Name].LocalVariablesInitializationFromGlobalVariables.Count > 0).ToList();
+            List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.LocalVariablesInitializationFromGlobalVariables.Count > 0).ToList();
 
             HashSet<string> localVarNames = new HashSet<string>();
             for (int j = 0; gluesWithLocalVars.Count > j; j++)
@@ -438,14 +438,14 @@ include_directories(
                     localVarNames.Add(localVar.LocalVarName);
                     result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + localVar.LocalVarName + "\": " +
                             (string.IsNullOrEmpty(localVar.InitialValue) ? "None" : localVar.InitialValue) +
-                            (i == glue.GlueLocalVariablesInitializations.Count - 1 && data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables.Count == 0 ? "" : ", "), false);
+                            (i == glue.GlueLocalVariablesInitializations.Count - 1 && glue.LocalVariablesInitializationFromGlobalVariables.Count == 0 ? "" : ", "), false);
                 }
-                for (int i = 0; i < data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables.Count; i++)
+                for (int i = 0; i < glue.LocalVariablesInitializationFromGlobalVariables.Count; i++)
                 {
-                    var localFromGlob = data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables[i];
+                    var localFromGlob = glue.LocalVariablesInitializationFromGlobalVariables[i];
                     localVarNames.Add(localFromGlob.InputLocalVariable);
                     result += GenerateFilesUtils.GetIndentationStr(0, 4, "\"" + localFromGlob.InputLocalVariable + "\": None" +
-                            (i == data.PLPs[glue.Name].LocalVariablesInitializationFromGlobalVariables.Count - 1 ? "" : ", "), false);
+                            (i == glue.LocalVariablesInitializationFromGlobalVariables.Count - 1 ? "" : ", "), false);
                 }
                 result += GenerateFilesUtils.GetIndentationStr(0, 4, "}" + (j < gluesWithLocalVars.Count - 1 ? ", " : ""), false);
             }
@@ -647,6 +647,7 @@ class ListenToMongoDbCommands:
 " + GetHandleModuleFunction(data) + @"
 
     def registerModuleResponse(self, moduleName, startTime, actionSequenceID, responseNotByLocalVariables):
+        filter1 = {""ActionSequenceId"": actionSequenceID}
         if DEBUG:
             print(""registerModuleResponse()"")
 
@@ -655,7 +656,8 @@ class ListenToMongoDbCommands:
                                   ""ModuleResponseText"": responseNotByLocalVariables, ""StartTime"": startTime,
                                   ""EndTime"": datetime.datetime.utcnow(),
                                   ""ActionForExecutionId"": self.currentActionFotExecutionId}
-            aos_ModuleResponses_collection.insert_one(moduleResponseItem)
+            #aos_ModuleResponses_collection.insert_one(moduleResponseItem)
+            aos_ModuleResponses_collection.replace_one(filter1,moduleResponseItem, upsert=True)
             return
 
         moduleResponse = """"
@@ -669,7 +671,8 @@ class ListenToMongoDbCommands:
                 ""ModuleResponseText"": moduleResponse, ""StartTime"": startTime, ""EndTime"": datetime.datetime.utcnow(), ""ActionForExecutionId"":self.currentActionFotExecutionId}
 
 
-        aos_ModuleResponses_collection.insert_one(moduleResponseItem)
+        #aos_ModuleResponses_collection.insert_one(moduleResponseItem)
+        aos_ModuleResponses_collection.replace_one(filter1,moduleResponseItem, upsert=True)
         for varName, value in assignGlobalVar.items():
             isInit = False
             if value is not None:

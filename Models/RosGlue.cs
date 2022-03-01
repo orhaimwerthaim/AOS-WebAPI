@@ -7,11 +7,18 @@ namespace WebApiCSharp.Models
 {
     public class RosGlue:ModuleDocumentationFile
     {
+        public List<LocalVariablesInitializationFromGlobalVariable> LocalVariablesInitializationFromGlobalVariables{ get; set; }
         public RosServiceActivation RosServiceActivation;
         public List<GlueLocalVariablesInitialization> GlueLocalVariablesInitializations;
-
+        public List<ResponseRule> ResponseRules{ get; set; }
+        public string ResponseFromStringLocalVariable{get;set;}
+        public List<string> EnumResponse{ get; set; } 
         public RosGlue()
         {
+            ResponseRules = new List<ResponseRule>();
+            EnumResponse = new List<string>(); 
+            ResponseFromStringLocalVariable=null;
+            LocalVariablesInitializationFromGlobalVariables = new List<LocalVariablesInitializationFromGlobalVariable>();
             RosServiceActivation = null;
             GlueLocalVariablesInitializations = new List<GlueLocalVariablesInitialization>();
         }
@@ -24,7 +31,7 @@ namespace WebApiCSharp.Models
         public List<RosImport> Imports;
         public List<GlueParameterAssignment> ParametersAssignments;
         public RosServiceActivation()
-        {
+        { 
             Imports = new List<RosImport>();
             ParametersAssignments = new List<GlueParameterAssignment>();
         }

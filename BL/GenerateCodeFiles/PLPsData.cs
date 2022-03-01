@@ -617,45 +617,110 @@ namespace WebApiCSharp.GenerateCodeFiles
             List<string> tempErrors = new List<string>();
 
             string plpDescription = GetPLPDescriptionForError(rosGlue);
+            
+            if(bRosGlue["ModuleResponse"].AsBsonDocument.Contains("FromStringLocalVariable"))
+            {
+                rosGlue.ResponseFromStringLocalVariable = bRosGlue["ModuleResponse"]["FromStringLocalVariable"].ToString();
+            }
+            
+            if (bRosGlue["ModuleResponse"].AsBsonDocument.Contains("ResponseRules"))
+            {
+                foreach (BsonValue bVal in bRosGlue["ModuleResponse"]["ResponseRules"].AsBsonArray)
+                {
+                    BsonDocument docResponseRule = bVal.AsBsonDocument;
+                    ResponseRule oResponseRule = new ResponseRule();
+
+                    oResponseRule.Condition = docResponseRule["ConditionCodeWithLocalVariables"].ToString();
+                    oResponseRule.Response = docResponseRule["Response"].ToString();
+                    oResponseRule.Comment = GetBsonStringField(docResponseRule, "Comment");
+
+
+                    if (docResponseRule.Contains("AssignGlobalVariables"))
+                    {
+                        foreach (BsonValue bAssign in docResponseRule["AssignGlobalVariables"].AsBsonArray)
+                        {
+                            BsonDocument boAssign = bAssign.AsBsonDocument;
+                            ResponseAssignmentToGlobalVar assignment = new ResponseAssignmentToGlobalVar();
+                            assignment.GlobalVarName = GetBsonStringField(boAssign, "VarName");
+                            assignment.Value = GetBsonStringField(boAssign, "Value");
+                            if (assignment.GlobalVarName == null)
+                            {
+                                errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'VarName', it is a mandatory field!");
+                            }
+                            if (assignment.Value == null)
+                            {
+                                errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'Value', it is a mandatory field!");
+                            }
+                            oResponseRule.ResponseAssignmentsToGlobalVar.Add(assignment);
+                        }
+                    }
+
+                    rosGlue.ResponseRules.Add(oResponseRule);
+                    if(!rosGlue.EnumResponse.Contains(oResponseRule.Response))
+                    {
+                        rosGlue.EnumResponse.Add(oResponseRule.Response);
+                        if (oResponseRule.Response.Contains(" ") || oResponseRule.Response.Contains("*"))
+                        {
+                            errors.Add(plpDescription + ", in 'EnumResponse', response value cannot contain spaces or special characters");
+                        }
+                    }
+                    // else
+                    // {
+                    //     errors.Add(plpDescription + ", 'EnumResponse' contains duplicate values ('" + oResponseRule.Response + "')");
+                    // }
+                }
+            }
+
 
             if (bRosGlue.Contains("LocalVariablesInitialization"))
             {
                 foreach (BsonValue bVal in bRosGlue["LocalVariablesInitialization"].AsBsonArray)
                 {
                     BsonDocument docVar = bVal.AsBsonDocument;
-                    GlueLocalVariablesInitialization oVar = new GlueLocalVariablesInitialization();
-                    oVar.LocalVarName = GetBsonStringField(docVar, "LocalVariableName");
-                    oVar.RosTopicPath = GetBsonStringField(docVar, "RosTopicPath");
-                    oVar.TopicMessageType = GetBsonStringField(docVar, "TopicMessageType");
-                    oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
-                    oVar.VariableType = GetBsonStringField(docVar, "VariableType");
-                    oVar.RosParameterPath = GetBsonStringField(docVar, "RosParameter");
+                    if(docVar.Contains("FromGlobalVariable"))
+                    { 
+                        LocalVariablesInitializationFromGlobalVariable oVar = new LocalVariablesInitializationFromGlobalVariable();
 
-                    tempErrors.Clear();
-                    oVar.FromROSServiceResponse = GetBoolFieldFromBsonNullIfNotThere(rosGlue.Name, PLPsData.PLP_TYPE_NAME_GLUE, docVar, "FromROSServiceResponse", null, out tempErrors);
-                    errors.AddRange(tempErrors);
-                    tempErrors.Clear();
-                    oVar.Imports.AddRange(LoadImports(docVar, out tempErrors, plpDescription, "LocalVariablesInitialization"));
-                    errors.AddRange(tempErrors);
-
-                    oVar.InitialValue = GetBsonStringField(docVar, "InitialValue");
-
-                    rosGlue.GlueLocalVariablesInitializations.Add(oVar);
-
-
-                    if (oVar.LocalVarName == null)
-                    {
-                        errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element without a definition for 'LocalVariableName', which is a mandatory field!");
+                        oVar.FromGlobalVariable = docVar["FromGlobalVariable"].ToString();
+                        oVar.InputLocalVariable = docVar["InputLocalVariable"].ToString();
+                        rosGlue.LocalVariablesInitializationFromGlobalVariables.Add(oVar);
                     }
-
-                    if (oVar.AssignmentCode == null)
+                    else
                     {
-                        errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element without a definition for 'AssignmentCode', which is a mandatory field!");
-                    }
+                        GlueLocalVariablesInitialization oVar = new GlueLocalVariablesInitialization();
+                        oVar.LocalVarName = GetBsonStringField(docVar, "LocalVariableName");
+                        oVar.RosTopicPath = GetBsonStringField(docVar, "RosTopicPath");
+                        oVar.TopicMessageType = GetBsonStringField(docVar, "TopicMessageType");
+                        oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
+                        oVar.VariableType = GetBsonStringField(docVar, "VariableType");
+                        oVar.RosParameterPath = GetBsonStringField(docVar, "RosParameter");
 
-                    if ((oVar.TopicMessageType == null) != (oVar.RosTopicPath == null))
-                    {
-                        errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element in which 'RosTopicPath' and 'TopicMessageType' are not both defined (or both not defined), it must be conssitent!");
+                        tempErrors.Clear();
+                        oVar.FromROSServiceResponse = GetBoolFieldFromBsonNullIfNotThere(rosGlue.Name, PLPsData.PLP_TYPE_NAME_GLUE, docVar, "FromROSServiceResponse", null, out tempErrors);
+                        errors.AddRange(tempErrors);
+                        tempErrors.Clear();
+                        oVar.Imports.AddRange(LoadImports(docVar, out tempErrors, plpDescription, "LocalVariablesInitialization"));
+                        errors.AddRange(tempErrors);
+
+                        oVar.InitialValue = GetBsonStringField(docVar, "InitialValue");
+
+                        rosGlue.GlueLocalVariablesInitializations.Add(oVar);
+
+
+                        if (oVar.LocalVarName == null)
+                        {
+                            errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element without a definition for 'LocalVariableName', which is a mandatory field!");
+                        }
+
+                        if (oVar.AssignmentCode == null)
+                        {
+                            errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element without a definition for 'AssignmentCode', which is a mandatory field!");
+                        }
+
+                        if ((oVar.TopicMessageType == null) != (oVar.RosTopicPath == null))
+                        {
+                            errors.Add(plpDescription + ", 'LocalVariablesInitialization', contains an element in which 'RosTopicPath' and 'TopicMessageType' are not both defined (or both not defined), it must be conssitent!");
+                        }
                     }
                 }
             }
@@ -791,74 +856,6 @@ namespace WebApiCSharp.GenerateCodeFiles
                 }
             }
 
-            if (bPlp.Contains("LocalVariablesInitializationFromGlobalVariables"))
-            {
-                foreach (BsonValue bVal in bPlp["LocalVariablesInitializationFromGlobalVariables"].AsBsonArray)
-                {
-                    BsonDocument docVar = bVal.AsBsonDocument;
-                    LocalVariablesInitializationFromGlobalVariable oVar = new LocalVariablesInitializationFromGlobalVariable();
-
-                    oVar.FromGlobalVariable = docVar["FromGlobalVariable"].ToString();
-                    oVar.InputLocalVariable = docVar["InputLocalVariable"].ToString();
-                    plp.LocalVariablesInitializationFromGlobalVariables.Add(oVar);
-                }
-            }
-
-            foreach (BsonValue bVal in bPlp["ModuleResponse"]["EnumResponse"].AsBsonArray)
-            {
-                if (plp.EnumResponse.Contains(bVal.ToString()))
-                {
-                    errors.Add(plpDescription + ", 'EnumResponse' contains duplicate values ('" + bVal.ToString() + "')");
-                }
-                plp.EnumResponse.Add(bVal.ToString());
-                if (bVal.ToString().Contains(" ") || bVal.ToString().Contains("*"))
-                {
-                    errors.Add(plpDescription + ", in 'EnumResponse', response value cannot contain spaces or special characters");
-                }
-            }
-
-            plp.ResponseType = bPlp["ModuleResponse"]["Type"].ToString();
-            if(bPlp["ModuleResponse"].AsBsonDocument.Contains("FromStringLocalVariable"))
-            {
-                plp.ResponseFromStringLocalVariable = bPlp["ModuleResponse"]["FromStringLocalVariable"].ToString();
-            }
-            
-            if (bPlp["ModuleResponse"].AsBsonDocument.Contains("ResponseRules"))
-            {
-                foreach (BsonValue bVal in bPlp["ModuleResponse"]["ResponseRules"].AsBsonArray)
-                {
-                    BsonDocument docResponseRule = bVal.AsBsonDocument;
-                    ResponseRule oResponseRule = new ResponseRule();
-
-                    oResponseRule.Condition = docResponseRule["ConditionCodeWithLocalVariables"].ToString();
-                    oResponseRule.Response = docResponseRule["Response"].ToString();
-                    oResponseRule.Comment = GetBsonStringField(docResponseRule, "Comment");
-
-
-                    if (docResponseRule.Contains("AssignGlobalVariables"))
-                    {
-                        foreach (BsonValue bAssign in docResponseRule["AssignGlobalVariables"].AsBsonArray)
-                        {
-                            BsonDocument boAssign = bAssign.AsBsonDocument;
-                            ResponseAssignmentToGlobalVar assignment = new ResponseAssignmentToGlobalVar();
-                            assignment.GlobalVarName = GetBsonStringField(boAssign, "VarName");
-                            assignment.Value = GetBsonStringField(boAssign, "Value");
-                            if (assignment.GlobalVarName == null)
-                            {
-                                errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'VarName', it is a mandatory field!");
-                            }
-                            if (assignment.Value == null)
-                            {
-                                errors.Add(plpDescription + ", 'AssignGlobalVariables' contains an item without 'Value', it is a mandatory field!");
-                            }
-                            oResponseRule.ResponseAssignmentsToGlobalVar.Add(assignment);
-                        }
-                    }
-
-                    plp.ResponseRules.Add(oResponseRule);
-                }
-            }
-
             tempErrors.Clear();
             plp.Preconditions_GlobalVariablePreconditionAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("GlobalVariablePreconditionAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["GlobalVariablePreconditionAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.ePreviousState, true);
             errors.AddRange(tempErrors);
@@ -944,6 +941,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 string plpDescription = docFile == null ? "" : GetPLPDescriptionForError(docFile) + ", ";
                 errors.Add(PLPsData.GetFatalErrorMsg(plpDescription, e));
                 return null;
+                
             }
         }
 

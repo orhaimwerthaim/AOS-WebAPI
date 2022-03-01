@@ -6,21 +6,8 @@ using System.Collections.Generic;
 namespace WebApiCSharp.Models
 {
     public class PLP:ModuleDocumentationFile
-    { 
-
-
-          public List<GlobalVariableModuleParameter> GlobalVariableModuleParameters { get; set; }
-
-          public List<LocalVariablesInitializationFromGlobalVariable> LocalVariablesInitializationFromGlobalVariables{ get; set; }
-
-          public List<string> EnumResponse{ get; set; }
-
-          public string ResponseType{ get; set; } 
-
-            public string ResponseFromStringLocalVariable{get;set;}
-
-          public List<ResponseRule> ResponseRules{ get; set; }
-
+    {  
+          public List<GlobalVariableModuleParameter> GlobalVariableModuleParameters { get; set; } 
         public List<Assignment> Preconditions_GlobalVariablePreconditionAssignments{ get; set; }
           public List<Assignment> Preconditions_PlannerAssistancePreconditionsAssignments{ get; set; }
 
@@ -29,16 +16,13 @@ namespace WebApiCSharp.Models
           public List<Assignment> ModuleExecutionTimeDynamicModel{ get; set; }
           public List<Assignment> DynamicModel_VariableAssignments { get; set; }
         public PLP()
-        {
-            ResponseFromStringLocalVariable=null;
-            GlobalVariableModuleParameters = new List<GlobalVariableModuleParameter>();
-            LocalVariablesInitializationFromGlobalVariables = new List<LocalVariablesInitializationFromGlobalVariable>();
+        { 
+            GlobalVariableModuleParameters = new List<GlobalVariableModuleParameter>(); 
             ModuleExecutionTimeDynamicModel = new List<Assignment>();
             DynamicModel_VariableAssignments = new List<Assignment>();
             Preconditions_GlobalVariablePreconditionAssignments = new List<Assignment>();
             Preconditions_PlannerAssistancePreconditionsAssignments = new List<Assignment>();
-            ResponseRules = new List<ResponseRule>();
-            EnumResponse = new List<string>(); 
+            
         }
 
     }

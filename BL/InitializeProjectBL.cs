@@ -66,9 +66,10 @@ catkin_make";
 
         private static string GetBuildSolverBashFile()
         {
+            string buildType = "Release";//"Debug"  
             string file = @"#!/bin/bash
 
-/opt/cmake-3.19.8-Linux-x86_64/bin/cmake --build /home/or/Projects/AOS-Solver/build --config Debug --target all -j 14 --
+/opt/cmake-3.19.8-Linux-x86_64/bin/cmake --build /home/or/Projects/AOS-Solver/build --config "+buildType+ @" --target all -j 14 --
 ";
             return file;
         }

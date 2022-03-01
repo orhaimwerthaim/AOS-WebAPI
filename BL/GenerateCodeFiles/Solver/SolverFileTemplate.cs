@@ -395,7 +395,7 @@ void UniformPOMCPPrior::ComputePreference(const State& state) {
 POMCP::POMCP(const DSPOMDP* model, POMCPPrior* prior, Belief* belief) :
 	Solver(model, belief),
 	root_(NULL) {
-	reuse_ = true;
+	reuse_ = false;
 	prior_ = prior;
 	assert(prior_ != NULL);
 }
@@ -2572,12 +2572,15 @@ class Prints
   {
 ";
             string sFullEnumName = "";
-            foreach (PLP plp in data.PLPs.Values)
+            foreach (string plpKey in data.PLPs.Keys)
             {
+                
+                PLP plp = data.PLPs[plpKey];
+                RosGlue glue = data.RosGlues[plpKey];
                 enumMappingsForModuleResponseAndTempVar.Add(plp.Name, new Dictionary<string, string>());
                 sFullEnumName = plp.Name + "_moduleResponse";
                 result += "	  " + sFullEnumName + "," + Environment.NewLine;
-                foreach (string sEnumResponse in plp.EnumResponse)
+                foreach (string sEnumResponse in glue.EnumResponse)
                 {
                     sFullEnumName = plp.Name + "_" + sEnumResponse;
                     enumMappingsForModuleResponseAndTempVar[plp.Name].Add(sEnumResponse, sFullEnumName);
@@ -4079,8 +4082,8 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(__moduleResponseStr != \"NoStrResponse\")");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums responseHash = ("+ data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums)hasher(__moduleResponseStr);");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_iros::vecResponseEnumToString[responseHash] = __moduleResponseStr;");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_iros::vecStringToResponseEnum[__moduleResponseStr] = responseHash;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_"+data.ProjectName+"::vecResponseEnumToString[responseHash] = __moduleResponseStr;");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_"+data.ProjectName+"::vecStringToResponseEnum[__moduleResponseStr] = responseHash;");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "__moduleResponse = responseHash;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
 
