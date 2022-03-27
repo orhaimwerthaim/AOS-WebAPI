@@ -280,9 +280,19 @@ struct Config {
 	bool silence;
     bool saveBeliefToDB;
     bool handsOnDebug;
+	bool generatePOMDP_modelFile;
+	std::string fixedPolicyDotFilePath;
+	std::string pomdpFilePath;
+	int numOfSamplesPerActionStateWhenLearningTheModel;
+	double sarsopTimeLimitInSeconds;// if sarsopTimeLimitInSeconds <= 0 there is no time limit.
 
-	Config() :
+	Config() : 
         handsOnDebug(false),
+        sarsopTimeLimitInSeconds(" + initProj.SolverConfiguration.OfflineSolverTimeLimitInSeconds + @"),
+        numOfSamplesPerActionStateWhenLearningTheModel(" + initProj.SolverConfiguration.NumOfSamplesPerStateActionToLearnModel + @"),
+        fixedPolicyDotFilePath(""sarsop/src/autoGen.dot""), //the path ../sarsop/src/autoGen.dot because working dir is /build/ so we need go one directory backwards.
+        pomdpFilePath(""sarsop/examples/POMDP/auto_generate.pomdp""),
+        generatePOMDP_modelFile(" + initProj.SolverConfiguration.UseSarsop.ToString().ToLower() + @"),
         solverId(" + solverData.SolverId + @"),
 		search_depth(" + data.Horizon + @"),
 		discount(" + data.Discount + @"),
@@ -1644,6 +1654,7 @@ int SimpleTUI::run(int argc, char *argv[]) {
 #include <despot/pomdpx/pomdpx.h>
 #include <despot/util/util.h>
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>
+#include <unistd.h>
 namespace despot {
 
 /* =============================================================================
@@ -1683,6 +1694,84 @@ public:
 	double GetRemainingBudget(std::string instance) const;
 };
 
+struct policy{
+    std::string policyFile;
+    std::string currrentState;
+	std::map<std::string, std::string> obsStrToNum;
+	bool wasInit = false;
+	void init_policy()
+	{
+		if(wasInit)
+			return;
+		wasInit = true;
+
+		char tmp[256];
+		getcwd(tmp, 256);
+		std::string workingDirPath(tmp);
+		workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
+		std::string policyFilePath(workingDirPath);
+		policyFilePath.append(Globals::config.fixedPolicyDotFilePath);
+		std::ifstream ifs(policyFilePath);
+		std::string content( (std::istreambuf_iterator<char>(ifs) ),
+                       (std::istreambuf_iterator<char>()    ) );
+        policyFile = content;
+        
+		currrentState = ""root""; 
+        std::string pomdpFilePath(workingDirPath);
+		pomdpFilePath.append(Globals::config.pomdpFilePath);
+		std::ifstream pf(pomdpFilePath);
+		std::string pomContent( (std::istreambuf_iterator<char>(pf) ),
+                       (std::istreambuf_iterator<char>()    ) );
+
+		std::string t = ""observations:  "";
+		int obsInd = pomContent.find(t) + t.size();
+		while(obsInd > t.size())
+		{
+			while(pomContent[obsInd] == ' ')
+				obsInd++;
+			if(pomContent[obsInd] == '\n')
+				break;
+			int endObs = pomContent.find("" "", obsInd);
+			obsStrToNum.insert({pomContent.substr(obsInd, endObs - obsInd), std::to_string(obsStrToNum.size())});
+			obsInd = endObs;
+		}
+	}
+
+	int getCurrentAction()
+    {
+        std::string temp = ""\n"" + currrentState;
+            int stateInd = policyFile.find(temp.append("" [""));
+            int actStart = policyFile.find(""A ("", stateInd) + 3;
+            int actEnd = policyFile.find("")"", actStart);
+            return stoi(policyFile.substr(actStart, actEnd - actStart)); 
+    }
+
+    void updateStateByObs(std::string obs)
+    {
+		obs=obsStrToNum[obs];
+		std::string temp = ""\n"" + currrentState;
+		temp.append("" -> "");
+        bool found = false;
+        int stateInd=0;
+        while (stateInd >= 0)
+        {
+            stateInd = policyFile.find(temp,stateInd)+temp.size();
+            if(stateInd < temp.size())
+                throw std::runtime_error(""ERROR: action that reach this State does not expect such an observation!"");
+            int statrtObs = policyFile.find("" ("", stateInd) + 2;
+            int endObs = policyFile.find("")"", stateInd);
+
+            std::string curObs = policyFile.substr(statrtObs, endObs-statrtObs);
+            if(curObs == obs)
+            {
+                currrentState = policyFile.substr(stateInd, policyFile.find("" "", stateInd)-stateInd);
+                return;
+            }
+        }
+    } 
+};
+
+
 /* =============================================================================
  * Evaluator class
  * =============================================================================*/
@@ -1695,6 +1784,7 @@ class Evaluator {
 	std::vector<int> action_sequence_to_sim;
     void SaveBeliefToDB();
 protected:
+    policy fixedPolicy;
 	DSPOMDP* model_;
 	std::string belief_type_;
 	Solver* solver_;
@@ -1758,7 +1848,7 @@ public:
 	bool RunStep(int step, int round);
 
 	virtual double EndRound() = 0; // Return total undiscounted reward for this round.
-	virtual bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates) = 0;
+	virtual bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates, std::string& obsStr) = 0;
 	//IcapsResponseModuleAndTempEnums CalculateModuleResponse(std::string moduleName);
 	virtual void ReportStepReward();
 	virtual double End() = 0; // Free resources and return total reward collected
@@ -1779,7 +1869,7 @@ public:
 class POMDPEvaluator: public Evaluator {
 protected:
 	Random random_;
-
+    policy fixedPolicy;
 public:
 	POMDPEvaluator(DSPOMDP* model, std::string belief_type, Solver* solver,
 		clock_t start_clockt, std::ostream* out, double target_finish_time = -1,
@@ -1793,7 +1883,7 @@ public:
 	int Handshake(std::string instance);
 	void InitRound();
 	double EndRound();
-	bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates);
+	bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates, std::string& obsStr);
 	double End();
 	void UpdateTimePerMove(double step_time);
 };
@@ -1962,11 +2052,18 @@ void Evaluator::SaveBeliefToDB()
 }
 
 bool Evaluator::RunStep(int step, int round) {
+	bool byExternalPolicy = Globals::config.generatePOMDP_modelFile;
     bool shutDown = false;
 	bool isFirst = false;
 	int solverId = Globals::config.solverId;
 
 	MongoDB_Bridge::GetSolverDetails(shutDown, isFirst, solverId);
+
+	if(byExternalPolicy)
+	{
+		Evaluator::fixedPolicy.init_policy();
+	}
+
 	if(shutDown && !Globals::config.handsOnDebug)
 	{
 		return true;
@@ -1994,7 +2091,11 @@ bool Evaluator::RunStep(int step, int round) {
     double start_t = get_time_second();
 	int action = -1;
 
-	if(action_sequence_to_sim.size() == 0)
+    if(byExternalPolicy)
+    {
+            action = Evaluator::fixedPolicy.getCurrentAction();
+    }
+    else if(action_sequence_to_sim.size() == 0)
 	{
         action = solver_->Search().action;
 	}
@@ -2034,8 +2135,8 @@ bool Evaluator::RunStep(int step, int round) {
 	{
 		Evaluator::SaveBeliefToDB();
 	}
-
-	bool terminal = ExecuteAction(action, reward, obs, updatesFromAction);
+    std::string obsStr;
+	bool terminal = ExecuteAction(action, reward, obs, updatesFromAction, obsStr);
     logi << endl
 		 << ""After:"" << endl;
 	model_->PrintState(*state_);
@@ -2067,7 +2168,11 @@ bool Evaluator::RunStep(int step, int round) {
 	*out_<<endl;
 
 	start_t = get_time_second();
-	if(action_sequence_to_sim.size() == 0)
+	if(byExternalPolicy)
+	{
+		Evaluator::fixedPolicy.updateStateByObs(obsStr);
+	}
+	else if(action_sequence_to_sim.size() == 0)
 	{
 		solver_->Update(action, obs);
 		//solver_->Update(action, obs, updatesFromAction);
@@ -2199,7 +2304,7 @@ double POMDPEvaluator::EndRound() {
 	return total_undiscounted_reward_;
 }
 
-bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates) {
+bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates, std::string& obsStr) {
 	MongoDB_Bridge::currentActionSequenceId++;
 	ActionDescription &actDesc = *ActionManager::actions[action];
     ActionType acType(actDesc.actionType);
@@ -2215,7 +2320,7 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 	{
 		
 		terminal = model_->Step(*state_, random_num, action, reward, obs);
-		std::string obsStr = enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs];
+		obsStr = enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs];
 		MongoDB_Bridge::SaveInternalActionResponse(actionName, actionId, obsStr);
 		reward_ = reward;
 		total_discounted_reward_ += Globals::Discount(step_) * reward;
@@ -2225,7 +2330,7 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 	}
 	else
 	{ 
-		std::string obsStr = """";
+		obsStr = """";
 		updates = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
 		obs = enum_map_" + data.ProjectName + @"::vecStringToResponseEnum[obsStr];
@@ -2383,9 +2488,9 @@ class AOSUtils
  * ==============================================================================*/
 class " + data.ProjectNameWithCapitalLetter + @";
 class " + data.ProjectNameWithCapitalLetter + @"Belief: public ParticleBelief {
-protected:
-	const " + data.ProjectNameWithCapitalLetter + @"* " + data.ProjectName + @"_;
+	
 public:
+    const " + data.ProjectNameWithCapitalLetter + @"* " + data.ProjectName + @"_;
 	static std::string beliefFromDB;
 	static int currentInitParticleIndex;
 	static int num_particles; 
@@ -2404,15 +2509,18 @@ public:
 
 class " + data.ProjectNameWithCapitalLetter + @": public DSPOMDP {
 public:
+    static std::hash<std::string> hasher;
 	virtual std::string PrintObs(int action, OBS_TYPE obs) const;
 	virtual std::string PrintStateStr(const State &state) const;
 	virtual std::string GetActionDescription(int) const;
 	void UpdateStateByRealModuleObservation(State &state, int actionId, OBS_TYPE &observation) const;
 	virtual bool Step(State &state, double rand_num, int actionId, double &reward,
 					  OBS_TYPE &observation) const;
+    void StepForModel(State& state, int actionId, double &reward,
+                                    OBS_TYPE &observation, int& state_hash, int& next_state_hash, bool &isTerminal) const;
 	int NumActions() const;
 	virtual double ObsProb(OBS_TYPE obs, const State& state, int actionId) const;
-
+    void CreateAndSolveModel() const;
 	virtual State* CreateStartState(std::string type = ""DEFAULT"") const;
 	virtual Belief* InitialBelief(const State* start,
 		std::string type = ""PARTICLE"") const;
@@ -4159,6 +4267,9 @@ namespace despot {
 #include <cmath> 
 #include <despot/util/mongoDB_Bridge.h>
 #include <functional> //for std::hash
+#include <set>
+#include <unistd.h>
+#include <iomanip>
 
 using namespace std;
 
@@ -4172,7 +4283,7 @@ bool AOSUtils::Bernoulli(double p)
 	int randInt = rand() % 100 + 1;
 	return (p * 100) >= randInt;
 }
-
+std::hash<std::string> " + data.ProjectNameWithCapitalLetter + @"::hasher;
 /* ==============================================================================
  *" + data.ProjectNameWithCapitalLetter + @"Belief class
  * ==============================================================================*/
@@ -4307,7 +4418,397 @@ std::default_random_engine " + data.ProjectNameWithCapitalLetter + @"::generator
 
 " + GetModelCppFileDistributionVariableDefinition(data) + Environment.NewLine + GetModelCppCreatStartStateFunction(data, initProj) + @"
 
+struct state_tran
+{
+    map<std::pair<int,int>,double> actionPrevStateReward;
+    int state;
+    map<int,int> total_samplesFromStateByAction;
+    map<int,int> total_samplesToStateByAction;
+    map<std::pair<int,int>, int> actionObservationCount;//when arriving to this state by action and observation
+    map<std::pair<int,int>, int> actionNextStateCount;//when arriving to next state by action
+    
+    map<std::pair<int,int>, double> actionObservationProb;
+    map<std::pair<int,int>, double> actionNextStateProb;
+    bool isTerminalState = false;
+
+    void setAsTerminal()
+    {
+        isTerminalState = true;
+        actionNextStateProb.clear();
+        //actionPrevStateReward.insert({std::pair<int,int>{_action, state}, 0});//inner loop 0 rewads for terminal state
+    }
+    void addObservationTransitionRewardData(int _state, int _nextState, int _action, int _observation, double _reward, bool _isNextStateTerminal)
+    {
+        if(_nextState == state)
+        {
+            addObservationAsNextStateSample(_nextState, _observation, _action);
+            if(_isNextStateTerminal)
+            {
+                setAsTerminal();
+            }
+            actionPrevStateReward.insert({std::pair<int,int>{_action, _state}, _reward});
+        }
+        if(state == _state && !isTerminalState)
+        {
+            addNextStateTransition(_state, _nextState, _action);
+        }
+    } 
+
+    void addObservationAsNextStateSample(int _nextState, int _obs, int _action)
+    { 
+        auto actIt = total_samplesToStateByAction.find(_action);
+        total_samplesToStateByAction[_action] = (actIt == total_samplesToStateByAction.end()) ? 1 : total_samplesToStateByAction[_action] + 1;
+        std::pair<int, int> actObsP{_action, _obs};
+        auto it = actionObservationCount.find(actObsP);
+          state_tran *st = NULL;
+          actionObservationCount[actObsP] = (it == actionObservationCount.end()) ? 1 : actionObservationCount[actObsP] + 1;    
+    }
+
+    void addNextStateTransition(int _state, int next_state, int _action)
+      { 
+          auto actIt = total_samplesFromStateByAction.find(_action);
+        total_samplesFromStateByAction[_action] = (actIt == total_samplesFromStateByAction.end()) ? 1 : total_samplesFromStateByAction[_action] + 1;
+ 
+          std::pair<int, int> actNextStateP{_action, next_state};
+          auto it = actionNextStateCount.find(actNextStateP);
+          state_tran *st = NULL;
+          actionNextStateCount[actNextStateP] = (it == actionNextStateCount.end()) ? 1 : actionNextStateCount[actNextStateP] + 1;      
+      }
+
+      void calcModelBySamples()
+      {
+            for (auto const& x : actionNextStateCount)
+            {
+                actionNextStateProb.insert({x.first, ((double)x.second/total_samplesFromStateByAction[x.first.first])});
+            }
+            for (auto const& x : actionObservationCount)
+            {
+                actionObservationProb.insert({x.first, ((double)x.second/total_samplesToStateByAction[x.first.first])});
+            }
+      }
+};
+	 
+struct model_data 
+  {
+      int initialBStateSamplesCount = 0;
+      
+      map<int, int> initialBStateParticle;
+      map<int, double> stateInitialStateSampleProb;
+      map<int, state_tran> statesModel; 
+      map<int, std::string> statesToPomdpFileStates;
+
+      void addInitialBStateSample(int _state)
+      {
+          initialBStateSamplesCount++;
+          initialBStateParticle[_state] = initialBStateParticle.find(_state) == initialBStateParticle.end() ? 1 : initialBStateParticle[_state] + 1;
+      }
+      
+      void addSample(int state, int nextState, int action, int observation, double reward, bool isNextStateTerminal)
+      {
+          
+          state_tran *st = getStateModel(state);
+          state_tran *n_st = getStateModel(nextState);
+          n_st->isTerminalState = isNextStateTerminal;
+          
+          st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal);
+          n_st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal);
+      }
+      state_tran * getStateModel(int state)
+      {
+          auto it = statesModel.find(state);
+          state_tran *st = NULL;
+          if (it == statesModel.end())
+          {
+              st = new state_tran;
+              st->state = state;
+              statesModel.insert({state, *st});
+              statesToPomdpFileStates[state] =  std::to_string(statesToPomdpFileStates.size()).insert(0,""s_"");
+          }
+          else
+          {
+              st = &(it->second);
+          }
+          return st;
+      }
+      void calcModelBySamples()
+      {
+          for (auto & x : statesModel)
+            {
+                x.second.calcModelBySamples();
+            }
+      }
+  };
+
+void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
+{
+    memory_pool_.DeleteAll();
+    int horizon = Globals::config.search_depth;
+    int numOfSamplesForEachActionFromState = Globals::config.numOfSamplesPerActionStateWhenLearningTheModel;
+    model_data modelD;
+    std::set<int> states;
+    std::set<int> observations;
+    std::map<int, State*> statesToProcessNext;
+    std::map<int, State*> statesToProcessCurr;
+    std::map<int, std::string> actionsToDesc;
+    std::map<int, std::string> observationsToDesc;
+    std::string invalidObsS = ""o_invalidObs"";
+    
+    for (int i = 0; i < ActionManager::actions.size();i++)
+    {
+        std::string temp = Prints::PrintActionDescription(ActionManager::actions[i]);
+        std::replace( temp.begin(), temp.end(), ':', '_');
+        std::replace( temp.begin(), temp.end(), ',', '_');
+        std::replace( temp.begin(), temp.end(), ' ', '_');
+        temp.insert(0, ""a_"");
+        actionsToDesc.insert({i, temp});
+    }
+    for (int i = 0; i < 1000; i++)
+    {
+        State *state = CreateStartState();
+        " + data.ProjectNameWithCapitalLetter + @"State &ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*state);
+        int hash = hasher(Prints::PrintState(ir_state));
+        if (states.insert(hash).second)
+        {
+            statesToProcessCurr.insert({hash, state});
+        }
+        else
+        {
+                   Free(state);
+        }
+        modelD.addInitialBStateSample(hash);
+    }
+    for (int i = 0; i < horizon;i++)
+    {
+        for (auto & stateP : statesToProcessCurr)
+            {
+                for (int action = 0; action < " + data.ProjectNameWithCapitalLetter + @"::NumActions(); action++)
+                {
+                    for (int sampleCount = 0; sampleCount < numOfSamplesForEachActionFromState; sampleCount++)
+                    {                
+                        double reward;
+                        OBS_TYPE obs;
+                        int state_hash;
+                        int nextStateHash;
+                        bool isNextStateTerminal;
+                        State *next_state = Copy(stateP.second);
+                       
+                        StepForModel(*next_state, action, reward, obs, state_hash, nextStateHash, isNextStateTerminal);
+                         
+                        modelD.addSample(state_hash, nextStateHash, action, obs, reward, isNextStateTerminal);
+                        if(observations.insert(obs).second)
+                        {
+                            //std::string s = std::to_string(observations.size()-1);
+                            
+                            std::string s = Prints::PrintObs(action, obs);
+                            //s.insert(0, ""o_"");
+                            observationsToDesc.insert({obs, s});
+                        }
+
+                        auto it = modelD.statesModel.find(nextStateHash);
+                        bool skip = false;
+                        if (it != modelD.statesModel.end())
+                        {
+                            state_tran *st = &(it->second);
+                            skip = st->isTerminalState; 
+                        }
+                        if(!skip)
+                        {
+                            if(states.insert(nextStateHash).second)
+                            {
+                                statesToProcessNext.insert({nextStateHash, next_state});
+                            }
+                            else
+                            {
+                                Free(next_state);
+                            }
+                        }
+                        else
+                        {
+                            Free(next_state);
+                        }
+                    }
+                }
+            }
+            statesToProcessCurr.clear();
+            statesToProcessCurr.insert(statesToProcessNext.begin(), statesToProcessNext.end());
+            statesToProcessNext.clear();
+    }
+    
+    modelD.calcModelBySamples();
+  
+        char tmp[256];
+                getcwd(tmp, 256);
+                std::string workinDirPath(tmp);
+                workinDirPath = workinDirPath.substr(0, workinDirPath.find(""build""));
+        std::string fpath(workinDirPath);
+        fpath.append(Globals::config.pomdpFilePath);
+        std::ofstream fs;
+        remove(fpath.c_str());
+        fs.open(fpath, std::ios_base::app); //std::ios_base::app
+        fs << ""discount: "" << Globals::config.discount << endl;
+        fs << endl;
+        fs << ""values: reward"" << endl;
+        fs << endl;
+        fs << ""states:"";
+        for (auto & stateN : modelD.statesToPomdpFileStates)
+        {
+            fs << "" "" << stateN.second ;
+        }
+        fs << endl;
+        fs << endl;
+        fs << ""actions: "";
+        for (auto & actD : actionsToDesc)
+        {
+            fs << actD.second << "" "";
+        }
+        fs << endl;
+        fs << endl;
+        
+        fs << ""observations: "";
+        for (int i = 0; i < observationsToDesc.size();i++)
+        {
+            fs << observationsToDesc[i] << "" "";
+        }
+            // for (auto &obsD : observationsToDesc)
+            // {
+            //     fs << obsD.second << "" "";
+            // }
+        fs << invalidObsS << "" "";
+        fs << endl;
+        fs << endl; 		
+        fs << endl;
+        fs << ""start:"" << endl;
+        for (auto & stateN : modelD.statesToPomdpFileStates)
+        {  
+            double prob = (double)modelD.initialBStateParticle[stateN.first] / (double)modelD.initialBStateSamplesCount;
+            std::stringstream stream;
+            stream << std::fixed << std::setprecision(1) << prob;
+            std::string s = stream.str();
+            
+            fs << "" "" << s;
+        }
+
+
+        map<int, set<int>> actionStatesWithoutAnyTran;
+        for (int act = 0; act < ActionManager::actions.size();act++)
+        {
+            actionStatesWithoutAnyTran[act] = set<int>{states};
+        }
+        for (auto &stateT : modelD.statesModel)
+        {
+            if(stateT.second.isTerminalState)
+            {
+                int iooo = 1;
+            }
+            map<int,std::set<int>> allStatePerAction;
+            for (int act = 0; act < ActionManager::actions.size();act++)
+            {
+                allStatePerAction[act] = set<int>{states};
+            }
+            for (auto &actNStateProb : stateT.second.actionNextStateProb)
+            {
+                actionStatesWithoutAnyTran[actNStateProb.first.first].erase(stateT.first);
+                allStatePerAction[actNStateProb.first.first].erase(actNStateProb.first.second);
+                fs << ""T: "" << actionsToDesc[actNStateProb.first.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << modelD.statesToPomdpFileStates[actNStateProb.first.second] << "" "" << std::to_string(actNStateProb.second) << endl;
+            }
+            for(auto &missingTrans: allStatePerAction)
+            {
+                for(auto &missingState: missingTrans.second)
+                {
+                    fs << ""T: "" << actionsToDesc[missingTrans.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << modelD.statesToPomdpFileStates[missingState] << "" 0.0"" << endl;
+                }    
+            }
+        }
+ 
+        for(auto &actionStateWithoutAnyTranision: actionStatesWithoutAnyTran)
+                {
+                    for (auto &state:actionStateWithoutAnyTranision.second)
+                    {
+                        fs << ""T: "" << actionsToDesc[actionStateWithoutAnyTranision.first] << "" : "" << modelD.statesToPomdpFileStates[state] << "" : "" << modelD.statesToPomdpFileStates[state] << "" 1.0"" << endl;
+                    }  
+                }
+        
+        fs << endl;
+        fs << endl;
+        fs << endl;
+        //to make sure that all the stat-action pairs have observations defined.
+        map<int,std::set<int>> allStatePerAction;
+        for (int act = 0; act < ActionManager::actions.size();act++)
+        {
+            allStatePerAction[act] = set<int>{states};
+        }
+        for(auto & stateT : modelD.statesModel)
+        {
+            
+            for (auto &actObsProb : stateT.second.actionObservationProb)
+            {
+                allStatePerAction[actObsProb.first.first].erase(stateT.first);
+                fs << ""O: "" << actionsToDesc[actObsProb.first.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << observationsToDesc[actObsProb.first.second] << "" "" <<actObsProb.second << endl;
+            }
+        }
+        //adding invalid observations to fill missing ones
+        for(auto &missingObss: allStatePerAction)
+            {
+                for(auto &StateWithMissingObs: missingObss.second)
+                {
+                    fs << ""O: "" << actionsToDesc[missingObss.first] << "" : "" << modelD.statesToPomdpFileStates[StateWithMissingObs] << "" : "" << invalidObsS << "" 1.0"" << endl;
+                }    
+            }
+        fs << endl;
+        fs << endl;
+        fs << endl;
+        for (auto &stateR : modelD.statesModel)
+        {
+            for(auto & actPrevStateReward : stateR.second.actionPrevStateReward)
+            {  
+                fs << ""R: "" << actionsToDesc[actPrevStateReward.first.first] << "" : "" << modelD.statesToPomdpFileStates[actPrevStateReward.first.second]  << "" : "" << modelD.statesToPomdpFileStates[stateR.first] << "" : * "" << actPrevStateReward.second << endl;
+            }
+        }
+        
+        
+        //Prints::PrintActionDescription(ActionManager::actions[actionId])
+        //Prints::PrintActionDescription()
+        fs << """" << endl;
+        fs << """" << endl;
+        fs << """" << endl;
+  fs.close();
+//after writing the .pomdp file. compile sarsop and solve the problem.
+  std::string cmd = ""cd "";
+  cmd.append(workinDirPath);
+  cmd.append(""sarsop/src ; make ; ./pomdpsol "");
+  cmd.append(workinDirPath);
+  cmd.append(""sarsop/examples/POMDP/auto_generate.pomdp"");
+  if(Globals::config.sarsopTimeLimitInSeconds > 0)
+  {
+      cmd.append("" --timeout "");
+      cmd.append(std::to_string(Globals::config.sarsopTimeLimitInSeconds));
+  }//   ./pomdpsol /home/or/Projects/sarsop/examples/POMDP/auto_generate.pomdp
+  cmd.append("" ; ./polgraph --policy-file out.policy --policy-graph autoGen.dot "");
+  cmd.append(workinDirPath);
+  cmd.append(""sarsop/examples/POMDP/auto_generate.pomdp"");
+  
+  //cmd.append("" ; dot -Tpdf autoGen.dot -o outfile_autoGen.pdf""); //uncomment if you want to generate a pdf graph
+  
+  std::string policyFilePath(workinDirPath);
+  policyFilePath.append(""sarsop/src/out.policy"");
+  remove(policyFilePath.c_str());
+  
+  std::string dotFilePath(workinDirPath);
+  dotFilePath.append(""sarsop/src/autoGen.dot"");
+  remove(dotFilePath.c_str());
+
+  std::string graphFilePath(workinDirPath);
+  graphFilePath.append(""sarsop/src/outfile_autoGen.pdf"");
+  remove(graphFilePath.c_str());
+
+  system(cmd.c_str());
+}
+
 Belief* " + data.ProjectNameWithCapitalLetter + @"::InitialBelief(const State* start, string type) const {
+    if(Globals::config.generatePOMDP_modelFile)
+    {
+        CreateAndSolveModel();
+    }
 	int N = " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles;
 	vector<State*> particles(N);
 	for (int i = 0; i < N; i++) {
@@ -4373,6 +4874,17 @@ void " + data.ProjectNameWithCapitalLetter + @"::Free(State* particle) const {
 int " + data.ProjectNameWithCapitalLetter + @"::NumActiveParticles() const {
 	return memory_pool_.num_allocated();
 }
+
+void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int actionId, double& reward,
+        OBS_TYPE& observation, int &state_hash, int &next_state_hash, bool& isTerminal) const
+    {
+        " + data.ProjectNameWithCapitalLetter + @"State &ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
+        state_hash = hasher(Prints::PrintState(ir_state));
+        isTerminal = " + data.ProjectNameWithCapitalLetter + @"::Step(state, 0.1, actionId, reward,
+                   observation);
+        ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
+        next_state_hash = hasher(Prints::PrintState(ir_state));
+    }
 
 bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
 	OBS_TYPE& observation) const {

@@ -40,6 +40,10 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
+        public bool UseSarsop { get; set; } 
+        public float OfflineSolverTimeLimitInSeconds { get; set; } 
+        public int NumOfSamplesPerStateActionToLearnModel { get; set; } 
+
         public bool LoadBeliefFromDB { get; set; } 
         public int NumOfParticles { get; set; }
 
@@ -51,6 +55,9 @@ namespace WebApiCSharp.Models
         public bool DebugOn{ get; set; }
         public SolverConfiguration()
         {
+            NumOfSamplesPerStateActionToLearnModel = 200;
+            OfflineSolverTimeLimitInSeconds = 0;
+            UseSarsop = true;
             DebugOn = false;
             LoadBeliefFromDB = false; 
             NumOfBeliefStateParticlesToSaveInDB = 1;
