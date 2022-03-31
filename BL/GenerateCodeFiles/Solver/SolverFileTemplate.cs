@@ -4521,8 +4521,7 @@ struct model_data
           {
               st = new state_tran;
               st->state = state;
-              statesModel.insert({state, *st});
-              statesToPomdpFileStates[state] =  std::to_string(statesToPomdpFileStates.size()).insert(0,""s_"");
+              statesModel.insert({state, *st}); 
           }
           else
           {
@@ -4550,8 +4549,7 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
     std::map<int, State*> statesToProcessNext;
     std::map<int, State*> statesToProcessCurr;
     std::map<int, std::string> actionsToDesc;
-    std::map<int, std::string> observationsToDesc;
-    std::string invalidObsS = ""o_invalidObs"";
+    std::map<int, std::string> observationsToDesc; 
     
     for (int i = 0; i < ActionManager::actions.size();i++)
     {
@@ -4577,6 +4575,7 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
         }
         modelD.addInitialBStateSample(hash);
     }
+    bool goalstateFound = false;
     for (int i = 0; i < horizon;i++)
     {
         for (auto & stateP : statesToProcessCurr)
@@ -4594,15 +4593,15 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
                        
                         StepForModel(*next_state, action, reward, obs, state_hash, nextStateHash, isNextStateTerminal);
                          
-                        modelD.addSample(state_hash, nextStateHash, action, obs, reward, isNextStateTerminal);
-                        if(observations.insert(obs).second)
+                        if(isNextStateTerminal && reward > 0 && !goalstateFound)
                         {
-                            //std::string s = std::to_string(observations.size()-1);
-                            
-                            std::string s = Prints::PrintObs(action, obs);
-                            //s.insert(0, ""o_"");
-                            observationsToDesc.insert({obs, s});
+                            goalstateFound = true;
+                            horizon = i + 1;
+                         //StepForModel(*stateP.second, action, reward, obs, state_hash, nextStateHash, isNextStateTerminal);
                         }
+
+                        modelD.addSample(state_hash, nextStateHash, action, obs, reward, isNextStateTerminal);
+                        if(observations.insert(obs).second);
 
                         auto it = modelD.statesModel.find(nextStateHash);
                         bool skip = false;
@@ -4650,9 +4649,12 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
         fs << ""values: reward"" << endl;
         fs << endl;
         fs << ""states:"";
-        for (auto & stateN : modelD.statesToPomdpFileStates)
+        int count = 0;
+        for (auto &stateN : states)
         {
-            fs << "" "" << stateN.second ;
+            std::string stateName= std::to_string(count++).insert(0, ""s_"");
+            modelD.statesToPomdpFileStates[stateN] = stateName;
+            fs << "" "" << stateName;
         }
         fs << endl;
         fs << endl;
@@ -4665,10 +4667,15 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
         fs << endl;
         
         fs << ""observations: "";
-        for (int i = 0; i < observationsToDesc.size();i++)
+        count = 0;
+        for (int  obs : observations)
         {
-            fs << observationsToDesc[i] << "" "";
+            std::string s = ""o"" + std::to_string(count++) + ""_"" + Prints::PrintObs(0, obs);
+                            //s.insert(0, ""o_"");
+                            observationsToDesc.insert({obs, s});
+            fs << s << "" "";
         }
+        std::string invalidObsS = ""o"" + std::to_string(count++) + ""_invalidObs"";
             // for (auto &obsD : observationsToDesc)
             // {
             //     fs << obsD.second << "" "";
@@ -4687,6 +4694,8 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
             
             fs << "" "" << s;
         }
+        fs << endl; 		
+        fs << endl;
 
 
         map<int, set<int>> actionStatesWithoutAnyTran;
@@ -4696,28 +4705,28 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
         }
         for (auto &stateT : modelD.statesModel)
         {
-            if(stateT.second.isTerminalState)
-            {
-                int iooo = 1;
-            }
-            map<int,std::set<int>> allStatePerAction;
-            for (int act = 0; act < ActionManager::actions.size();act++)
-            {
-                allStatePerAction[act] = set<int>{states};
-            }
+            // if(stateT.second.isTerminalState)
+            // {
+            //     int iooo = 1;
+            // }
+            // map<int,std::set<int>> allStatePerAction;
+            // for (int act = 0; act < ActionManager::actions.size();act++)
+            // {
+            //     allStatePerAction[act] = set<int>{states};
+            // }
             for (auto &actNStateProb : stateT.second.actionNextStateProb)
             {
                 actionStatesWithoutAnyTran[actNStateProb.first.first].erase(stateT.first);
-                allStatePerAction[actNStateProb.first.first].erase(actNStateProb.first.second);
+            //    allStatePerAction[actNStateProb.first.first].erase(actNStateProb.first.second);
                 fs << ""T: "" << actionsToDesc[actNStateProb.first.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << modelD.statesToPomdpFileStates[actNStateProb.first.second] << "" "" << std::to_string(actNStateProb.second) << endl;
             }
-            for(auto &missingTrans: allStatePerAction)
-            {
-                for(auto &missingState: missingTrans.second)
-                {
-                    fs << ""T: "" << actionsToDesc[missingTrans.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << modelD.statesToPomdpFileStates[missingState] << "" 0.0"" << endl;
-                }    
-            }
+            // for(auto &missingTrans: allStatePerAction)
+            // {
+            //     for(auto &missingState: missingTrans.second)
+            //     {
+            //         fs << ""T: "" << actionsToDesc[missingTrans.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << modelD.statesToPomdpFileStates[missingState] << "" 0.0"" << endl;
+            //     }    
+            // }
         }
  
         for(auto &actionStateWithoutAnyTranision: actionStatesWithoutAnyTran)
@@ -4731,19 +4740,55 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
         fs << endl;
         fs << endl;
         fs << endl;
-        //to make sure that all the stat-action pairs have observations defined.
-        map<int,std::set<int>> allStatePerAction;
+
+
+        //check actions that have the same observation from any state
+        map<int,std::string> actionWithSingleObservation;
         for (int act = 0; act < ActionManager::actions.size();act++)
         {
-            allStatePerAction[act] = set<int>{states};
+            actionWithSingleObservation[act] = invalidObsS;
         }
         for(auto & stateT : modelD.statesModel)
         {
             
             for (auto &actObsProb : stateT.second.actionObservationProb)
             {
-                allStatePerAction[actObsProb.first.first].erase(stateT.first);
-                fs << ""O: "" << actionsToDesc[actObsProb.first.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << observationsToDesc[actObsProb.first.second] << "" "" <<actObsProb.second << endl;
+                //change observation from default value to first seen value
+                if(actionWithSingleObservation.find(actObsProb.first.first) != actionWithSingleObservation.end())
+                {
+                    actionWithSingleObservation[actObsProb.first.first] = actionWithSingleObservation[actObsProb.first.first] == invalidObsS ? observationsToDesc[actObsProb.first.second] : actionWithSingleObservation[actObsProb.first.first];
+                    if(actionWithSingleObservation[actObsProb.first.first] != observationsToDesc[actObsProb.first.second])
+                    {
+                        actionWithSingleObservation.erase(actObsProb.first.first);
+                    }
+                }
+            }
+        }
+        for(auto &actSingleObs : actionWithSingleObservation)
+        {
+            fs << ""O: "" << actionsToDesc[actSingleObs.first] << "" : * : "" << actSingleObs.second << "" 1.0"" << endl;
+        }
+
+        //to make sure that all the stat-action pairs have observations defined.
+        map<int,std::set<int>> allStatePerAction;
+        for (int act = 0; act < ActionManager::actions.size();act++)
+        {
+            if(actionWithSingleObservation.find(act) == actionWithSingleObservation.end())
+            {
+                allStatePerAction[act] = set<int>{states};
+            }
+        }
+        for(auto & stateT : modelD.statesModel)
+        {
+            
+            for (auto &actObsProb : stateT.second.actionObservationProb)
+            {
+                if(actionWithSingleObservation.find(actObsProb.first.first) == actionWithSingleObservation.end())
+                {
+                    allStatePerAction[actObsProb.first.first].erase(stateT.first);
+                    fs << ""O: "" << actionsToDesc[actObsProb.first.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << observationsToDesc[actObsProb.first.second] << "" "" << std::to_string(actObsProb.second) << endl;
+                }
+
             }
         }
         //adding invalid observations to fill missing ones
@@ -4761,7 +4806,7 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
         {
             for(auto & actPrevStateReward : stateR.second.actionPrevStateReward)
             {  
-                fs << ""R: "" << actionsToDesc[actPrevStateReward.first.first] << "" : "" << modelD.statesToPomdpFileStates[actPrevStateReward.first.second]  << "" : "" << modelD.statesToPomdpFileStates[stateR.first] << "" : * "" << actPrevStateReward.second << endl;
+                fs << ""R: "" << actionsToDesc[actPrevStateReward.first.first] << "" : "" << modelD.statesToPomdpFileStates[actPrevStateReward.first.second]  << "" : "" << modelD.statesToPomdpFileStates[stateR.first] << "" : * "" << std::to_string(actPrevStateReward.second) << endl;
             }
         }
         
