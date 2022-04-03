@@ -40,6 +40,7 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
+        public int limitClosedModelHorizon_stepsAfterGoalDetection{get;set;}
         public bool UseSarsop { get; set; } 
         public float OfflineSolverTimeLimitInSeconds { get; set; } 
         public int NumOfSamplesPerStateActionToLearnModel { get; set; } 
@@ -55,6 +56,7 @@ namespace WebApiCSharp.Models
         public bool DebugOn{ get; set; }
         public SolverConfiguration()
         {
+            limitClosedModelHorizon_stepsAfterGoalDetection=-1;
             NumOfSamplesPerStateActionToLearnModel = 200;
             OfflineSolverTimeLimitInSeconds = 0;
             UseSarsop = true;

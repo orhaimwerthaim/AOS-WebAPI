@@ -285,9 +285,11 @@ struct Config {
 	std::string pomdpFilePath;
 	int numOfSamplesPerActionStateWhenLearningTheModel;
 	double sarsopTimeLimitInSeconds;// if sarsopTimeLimitInSeconds <= 0 there is no time limit.
+	int limitClosedModelHorizon_stepsAfterGoalDetection;
 
 	Config() : 
         handsOnDebug(false),
+        limitClosedModelHorizon_stepsAfterGoalDetection(" + initProj.SolverConfiguration.limitClosedModelHorizon_stepsAfterGoalDetection + @"),
         sarsopTimeLimitInSeconds(" + initProj.SolverConfiguration.OfflineSolverTimeLimitInSeconds + @"),
         numOfSamplesPerActionStateWhenLearningTheModel(" + initProj.SolverConfiguration.NumOfSamplesPerStateActionToLearnModel + @"),
         fixedPolicyDotFilePath(""sarsop/src/autoGen.dot""), //the path ../sarsop/src/autoGen.dot because working dir is /build/ so we need go one directory backwards.
@@ -1723,14 +1725,23 @@ struct policy{
 		std::string pomContent( (std::istreambuf_iterator<char>(pf) ),
                        (std::istreambuf_iterator<char>()    ) );
 
-		std::string t = ""observations:  "";
+		std::string t = ""observations:"";
 		int obsInd = pomContent.find(t) + t.size();
 		while(obsInd > t.size())
 		{
+            //remove spaces
 			while(pomContent[obsInd] == ' ')
 				obsInd++;
+
+            //when we read all the observations, stop!
 			if(pomContent[obsInd] == '\n')
 				break;
+            
+            //to remove the observation prefix 'o<obs_num>_'
+            while(pomContent[obsInd] != '_')
+				obsInd++;
+            obsInd++;
+
 			int endObs = pomContent.find("" "", obsInd);
 			obsStrToNum.insert({pomContent.substr(obsInd, endObs - obsInd), std::to_string(obsStrToNum.size())});
 			obsInd = endObs;
@@ -2517,7 +2528,7 @@ public:
 	virtual bool Step(State &state, double rand_num, int actionId, double &reward,
 					  OBS_TYPE &observation) const;
     void StepForModel(State& state, int actionId, double &reward,
-                                    OBS_TYPE &observation, int& state_hash, int& next_state_hash, bool &isTerminal) const;
+                                    OBS_TYPE &observation, int& state_hash, int& next_state_hash, bool &isTerminal, double& precondition_reward, double& specialStateReward) const;
 	int NumActions() const;
 	virtual double ObsProb(OBS_TYPE obs, const State& state, int actionId) const;
     void CreateAndSolveModel() const;
@@ -4270,6 +4281,7 @@ namespace despot {
 #include <set>
 #include <unistd.h>
 #include <iomanip>
+#include <float.h>
 
 using namespace std;
 
@@ -4419,7 +4431,10 @@ std::default_random_engine " + data.ProjectNameWithCapitalLetter + @"::generator
 " + GetModelCppFileDistributionVariableDefinition(data) + Environment.NewLine + GetModelCppCreatStartStateFunction(data, initProj) + @"
 
 struct state_tran
-{
+{		
+    bool hasSpecialStateReward = false;
+    double specialStateReward;
+    map<int, double> actionPreconditionReward;
     map<std::pair<int,int>,double> actionPrevStateReward;
     int state;
     map<int,int> total_samplesFromStateByAction;
@@ -4437,10 +4452,16 @@ struct state_tran
         actionNextStateProb.clear();
         //actionPrevStateReward.insert({std::pair<int,int>{_action, state}, 0});//inner loop 0 rewads for terminal state
     }
-    void addObservationTransitionRewardData(int _state, int _nextState, int _action, int _observation, double _reward, bool _isNextStateTerminal)
+
+    void addObservationTransitionRewardData(int _state, int _nextState, int _action, int _observation, double _reward, bool _isNextStateTerminal, double precondition_reward, double _specialStateReward)
     {
         if(_nextState == state)
         {
+            if(_specialStateReward != 0)
+            {
+                hasSpecialStateReward = true;
+                specialStateReward = _specialStateReward;
+            }
             addObservationAsNextStateSample(_nextState, _observation, _action);
             if(_isNextStateTerminal)
             {
@@ -4448,6 +4469,15 @@ struct state_tran
             }
             actionPrevStateReward.insert({std::pair<int,int>{_action, _state}, _reward});
         }
+
+        if(state == _state)
+        {
+            if(precondition_reward != 0)
+            {
+                actionPreconditionReward[_action]=precondition_reward;
+            }
+        }
+
         if(state == _state && !isTerminalState)
         {
             addNextStateTransition(_state, _nextState, _action);
@@ -4503,15 +4533,15 @@ struct model_data
           initialBStateParticle[_state] = initialBStateParticle.find(_state) == initialBStateParticle.end() ? 1 : initialBStateParticle[_state] + 1;
       }
       
-      void addSample(int state, int nextState, int action, int observation, double reward, bool isNextStateTerminal)
+      void addSample(int state, int nextState, int action, int observation, double reward, bool isNextStateTerminal, double precondition_reward, double specialStateReward)
       {
           
           state_tran *st = getStateModel(state);
           state_tran *n_st = getStateModel(nextState);
           n_st->isTerminalState = isNextStateTerminal;
           
-          st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal);
-          n_st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal);
+          st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal, precondition_reward, specialStateReward);
+          n_st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal, precondition_reward, specialStateReward);
       }
       state_tran * getStateModel(int state)
       {
@@ -4584,23 +4614,23 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
                 {
                     for (int sampleCount = 0; sampleCount < numOfSamplesForEachActionFromState; sampleCount++)
                     {                
-                        double reward;
+                        double reward=0;
                         OBS_TYPE obs;
                         int state_hash;
                         int nextStateHash;
                         bool isNextStateTerminal;
                         State *next_state = Copy(stateP.second);
-                       
-                        StepForModel(*next_state, action, reward, obs, state_hash, nextStateHash, isNextStateTerminal);
-                         
+                        double precondition_reward;
+                        double specialStateReward;
+                        StepForModel(*next_state, action, reward, obs, state_hash, nextStateHash, isNextStateTerminal, precondition_reward, specialStateReward);
+
                         if(isNextStateTerminal && reward > 0 && !goalstateFound)
                         {
                             goalstateFound = true;
-                            horizon = i + 1;
-                         //StepForModel(*stateP.second, action, reward, obs, state_hash, nextStateHash, isNextStateTerminal);
+                            horizon = (Globals::config.limitClosedModelHorizon_stepsAfterGoalDetection < 0) ? horizon : i + Globals::config.limitClosedModelHorizon_stepsAfterGoalDetection; 
                         }
 
-                        modelD.addSample(state_hash, nextStateHash, action, obs, reward, isNextStateTerminal);
+                        modelD.addSample(state_hash, nextStateHash, action, obs, reward, isNextStateTerminal, precondition_reward, specialStateReward);
                         if(observations.insert(obs).second);
 
                         auto it = modelD.statesModel.find(nextStateHash);
@@ -4704,29 +4734,12 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
             actionStatesWithoutAnyTran[act] = set<int>{states};
         }
         for (auto &stateT : modelD.statesModel)
-        {
-            // if(stateT.second.isTerminalState)
-            // {
-            //     int iooo = 1;
-            // }
-            // map<int,std::set<int>> allStatePerAction;
-            // for (int act = 0; act < ActionManager::actions.size();act++)
-            // {
-            //     allStatePerAction[act] = set<int>{states};
-            // }
+        { 
             for (auto &actNStateProb : stateT.second.actionNextStateProb)
             {
-                actionStatesWithoutAnyTran[actNStateProb.first.first].erase(stateT.first);
-            //    allStatePerAction[actNStateProb.first.first].erase(actNStateProb.first.second);
+                actionStatesWithoutAnyTran[actNStateProb.first.first].erase(stateT.first); 
                 fs << ""T: "" << actionsToDesc[actNStateProb.first.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << modelD.statesToPomdpFileStates[actNStateProb.first.second] << "" "" << std::to_string(actNStateProb.second) << endl;
-            }
-            // for(auto &missingTrans: allStatePerAction)
-            // {
-            //     for(auto &missingState: missingTrans.second)
-            //     {
-            //         fs << ""T: "" << actionsToDesc[missingTrans.first] << "" : "" << modelD.statesToPomdpFileStates[stateT.first] << "" : "" << modelD.statesToPomdpFileStates[missingState] << "" 0.0"" << endl;
-            //     }    
-            // }
+            } 
         }
  
         for(auto &actionStateWithoutAnyTranision: actionStatesWithoutAnyTran)
@@ -4802,11 +4815,54 @@ void " + data.ProjectNameWithCapitalLetter + @"::CreateAndSolveModel() const
         fs << endl;
         fs << endl;
         fs << endl;
+
+        map<int, double> actionSingleReward;//check if action has a cost not independent of next state (we dont check the precondition reward here)
+        for (int action = 0; action < NumActions(); action++)
+        {
+            actionSingleReward[action] = DBL_MAX;
+        }
+
         for (auto &stateR : modelD.statesModel)
         {
             for(auto & actPrevStateReward : stateR.second.actionPrevStateReward)
+            { 
+                if(actionSingleReward.find(actPrevStateReward.first.first) != actionSingleReward.end())
+                {
+                    actionSingleReward[actPrevStateReward.first.first] = (actionSingleReward[actPrevStateReward.first.first] == DBL_MAX) ? actPrevStateReward.second : actionSingleReward[actPrevStateReward.first.first];
+                    if (actionSingleReward[actPrevStateReward.first.first] != actPrevStateReward.second)
+                        actionSingleReward.erase(actPrevStateReward.first.first);
+                }
+            }
+        }
+        for (auto &actSingleReward : actionSingleReward)//rewards for action with same cost for each state
+        {
+            fs << ""R: "" << actionsToDesc[actSingleReward.first] << "" : * : * : * "" << std::to_string(actSingleReward.second) << endl;
+        }
+        for (auto &stateR : modelD.statesModel)//rewards for spesial states
+        {
+            if(stateR.second.hasSpecialStateReward)
+            {
+                 fs << ""R: * : * : "" + modelD.statesToPomdpFileStates[stateR.first] + "" : * "" << std::to_string(stateR.second.specialStateReward) << endl;
+            }
+        }
+        for (auto &stateR : modelD.statesModel)
+        {
+            //adding precondition penalty
+            for(auto & actPreconditionReward : stateR.second.actionPreconditionReward)
             {  
-                fs << ""R: "" << actionsToDesc[actPrevStateReward.first.first] << "" : "" << modelD.statesToPomdpFileStates[actPrevStateReward.first.second]  << "" : "" << modelD.statesToPomdpFileStates[stateR.first] << "" : * "" << std::to_string(actPrevStateReward.second) << endl;
+                fs << ""R: "" << actionsToDesc[actPreconditionReward.first] << "" : "" << modelD.statesToPomdpFileStates[stateR.first]  << "" : * : * "" << std::to_string(actPreconditionReward.second) << endl;
+            }
+        }
+
+        for (auto &stateR : modelD.statesModel)
+        {
+            //adding action cost or reward when is depends on preconditions (regardless of preconditions)
+            for(auto & actPrevStateReward : stateR.second.actionPrevStateReward)
+            {  
+                if(actionSingleReward.find(actPrevStateReward.first.first) == actionSingleReward.end())
+                {
+                    fs << ""R: "" << actionsToDesc[actPrevStateReward.first.first] << "" : "" << modelD.statesToPomdpFileStates[actPrevStateReward.first.second]  << "" : "" << modelD.statesToPomdpFileStates[stateR.first] << "" : * "" << std::to_string(actPrevStateReward.second) << endl;
+                }
             }
         }
         
@@ -4921,13 +4977,28 @@ int " + data.ProjectNameWithCapitalLetter + @"::NumActiveParticles() const {
 }
 
 void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int actionId, double& reward,
-        OBS_TYPE& observation, int &state_hash, int &next_state_hash, bool& isTerminal) const
+        OBS_TYPE& observation, int &state_hash, int &next_state_hash, bool& isTerminal, double& precondition_reward, double& specialStateReward) const
     {
+        reward = 0;
         " + data.ProjectNameWithCapitalLetter + @"State &ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
         state_hash = hasher(Prints::PrintState(ir_state));
+
+        bool meetPrecondition;
+        precondition_reward = 0;
+        CheckPreconditions(ir_state, reward, meetPrecondition, actionId);
+        if(!meetPrecondition)
+        {
+            precondition_reward = reward;
+        }
+        
         isTerminal = " + data.ProjectNameWithCapitalLetter + @"::Step(state, 0.1, actionId, reward,
                    observation);
         ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
+
+        specialStateReward = 0;
+        ProcessSpecialStates(ir_state, specialStateReward);
+        reward -= (precondition_reward + specialStateReward);//so that it will not consider the precondition penalty and special states reward
+
         next_state_hash = hasher(Prints::PrintState(ir_state));
     }
 
