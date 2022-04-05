@@ -79,6 +79,10 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/main.cpp", SolverFileTemplate.GetMainFile(data));
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/" + data.ProjectName + ".cpp", SolverFileTemplate.GetModelCppFile(data, initProj));
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/" + data.ProjectName + ".h", SolverFileTemplate.GetModelHeaderFile(data));
+
+            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/closed_model.h", SolverFileTemplate.GetClosedModelHeaderFile(data));
+            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/closed_model.cpp", SolverFileTemplate.GetClosedModelCppFile(data));
+    
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/solver/pomcp.cpp", SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath, conf.SolverGraphPDF_Depth, initProj, data));
 
 
