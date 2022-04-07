@@ -49,6 +49,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             CleanAndGenerateDirecotories();
 
+            GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/closed_model_policy.h", SolverFileTemplate.GetClosedModelPolicyHeaderFile(data));
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/actionManager.h", SolverFileTemplate.GetActionManagerHeaderFile(data));
             Dictionary<string, Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar;
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/enum_map_" + data.ProjectName + ".h", SolverFileTemplate.GetEnumMapHeaderFile(data, out enumMappingsForModuleResponseAndTempVar));
@@ -68,6 +69,7 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/simple_tui.cpp", SolverFileTemplate.GetSimpleTuiCppFile(data, initProj));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/evaluator.h", SolverFileTemplate.GetEvaluatorHeaderFile(data));
 
+            GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/closed_model_policy.cpp", SolverFileTemplate.GetClosedModelPolicyCPpFile(data));
 
             GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/actionManager.cpp", SolverFileTemplate.GetActionManagerCPpFile(data, out totalNumberOfActionsInProject));
             data.NumberOfActions = totalNumberOfActionsInProject;

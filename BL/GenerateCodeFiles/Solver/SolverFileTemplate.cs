@@ -142,6 +142,7 @@ add_library(""${PROJECT_NAME}"" SHARED
   src/model_primitives/" + projectName + @"/state.cpp
   src/model_primitives/" + projectName + @"/enum_map_" + projectName + @".cpp #added
   src/model_primitives/" + projectName + @"/actionManager.cpp #added
+  src/model_primitives/" + projectName + @"/closed_model_policy.cpp #added
 
   src/core/belief.cpp
   src/core/globals.cpp
@@ -282,19 +283,22 @@ struct Config {
     bool saveBeliefToDB;
     bool handsOnDebug;
 	bool solveProblemWithClosedPomdpModel;
-	std::string fixedPolicyDotFilePath;
+	std::string fixedGraphPolicyDotFilePath;
+    std::string fixedPolicyFilePath;
 	std::string pomdpFilePath;
 	int numOfSamplesPerActionStateWhenLearningTheModel;
 	double sarsopTimeLimitInSeconds;// if sarsopTimeLimitInSeconds <= 0 there is no time limit.
 	int limitClosedModelHorizon_stepsAfterGoalDetection;
-
+    bool closedModelPolicyByGraph;
 	Config() : 
         handsOnDebug(false),
+        closedModelPolicyByGraph(false),
         limitClosedModelHorizon_stepsAfterGoalDetection(" + initProj.SolverConfiguration.limitClosedModelHorizon_stepsAfterGoalDetection + @"),
         sarsopTimeLimitInSeconds(" + initProj.SolverConfiguration.OfflineSolverTimeLimitInSeconds + @"),
         numOfSamplesPerActionStateWhenLearningTheModel(" + initProj.SolverConfiguration.NumOfSamplesPerStateActionToLearnModel + @"),
-        fixedPolicyDotFilePath(""sarsop/src/autoGen.dot""), //the path ../sarsop/src/autoGen.dot because working dir is /build/ so we need go one directory backwards.
-        pomdpFilePath(""sarsop/examples/POMDP/auto_generate.pomdp""),
+        fixedGraphPolicyDotFilePath(""sarsop/src/autoGen.dot""), //the path ../sarsop/src/autoGen.dot because working dir is /build/ so we need go one directory backwards.
+        fixedPolicyFilePath(""sarsop/src/out.policy""),
+		pomdpFilePath(""sarsop/examples/POMDP/auto_generate.pomdp""),
         solveProblemWithClosedPomdpModel(" + initProj.SolverConfiguration.SolveClosedPOMDP_model.ToString().ToLower() + @"),
         solverId(" + solverData.SolverId + @"),
 		search_depth(" + data.Horizon + @"),
@@ -1713,7 +1717,7 @@ struct policy{
 		std::string workingDirPath(tmp);
 		workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
 		std::string policyFilePath(workingDirPath);
-		policyFilePath.append(Globals::config.fixedPolicyDotFilePath);
+		policyFilePath.append(Globals::config.fixedGraphPolicyDotFilePath);
 		std::ifstream ifs(policyFilePath);
 		std::string content( (std::istreambuf_iterator<char>(ifs) ),
                        (std::istreambuf_iterator<char>()    ) );
@@ -1739,9 +1743,9 @@ struct policy{
 				break;
             
             //to remove the observation prefix 'o<obs_num>_'
-            while(pomContent[obsInd] != '_')
-				obsInd++;
-            obsInd++;
+            // while(pomContent[obsInd] != '_')
+			// 	obsInd++;
+            // obsInd++;
 
 			int endObs = pomContent.find("" "", obsInd);
 			obsStrToNum.insert({pomContent.substr(obsInd, endObs - obsInd), std::to_string(obsStrToNum.size())});
@@ -1913,6 +1917,7 @@ public:
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>
 #include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>
 #include <despot/model_primitives/" + data.ProjectName + @"/state.h>
+#include <despot/model_primitives/" + data.ProjectName + @"/closed_model_policy.h>
 #include <nlohmann/json.hpp>
 using namespace std;
 
@@ -2073,7 +2078,14 @@ bool Evaluator::RunStep(int step, int round) {
 
 	if(byExternalPolicy)
 	{
-		Evaluator::fixedPolicy.init_policy();
+		if(Globals::config.closedModelPolicyByGraph)
+		{
+			Evaluator::fixedPolicy.init_policy();
+		}
+		else
+		{
+			ClosedModelPolicy::loadAlphaVectorsFromPolicyFile();
+		}
 	}
 
 	if(shutDown && !Globals::config.handsOnDebug)
@@ -2105,7 +2117,7 @@ bool Evaluator::RunStep(int step, int round) {
 
     if(byExternalPolicy)
     {
-            action = Evaluator::fixedPolicy.getCurrentAction();
+           action = Globals::config.closedModelPolicyByGraph ? Evaluator::fixedPolicy.getCurrentAction() : ClosedModelPolicy::getBestAction();
     }
     else if(action_sequence_to_sim.size() == 0)
 	{
@@ -2182,7 +2194,15 @@ bool Evaluator::RunStep(int step, int round) {
 	start_t = get_time_second();
 	if(byExternalPolicy)
 	{
-		Evaluator::fixedPolicy.updateStateByObs(obsStr);
+		if(Globals::config.closedModelPolicyByGraph)
+		{
+			Evaluator::fixedPolicy.updateStateByObs(obsStr);
+		}
+		
+        else
+		{
+			ClosedModelPolicy::updateBelief(obsStr, action);
+		}
 	}
 	else if(action_sequence_to_sim.size() == 0)
 	{
@@ -2489,6 +2509,7 @@ public static string GetClosedModelHeaderFile(PLPsData data)
 #include <float.h>
 #include <iomanip>
 #include <despot/core/pomdp.h> 
+#include <despot/model_primitives/"+data.ProjectNameWithCapitalLetter+@"/closed_model_policy.h>
 using namespace std;
 namespace despot {
     class POMDP_ClosedModelState
@@ -2727,7 +2748,11 @@ void POMDP_ClosedModel::addSample(int state, int nextState, int action, int obse
 void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, std::string> actionsToDesc,
    std::set<int> observations, std::map<int, std::string> observationsToDesc)
 {
-
+     map<int, int> stateToPolicyIndex;
+     map<std::string, int> actionToPolicyIndex;
+     vector<double> initialBeliefState;
+     //map<std::string, map<int,map<int, double>>> obsActNState_ObservationModel;//map<observation, map<action,map<nextState, Probability>>>
+ 
         char tmp[256];
                 getcwd(tmp, 256);
                 std::string workinDirPath(tmp);
@@ -2748,12 +2773,15 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
             std::string stateName= std::to_string(count++).insert(0, ""s_"");
             POMDP_ClosedModel::closedModel.statesToPomdpFileStates[stateN] = stateName;
             fs << "" "" << stateName;
+
+            stateToPolicyIndex[stateN] = count - 1;
         }
         fs << endl;
         fs << endl;
         fs << ""actions: "";
         for (auto & actD : actionsToDesc)
         {
+            actionToPolicyIndex[actD.second] = actD.first;
             fs << actD.second << "" "";
         }
         fs << endl;
@@ -2763,12 +2791,13 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         count = 0;
         for (int  obs : observations)
         {
-            std::string s = ""o"" + std::to_string(count++) + ""_"" + Prints::PrintObs(0, obs);
-                            //s.insert(0, ""o_"");
+            //std::string s = ""o"" + std::to_string(count++) + ""_"" + Prints::PrintObs(0, obs);
+            std::string s = Prints::PrintObs(0, obs); 
                             observationsToDesc.insert({obs, s});
             fs << s << "" "";
         }
-        std::string invalidObsS = ""o"" + std::to_string(count++) + ""_invalidObs"";
+        //std::string invalidObsS = ""o"" + std::to_string(count++) + ""_invalidObs"";
+        std::string invalidObsS = ""invalidObs"";
             // for (auto &obsD : observationsToDesc)
             // {
             //     fs << obsD.second << "" "";
@@ -2781,6 +2810,7 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         for (auto & stateN : POMDP_ClosedModel::closedModel.statesToPomdpFileStates)
         {  
             double prob = (double)POMDP_ClosedModel::closedModel.initialBStateParticle[stateN.first] / (double)POMDP_ClosedModel::closedModel.initialBStateSamplesCount;
+            initialBeliefState.push_back(prob);
             std::stringstream stream;
             stream << std::fixed << std::setprecision(1) << prob;
             std::string s = stream.str();
@@ -2790,6 +2820,7 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         fs << endl; 		
         fs << endl;
 
+        ClosedModelPolicy::loadInitialBeliefStateFromVector(initialBeliefState);
 
         map<int, set<int>> actionStatesWithoutAnyTran;
         for (int act = 0; act < ActionManager::actions.size();act++)
@@ -2802,6 +2833,11 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
             {
                 actionStatesWithoutAnyTran[actNStateProb.first.first].erase(stateT.first); 
                 fs << ""T: "" << actionsToDesc[actNStateProb.first.first] << "" : "" << POMDP_ClosedModel::closedModel.statesToPomdpFileStates[stateT.first] << "" : "" << POMDP_ClosedModel::closedModel.statesToPomdpFileStates[actNStateProb.first.second] << "" "" << std::to_string(actNStateProb.second) << endl;
+
+                int actionPol = actionToPolicyIndex[actionsToDesc[actNStateProb.first.first]];
+                int nextStatePol = stateToPolicyIndex[actNStateProb.first.second];
+                int preStatePol = stateToPolicyIndex[stateT.first];
+                ClosedModelPolicy::nextStateActionPrevState_TransitionModel[nextStatePol][actionPol][preStatePol] = actNStateProb.second;
             } 
         }
  
@@ -2842,7 +2878,13 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         }
         for(auto &actSingleObs : actionWithSingleObservation)
         {
-            fs << ""O: "" << actionsToDesc[actSingleObs.first] << "" : * : "" << actSingleObs.second << "" 1.0"" << endl;
+            std::string actDesc = actionsToDesc[actSingleObs.first];
+            fs << ""O: "" << actDesc << "" : * : "" << actSingleObs.second << "" 1.0"" << endl;
+
+
+            int actionPol = actionToPolicyIndex[actDesc];
+            std::string observation = actSingleObs.second;
+            ClosedModelPolicy::obsActNState_ObservationModel[observation][actionPol][STATE_WILD_CARD] = 1.0;
         }
 
         //to make sure that all the stat-action pairs have observations defined.
@@ -2863,6 +2905,9 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
                 {
                     allStatePerAction[actObsProb.first.first].erase(stateT.first);
                     fs << ""O: "" << actionsToDesc[actObsProb.first.first] << "" : "" << POMDP_ClosedModel::closedModel.statesToPomdpFileStates[stateT.first] << "" : "" << observationsToDesc[actObsProb.first.second] << "" "" << std::to_string(actObsProb.second) << endl;
+
+                    int actionPol = actionToPolicyIndex[actionsToDesc[actObsProb.first.first]];
+                    ClosedModelPolicy::obsActNState_ObservationModel[observationsToDesc[actObsProb.first.second]][actionPol][stateToPolicyIndex[stateT.first]] = actObsProb.second;
                 }
 
             }
@@ -2873,6 +2918,10 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
                 for(auto &StateWithMissingObs: missingObss.second)
                 {
                     fs << ""O: "" << actionsToDesc[missingObss.first] << "" : "" << POMDP_ClosedModel::closedModel.statesToPomdpFileStates[StateWithMissingObs] << "" : "" << invalidObsS << "" 1.0"" << endl;
+                
+                    int actionPol = actionToPolicyIndex[actionsToDesc[missingObss.first]];
+
+                    ClosedModelPolicy::obsActNState_ObservationModel[invalidObsS][actionPol][stateToPolicyIndex[StateWithMissingObs]] = 1.0; 
                 }    
             }
         fs << endl;
@@ -2955,12 +3004,14 @@ void POMDP_ClosedModel::solveModel()
       cmd.append("" --timeout "");
       cmd.append(std::to_string(Globals::config.sarsopTimeLimitInSeconds));
   }//   ./pomdpsol /home/or/Projects/sarsop/examples/POMDP/auto_generate.pomdp
-  cmd.append("" ; ./polgraph --policy-file out.policy --policy-graph autoGen.dot "");
-  cmd.append(workinDirPath);
-  cmd.append(""sarsop/examples/POMDP/auto_generate.pomdp"");
-  
-  //cmd.append("" ; dot -Tpdf autoGen.dot -o outfile_autoGen.pdf""); //uncomment if you want to generate a pdf graph
-  
+  if(Globals::config.closedModelPolicyByGraph)
+  {
+    cmd.append("" ; ./polgraph --policy-file out.policy --policy-graph autoGen.dot "");
+    cmd.append(workinDirPath);
+    cmd.append(""sarsop/examples/POMDP/auto_generate.pomdp"");
+    
+    //cmd.append("" ; dot -Tpdf autoGen.dot -o outfile_autoGen.pdf""); //uncomment if you want to generate a pdf graph
+  }
   std::string policyFilePath(workinDirPath);
   policyFilePath.append(""sarsop/src/out.policy"");
   remove(policyFilePath.c_str());
@@ -3257,7 +3308,45 @@ private:
 
             return result;
         }
+public static string GetClosedModelPolicyHeaderFile(PLPsData data)
+{
+    string file = @"
+    #ifndef CLOSED_MODEL_POLICY_H
+#define CLOSED_MODEL_POLICY_H
+const int STATE_WILD_CARD = -1;
 
+#include <vector>
+#include <string>
+#include <map>  
+#include <float.h>
+#include <numeric>
+#include <unistd.h>
+#include <despot/core/globals.h>
+#include <iostream>
+#include <tuple>
+using namespace std;
+namespace despot
+{
+
+class ClosedModelPolicy {
+	private:
+        static vector<double> _currentBelief;
+        static vector <std::pair<int, vector<double>>> alpha_vectors;
+
+    public:
+        static void loadAlphaVectorsFromPolicyFile();
+        static void loadInitialBeliefStateFromVector(vector<double> bs);
+        static void updateBelief(string observation, int action);
+        static int getBestAction();
+                                                     //when the rule is true for any state
+        static map<std::string, map<int, map<int, double>>> obsActNState_ObservationModel; //map<observation, map<action,map<nextState, Probability>>>
+
+        static map<int, map<int, map<int, double>>> nextStateActionPrevState_TransitionModel; //map<nextState, map<action, map<prevState, probability>>>
+};
+} // namespace despot
+#endif //CLOSED_MODEL_POLICY_H";
+    return file;
+}
         public static string GetActionManagerHeaderFile(PLPsData data)
         {
             string file = @"#ifndef ACTION_MANAGER_H
@@ -3872,7 +3961,139 @@ public:
 ";
             return file;
         }
+public static string GetClosedModelPolicyCPpFile(PLPsData data)
+{
+    string file = @"
+     #include <despot/model_primitives/"+data.ProjectNameWithCapitalLetter+@"/closed_model_policy.h>
+namespace despot { 
 
+vector<double> ClosedModelPolicy::_currentBelief;
+map<std::string, map<int,map<int, double>>> ClosedModelPolicy::obsActNState_ObservationModel;//map<observation, map<action,map<nextState, Probability>>>
+map<int, map<int, map<int, double>>> ClosedModelPolicy::nextStateActionPrevState_TransitionModel;//map<nextState, map<action, map<prevState, probability>>>
+ 
+
+vector <std::pair<int, vector<double>>> ClosedModelPolicy::alpha_vectors;
+
+void ClosedModelPolicy::loadAlphaVectorsFromPolicyFile()
+{
+    if(alpha_vectors.size() > 0)
+        return;
+    char tmp[256];
+    getcwd(tmp, 256);
+    std::string workingDirPath(tmp);
+    workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
+
+    std::string policyFilePath(workingDirPath);
+    policyFilePath.append(Globals::config.fixedPolicyFilePath);
+    std::ifstream pf(policyFilePath);
+    std::string policyFileContent((std::istreambuf_iterator<char>(pf)),
+                                  (std::istreambuf_iterator<char>()));
+
+    std::string t = ""<Vector "";
+    int vecInd = 0;
+    std::string actStr = ""action=\"""";
+
+    //get all alpha vectors
+    while (true)
+    {
+        vecInd = policyFileContent.find(t, vecInd) + t.size();
+        if (vecInd < t.size())
+        {
+            break;
+        }
+
+        int actionNum = -1;
+        vector<double> alpha_vec;
+
+        //go to action num  ""<Vector action=""4"" obsValue=""0""> ...""
+        int startActionInd = policyFileContent.find(actStr, vecInd) + actStr.size();
+        int endActionInd = policyFileContent.find(""\"""", startActionInd) + actStr.size();
+
+        stringstream actionNumS;
+        actionNum = stoi(policyFileContent.substr(startActionInd, endActionInd - startActionInd));
+
+        vecInd = policyFileContent.find("">"", vecInd) + 1;
+
+        //get vector values
+        while (true)
+        {
+
+            //remove spaces
+            while (policyFileContent[vecInd] == ' ')
+                vecInd++;
+            if (policyFileContent[vecInd] == '<')
+            {
+                break;
+            }
+            int endValInd = policyFileContent.find("" "", vecInd);
+            double val = std::stod(policyFileContent.substr(vecInd, endValInd - vecInd));
+            alpha_vec.push_back(val);
+            vecInd = endValInd;
+        }
+
+        std::pair<int, vector<double>> vec{actionNum, alpha_vec};
+        ClosedModelPolicy::alpha_vectors.push_back(vec);
+		} 
+}
+
+void ClosedModelPolicy::loadInitialBeliefStateFromVector(vector<double> bs)
+{
+    _currentBelief.clear();
+    for (int i = 0; i < bs.size(); i++)
+    {
+        _currentBelief.push_back(bs[i]);
+    }
+}
+
+void ClosedModelPolicy::updateBelief(string observation, int action)
+{
+    vector<double> prev_belief;
+    for (int i = 0; i < _currentBelief.size();i++)
+    {
+        prev_belief.push_back(_currentBelief[i]);
+    }
+
+    for (int i = 0; i < _currentBelief.size(); i++)
+    {
+        double go_to_state_prob=0;
+        for (int j = 0; j < prev_belief.size(); j++)
+        {
+            double tran_prob = nextStateActionPrevState_TransitionModel[i][action][j];
+            double b_prev_s = prev_belief[j];
+            go_to_state_prob += b_prev_s * tran_prob;
+        }
+
+        double prob_to_see_observation_in_state = obsActNState_ObservationModel[observation][action].find(i) != obsActNState_ObservationModel[observation][action].end()
+            ? obsActNState_ObservationModel[observation][action][i]
+            : 
+                (obsActNState_ObservationModel[observation][action].find(STATE_WILD_CARD) != obsActNState_ObservationModel[observation][action].end()
+                ? obsActNState_ObservationModel[observation][action][STATE_WILD_CARD] : 0.0);
+         
+
+        _currentBelief[i] = prob_to_see_observation_in_state * go_to_state_prob;
+    }
+}
+int ClosedModelPolicy::getBestAction()
+{
+    double maxValue= -DBL_MAX;
+    int maxAction = -1;
+    for (auto alphaVec : alpha_vectors)
+    {
+        double value = std::inner_product(_currentBelief.begin(), _currentBelief.end(), alphaVec.second.begin(), 0);
+        if(value > maxValue)
+        {
+            maxValue = value;
+            maxAction = alphaVec.first;
+        }
+    }
+    return maxAction;
+}
+
+
+
+}";
+    return file;
+}
         public static string GetActionManagerCPpFile(PLPsData data, out int totalNumberOfActionsInProject)
         {
             string file = @"
