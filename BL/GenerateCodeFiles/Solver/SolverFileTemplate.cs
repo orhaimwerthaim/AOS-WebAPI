@@ -2498,18 +2498,18 @@ public static string GetClosedModelHeaderFile(PLPsData data)
 #ifndef	NULL
 #define NULL 0
 #endif
-#include """+data.ProjectNameWithCapitalLetter+@".h""
+#include """+data.ProjectName+@".h""
 #include <vector>
 #include <map>
 #include <set>
 #include <string> 
 #include <unistd.h>
 #include <despot/core/globals.h>
-#include <despot/model_primitives/"+data.ProjectNameWithCapitalLetter+@"/actionManager.h> 
+#include <despot/model_primitives/"+data.ProjectName+@"/actionManager.h> 
 #include <float.h>
 #include <iomanip>
 #include <despot/core/pomdp.h> 
-#include <despot/model_primitives/"+data.ProjectNameWithCapitalLetter+@"/closed_model_policy.h>
+#include <despot/model_primitives/"+data.ProjectName+@"/closed_model_policy.h>
 using namespace std;
 namespace despot {
     class POMDP_ClosedModelState
@@ -2716,7 +2716,10 @@ void POMDP_ClosedModel::addSample(int state, int nextState, int action, int obse
           n_st->isTerminalState = isNextStateTerminal;
           
           st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal, precondition_reward, specialStateReward);
-          n_st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal, precondition_reward, specialStateReward);
+          if(state!=nextState)
+          {
+            n_st->addObservationTransitionRewardData(state, nextState, action, observation, reward, isNextStateTerminal, precondition_reward, specialStateReward);
+          }
       }
 
       POMDP_ClosedModelState * POMDP_ClosedModel::getStateModel(int state)
@@ -3087,7 +3090,7 @@ void POMDP_ClosedModel::CreateAndSolveModel() const
                         double specialStateReward;
                         "+data.ProjectNameWithCapitalLetter+@"::gen_model.StepForModel(*next_state, action, reward, obs, state_hash, nextStateHash, isNextStateTerminal, precondition_reward, specialStateReward);
 
-                        if(isNextStateTerminal && reward > 0 && !goalstateFound)
+                        if(isNextStateTerminal && specialStateReward > 0 && !goalstateFound)
                         {
                             goalstateFound = true;
                             horizon = (Globals::config.limitClosedModelHorizon_stepsAfterGoalDetection < 0) ? horizon : i + Globals::config.limitClosedModelHorizon_stepsAfterGoalDetection; 
@@ -3964,7 +3967,7 @@ public:
 public static string GetClosedModelPolicyCPpFile(PLPsData data)
 {
     string file = @"
-     #include <despot/model_primitives/"+data.ProjectNameWithCapitalLetter+@"/closed_model_policy.h>
+     #include <despot/model_primitives/"+data.ProjectName+@"/closed_model_policy.h>
 namespace despot { 
 
 vector<double> ClosedModelPolicy::_currentBelief;
@@ -5139,8 +5142,7 @@ namespace despot {
 
 bool AOSUtils::Bernoulli(double p)
 {
-	/* generate secret number between 1 and 100: */
-    srand((unsigned int)time(NULL));
+	/* generate secret number between 1 and 100: */ 
 	int randInt = rand() % 100 + 1;
 	return (p * 100) >= randInt;
 }
@@ -5261,7 +5263,7 @@ public:
  * ==============================================================================*/
 
 " + data.ProjectNameWithCapitalLetter + @"::" + data.ProjectNameWithCapitalLetter + @"(){
-	
+	srand((unsigned int)time(NULL));
 }
 
 int " + data.ProjectNameWithCapitalLetter + @"::NumActions() const {

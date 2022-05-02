@@ -35,6 +35,11 @@ namespace WebApiCSharp.Controllers
             List<string> remarks = new List<string>();
             string buildSolverOutput;
             string buildRosMiddlewareOutput;
+            if(initProj.MiddlewareConfiguration == null)
+            {
+                initProj.MiddlewareConfiguration = new MiddlewareConfiguration();
+                initProj.MiddlewareConfiguration.KillRosCoreBeforeStarting=true;
+            }
             initProj.MiddlewareConfiguration = (initProj.MiddlewareConfiguration == null) ? new MiddlewareConfiguration() : initProj.MiddlewareConfiguration;
             initProj.SolverConfiguration = (initProj.SolverConfiguration == null) ? new SolverConfiguration() : initProj.SolverConfiguration;
             initProj.RunWithoutRebuild = initProj.RunWithoutRebuild == null ? false : initProj.RunWithoutRebuild;

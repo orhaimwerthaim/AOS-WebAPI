@@ -31,7 +31,7 @@ namespace WebApiCSharp.Models
     public class MiddlewareConfiguration
     {
         public bool DebugOn { get; set; } 
-        
+        public bool KillRosCoreBeforeStarting {get;set;}
         public MiddlewareConfiguration()
         { 
             DebugOn = false;
@@ -59,7 +59,7 @@ namespace WebApiCSharp.Models
             limitClosedModelHorizon_stepsAfterGoalDetection=-1;
             NumOfSamplesPerStateActionToLearnModel = 200;
             OfflineSolverTimeLimitInSeconds = 0;
-            SolveClosedPOMDP_model = true;
+            SolveClosedPOMDP_model = false;
             DebugOn = false;
             LoadBeliefFromDB = false; 
             NumOfBeliefStateParticlesToSaveInDB = 1;

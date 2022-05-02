@@ -313,14 +313,16 @@ include_directories(
                 if (glue.RosServiceActivation != null && !string.IsNullOrEmpty(glue.RosServiceActivation.ServiceName))
                 {
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "try:");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerLog(\"wait for service: moduleName:"+glue.Name+", serviceName:"+glue.RosServiceActivation.ServiceName+"\")");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "rospy.wait_for_service(self." + glue.Name + "ServiceName)");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, glue.Name + "_proxy = rospy.ServiceProxy(self." + glue.Name + "ServiceName, " + glue.RosServiceActivation.ServiceName + ")");
 
                     string serviceCallParam = string.Join(", ", glue.RosServiceActivation.ParametersAssignments.Select(x => x.MsgFieldName + "=(" + x.AssignServiceFieldCode + ")"));
 
-
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerLog(\"Sending request to service, moduleName:"+ glue.Name+"\")");
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "__input = " + glue.Name + "_proxy(" + serviceCallParam + ")");
                     GlueLocalVariablesInitialization localVarFromServiceReponse = glue.GlueLocalVariablesInitializations.Where(x => x.FromROSServiceResponse.HasValue && x.FromROSServiceResponse.Value).FirstOrDefault();
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "registerLog(\"Service response received, moduleName:"+ glue.Name+"\")");
                     if (localVarFromServiceReponse != null)
                     {
                         result += GenerateFilesUtils.GetIndentationStr(3, 4, localVarFromServiceReponse.AssignmentCode, true, true);
@@ -627,6 +629,7 @@ aos_GlobalVariablesAssignments_collection = aosDB[""GlobalVariablesAssignments""
 aos_ModuleResponses_collection = aosDB[""ModuleResponses""]
 collActionForExecution = aosDB[""ActionsForExecution""]
 collErros = aosDB[""Errors""]
+collLogs = aosDB[""Logs""]
 collActions = aosDB[""Actions""]
 
 def registerError(errorStr,trace, comments=None):
@@ -636,6 +639,12 @@ def registerError(errorStr,trace, comments=None):
         error = {""Component"": ""aosRosMiddleware"", ""Error"": errorStr, ""Trace"": trace,
                  ""Time"": datetime.datetime.utcnow(), ""Comments"":comments}
     collErros.insert_one(error)
+
+
+def registerLog(str):
+    error = {""Component"": ""aosRosMiddleware"", ""Event"": str,
+             ""Time"": datetime.datetime.utcnow()}
+    collLogs.insert_one(error)
 
 
 " + GetLocalVariableTypeClasses(data) + @"
@@ -702,6 +711,7 @@ class ListenToMongoDbCommands:
                 responseNotByLocalVariables = None
                 print(""module name:"")
                 print(moduleName)
+                registerLog(""Request to call to module:""+moduleName)
                 
 " + GetListenToMongoCommandsFunctionPart(data) + @"
                 rospy.sleep(0.3)#0.015 is a tested duration, not to drop updates

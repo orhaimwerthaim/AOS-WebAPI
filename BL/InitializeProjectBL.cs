@@ -232,18 +232,20 @@ catkin_make";
         {
             //countdownEvent = new CountdownEvent(1);
             //         GenerateFilesUtils.WriteTextFile(initProg.RosTarget.WorkspaceDirectortyPath + "/buildRosMiddlewareWrapper.sh", GetBuildRosMiddlewareBashFile(initProg), false);
-            ProcessStartInfo sInfo = new ProcessStartInfo()
+            if(initProg.MiddlewareConfiguration.KillRosCoreBeforeStarting)
             {
-                //               WorkingDirectory = initProg.RosTarget.WorkspaceDirectortyPath,
-                FileName = "killall",//rosnode
-                Arguments = "-9 rosmaster",//kill --all
-                UseShellExecute = true,
-                // RedirectStandardOutput = true
-            };
-            Process process = new Process();
-            process.StartInfo = sInfo;
-            process.Start();
-
+                ProcessStartInfo sInfo1 = new ProcessStartInfo()
+                {
+                    //               WorkingDirectory = initProg.RosTarget.WorkspaceDirectortyPath,
+                    FileName = "killall",//rosnode
+                    Arguments = "-9 rosmaster",//kill --all
+                    UseShellExecute = true,
+                    // RedirectStandardOutput = true
+                };
+                Process process1 = new Process();
+                process1.StartInfo = sInfo1;
+                process1.Start();
+            }
             // sInfo = new ProcessStartInfo()
             // {
             //     //               WorkingDirectory = initProg.RosTarget.WorkspaceDirectortyPath,
@@ -260,7 +262,7 @@ catkin_make";
 
 
 
-            sInfo = new ProcessStartInfo()
+            ProcessStartInfo sInfo = new ProcessStartInfo()
             {
                 WorkingDirectory = initProg.RosTarget.WorkspaceDirectortyPath,
                 FileName = "roslaunch",
@@ -269,7 +271,7 @@ catkin_make";
                 // RedirectStandardOutput = true
 
             };
-            process = new Process();
+            Process process = new Process();
             process.StartInfo = sInfo;
             process.Start();
 
