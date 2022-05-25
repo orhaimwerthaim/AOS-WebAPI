@@ -573,6 +573,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                         subVar.Name = subField.Name;
                         subVar.Default = subField.Default;
                         subVar.StateVariableName = parentVar.StateVariableName + "." + subField.Name;
+                        subVar.Type= compType.Variables.Where(x=> x.Name.Equals(subVar.Name)).FirstOrDefault()?.Type;
                         parentVar.SubCompoundFeilds.Add(subVar);
                         if(subField.Type.Equals(ANY_VALUE_TYPE_NAME))
                         {
@@ -583,6 +584,10 @@ namespace WebApiCSharp.GenerateCodeFiles
                             FillGlobalVariableDeclarationsSubFields(subVar);
                         }
                     }
+                }
+                else
+                {
+                
                 }
             }
         }
@@ -1014,7 +1019,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                 BsonDocument docAssignment = bVal.AsBsonDocument;
                 Assignment oAssignment = new Assignment();
                 oAssignment.LatestReachableState = assignmentLatestPointInTime;
-                oAssignment.AssignmentName = docAssignment["AssignmentName"].ToString();
+                oAssignment.AssignmentName = docAssignment.Contains("AssignmentName") ? docAssignment["AssignmentName"].ToString() : "";
                 
                 oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString().Replace(" ", "") : "";
 

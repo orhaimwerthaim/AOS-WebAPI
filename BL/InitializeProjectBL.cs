@@ -261,7 +261,6 @@ catkin_make";
 
 
 
-
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
                 WorkingDirectory = initProg.RosTarget.WorkspaceDirectortyPath,

@@ -425,7 +425,7 @@ include_directories(
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "def __init__(self):");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "self.localVarNamesAndValues = {", false);
 
-            List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.LocalVariablesInitializationFromGlobalVariables.Count > 0).ToList();
+            List<RosGlue> gluesWithLocalVars = data.RosGlues.Values.Where(x => x.LocalVariablesInitializationFromGlobalVariables.Count > 0 || x.GlueLocalVariablesInitializations.Count > 0).ToList();
 
             HashSet<string> localVarNames = new HashSet<string>();
             for (int j = 0; gluesWithLocalVars.Count > j; j++)
