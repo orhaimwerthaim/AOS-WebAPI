@@ -37,7 +37,8 @@ namespace WebApiCSharp.GenerateCodeFiles
             
             ProjectHeaderModelPrimitivesBasePath = conf.SolverPath + "/include/despot/model_primitives";
             ProjectHeaderModelPrimitivesPath = ProjectHeaderModelPrimitivesBasePath + "/" + plpsData.ProjectName;
-
+            string HeaderPathCore = conf.SolverPath + "/include/despot/core";
+            string CppCorePath = conf.SolverPath + "/src/core";
             ProjectModelPrimitivesBasePath = conf.SolverPath + "/src/model_primitives";
             ProjectModelPrimitivesPath = ProjectModelPrimitivesBasePath + "/" + plpsData.ProjectName;
 
@@ -48,6 +49,9 @@ namespace WebApiCSharp.GenerateCodeFiles
 
 
             CleanAndGenerateDirecotories();
+            GenerateFilesUtils.WriteTextFile(HeaderPathCore + "/pomdp.h", SolverFileTemplate.GetPOMDPHeaderFile(data));
+            GenerateFilesUtils.WriteTextFile(CppCorePath + "/pomdp.cpp", SolverFileTemplate.GetPOMDPCPPFile(data));
+
 
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/closed_model_policy.h", SolverFileTemplate.GetClosedModelPolicyHeaderFile(data));
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/actionManager.h", SolverFileTemplate.GetActionManagerHeaderFile(data));
@@ -55,7 +59,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/enum_map_" + data.ProjectName + ".h", SolverFileTemplate.GetEnumMapHeaderFile(data, out enumMappingsForModuleResponseAndTempVar));
             SolverFileTemplate.EnumMappingsForModuleResponseAndTempVar = enumMappingsForModuleResponseAndTempVar;
             GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/state_var_types.h", SolverFileTemplate.GetStateVarTypesHeaderFile(data));
-            GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/state.h", SolverFileTemplate.GetStateHeaderFile(data));
+            //GenerateFilesUtils.WriteTextFile(ProjectHeaderModelPrimitivesPath + "/state.h", SolverFileTemplate.GetStateHeaderFile(data));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/config.h", SolverFileTemplate.GetConfigHeaderFile(data, initProj, solverData));
 //
 
@@ -75,7 +79,7 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
             data.NumberOfActions = totalNumberOfActionsInProject;
             GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/enum_map_" + data.ProjectName + ".cpp", SolverFileTemplate.GetEnumMapCppFile(data));
             //GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/state_var_types.cpp", SolverFileTemplate.GetStateVarTypesCppFile(data));
-            GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/state.cpp", SolverFileTemplate.GetStateCppFile(data));
+          //  GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/state.cpp", SolverFileTemplate.GetStateCppFile(data));
 
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/globals.h", SolverFileTemplate.GetGlobalsFile(data, totalNumberOfActionsInProject));
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/main.cpp", SolverFileTemplate.GetMainFile(data));

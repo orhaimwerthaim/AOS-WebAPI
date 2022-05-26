@@ -138,8 +138,7 @@ add_subdirectory(nlohmann_json)
 
 
 
-add_library(""${PROJECT_NAME}"" SHARED
-  src/model_primitives/" + projectName + @"/state.cpp
+add_library(""${PROJECT_NAME}"" SHARED 
   src/model_primitives/" + projectName + @"/enum_map_" + projectName + @".cpp #added
   src/model_primitives/" + projectName + @"/actionManager.cpp #added
   src/model_primitives/" + projectName + @"/closed_model_policy.cpp #added
@@ -1915,8 +1914,7 @@ public:
             string file = @"#include <despot/evaluator.h>
 #include <despot/util/mongoDB_Bridge.h>
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>
-#include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>
-#include <despot/model_primitives/" + data.ProjectName + @"/state.h>
+#include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h> 
 #include <despot/model_primitives/" + data.ProjectName + @"/closed_model_policy.h>
 #include <nlohmann/json.hpp>
 using namespace std;
@@ -3153,8 +3151,7 @@ void POMDP_ClosedModel::CreateAndSolveModel() const
 #include <despot/solver/pomcp.h> 
 #include <random>
 #include <string>
-#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
-#include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>  
 #include ""closed_model.h""
 namespace despot {
 
@@ -3162,7 +3159,6 @@ namespace despot {
  * " + data.ProjectNameWithCapitalLetter + @"State class
  * ==============================================================================*/
 
-class " + data.ProjectNameWithCapitalLetter + @"State;
 class AOSUtils
 {
 	public:
@@ -3299,7 +3295,7 @@ private:
                     }
                     result += parameters + ");" + Environment.NewLine;
 
-                    result += @"        virtual void SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes);
+                    result += @"        virtual void SetActionParametersByState(State *state, std::vector<std::string> indexes);
         virtual std::string GetActionParametersJson_ForActionExecution();
         virtual std::string GetActionParametersJson_ForActionRegistration();
         " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription(){};
@@ -3311,6 +3307,499 @@ private:
 
             return result;
         }
+        
+public static string GetPOMDPCPPFile(PLPsData data)
+{
+    string file = @"#include <despot/core/pomdp.h>
+#include <despot/core/policy.h>
+#include <despot/core/lower_bound.h>
+#include <despot/core/upper_bound.h>
+#include <despot/solver/pomcp.h>
+
+using namespace std;
+
+namespace despot {
+
+
+" + GetStateVarTypesCppConstructors(data) + @"
+
+
+
+		void " + data.ProjectNameWithCapitalLetter + @"State::SetAnyValueLinks(" + data.ProjectNameWithCapitalLetter + @"State *state)
+		{
+" + GetStateCppUpdateDicInit(data) + @"
+		}
+
+/* =============================================================================
+ * State class
+ * =============================================================================*/
+
+ostream& operator<<(ostream& os, const State& state) {
+	os << ""(state_id = "" << state.state_id << "", weight = "" << state.weight
+		<< "", text = "" << (&state)->text() << "")"";
+	return os;
+}
+
+State::State() :
+	state_id(-1) {
+}
+
+State::State(int _state_id, double _weight) :
+	state_id(_state_id),
+	weight(_weight) {
+}
+
+State::~State() {
+}
+
+string State::text() const {
+	return ""AbstractState"";
+}
+
+double State::Weight(const vector<State*>& particles) {
+	double weight = 0;
+	for (int i = 0; i < particles.size(); i++)
+		weight += particles[i]->weight;
+	return weight;
+}
+/* =============================================================================
+ * StateIndexer class
+ * =============================================================================*/
+StateIndexer::~StateIndexer() {
+}
+
+/* =============================================================================
+ * StatePolicy class
+ * =============================================================================*/
+StatePolicy::~StatePolicy() {
+}
+
+/* =============================================================================
+ * MMAPinferencer class
+ * =============================================================================*/
+MMAPInferencer::~MMAPInferencer() {
+}
+
+/* =============================================================================
+ * DSPOMDP class
+ * =============================================================================*/
+
+DSPOMDP::DSPOMDP() {
+}
+
+DSPOMDP::~DSPOMDP() {
+}
+
+bool DSPOMDP::Step(State& state, int action, double& reward,
+	OBS_TYPE& obs) const {
+	return Step(state, Random::RANDOM.NextDouble(), action, reward, obs);
+}
+
+bool DSPOMDP::Step(State& state, double random_num, int action,
+	double& reward) const {
+	OBS_TYPE obs;
+	return Step(state, random_num, action, reward, obs);
+}
+
+ParticleUpperBound* DSPOMDP::CreateParticleUpperBound(string name) const {
+	if (name == ""TRIVIAL"" || name == ""DEFAULT"") {
+		return new TrivialParticleUpperBound(this);
+	} else {
+		if (name != ""print"") 
+			cerr << ""Unsupported base upper bound: "" << name << endl;
+		cerr << ""Supported types: TRIVIAL (default)"" << endl;
+		exit(1);
+	}
+}
+
+ScenarioUpperBound* DSPOMDP::CreateScenarioUpperBound(string name,
+	string particle_bound_name) const {
+	if (name == ""TRIVIAL"" || name == ""DEFAULT"") {
+		return new TrivialParticleUpperBound(this);
+	} else {
+		if (name != ""print"") 
+			cerr << ""Unsupported upper bound: "" << name << endl;
+		cerr << ""Supported types: TRIVIAL (default)"" << endl;
+		exit(1);
+		return NULL;
+	}
+}
+
+ParticleLowerBound* DSPOMDP::CreateParticleLowerBound(string name) const {
+	if (name == ""TRIVIAL"" || name == ""DEFAULT"") {
+		return new TrivialParticleLowerBound(this);
+	} else {
+		if (name != ""print"") 
+			cerr << ""Unsupported particle lower bound: "" << name << endl;
+		cerr << ""Supported types: TRIVIAL (default)"" << endl;
+		exit(1);
+		return NULL;
+	}
+}
+
+ScenarioLowerBound* DSPOMDP::CreateScenarioLowerBound(string name, string
+	particle_bound_name) const {
+	if (name == ""TRIVIAL"" || name == ""DEFAULT"") {
+		return new TrivialParticleLowerBound(this);
+	} else if (name == ""RANDOM"") {
+		return new RandomPolicy(this, CreateParticleLowerBound(particle_bound_name));
+	} else {
+		if (name != ""print"")
+			cerr << ""Unsupported lower bound: "" << name << endl;
+		cerr << ""Supported types: TRIVIAL (default)"" << endl;
+		exit(1);
+		return NULL;
+	}
+}
+
+POMCPPrior* DSPOMDP::CreatePOMCPPrior(string name) const {
+	if (name == ""UNIFORM"" || name == ""DEFAULT"") {
+		return new UniformPOMCPPrior(this);
+	} else {
+		cerr << ""Unsupported POMCP prior: "" << name << endl;
+		exit(1);
+		return NULL;
+	}
+}
+
+vector<State*> DSPOMDP::Copy(const vector<State*>& particles) const {
+	vector<State*> copy;
+	for (int i = 0; i < particles.size(); i++)
+		copy.push_back(Copy(particles[i]));
+	return copy;
+}
+
+/* =============================================================================
+ * BeliefMDP classs
+ * =============================================================================*/
+
+BeliefMDP::BeliefMDP() {
+}
+
+BeliefMDP::~BeliefMDP() {
+}
+
+BeliefLowerBound* BeliefMDP::CreateBeliefLowerBound(string name) const {
+	if (name == ""TRIVIAL"" || name == ""DEFAULT"") {
+		return new TrivialBeliefLowerBound(this);
+	} else {
+		cerr << ""Unsupported belief lower bound: "" << name << endl;
+		exit(1);
+		return NULL;
+	}
+}
+
+BeliefUpperBound* BeliefMDP::CreateBeliefUpperBound(string name) const {
+	if (name == ""TRIVIAL"" || name == ""DEFAULT"") {
+		return new TrivialBeliefUpperBound(this);
+	} else {
+		cerr << ""Unsupported belief upper bound: "" << name << endl;
+		exit(1);
+		return NULL;
+	}
+}
+
+} // namespace despot
+";
+    return file;
+}
+
+public static string GetPOMDPHeaderFile(PLPsData data)
+{
+    string file = @"#ifndef POMDP_H
+#define POMDP_H
+
+#include <despot/core/globals.h>
+#include <despot/core/belief.h>
+#include <despot/random_streams.h>
+#include <despot/core/history.h>
+#include <despot/core/lower_bound.h>
+#include <despot/core/policy.h>
+#include <despot/core/upper_bound.h>
+#include <despot/util/memorypool.h>
+#include <despot/util/seeds.h>
+#include <despot/util/util.h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>  
+#include <despot/model_primitives/" + data.ProjectName + @"/state_var_types.h>
+#include <vector>
+namespace despot {
+
+/* =============================================================================
+ * State class
+ * =============================================================================*/
+/**
+ * Base state class.
+ */
+class State: public MemoryObject {
+public:
+	int state_id;
+	int scenario_id;
+	double weight;
+
+	State();
+	State(int _state_id, double weight);
+	virtual ~State();
+
+	friend std::ostream& operator<<(std::ostream& os, const State& state);
+
+	virtual std::string text() const;
+
+	static double Weight(const std::vector<State*>& particles);
+
+	State* operator()(int state_id, double weight) {
+		this->state_id = state_id;
+		this->weight = weight;
+		return this;
+	}
+
+" + GetVariableDeclarationsForStateHeaderFile(data) + @"
+
+	public:
+		static void SetAnyValueLinks(State *state);
+};
+typedef State " + data.ProjectNameWithCapitalLetter + @"State;
+/* =============================================================================
+ * BeliefStateVariables class
+ * =============================================================================*/
+class BeliefStateVariables{
+	public:
+		float mean_isTerminal;
+};
+
+/* =============================================================================
+ * StateIndexer class
+ * =============================================================================*/
+/**
+ * Interface for a mapping between states and indices.
+ */
+class StateIndexer {
+public:
+	virtual ~StateIndexer();
+
+	virtual int NumStates() const = 0;
+	virtual int GetIndex(const State* state) const = 0;
+	virtual const State* GetState(int index) const = 0;
+};
+
+/* =============================================================================
+ * StatePolicy class
+ * =============================================================================*/
+/**
+ * Interface for a mapping from states to actions.
+ */
+class StatePolicy {
+public:
+	virtual ~StatePolicy();
+	virtual int GetAction(const State& state) const = 0;
+};
+
+/* =============================================================================
+ * MMAPinferencer class
+ * =============================================================================*/
+/**
+ * Interface for computing marginal MAP state from a set of particles.
+ */
+class MMAPInferencer {
+public:
+	virtual ~MMAPInferencer();
+
+	virtual const State* GetMMAP(const std::vector<State*>& particles) const = 0;
+};
+
+class POMCPPrior;
+
+/* =============================================================================
+ * DSPOMDP class
+ * =============================================================================*/
+/**
+ * Interface for a deterministic simulative model for POMDP.
+ */
+class DSPOMDP {
+public:
+	DSPOMDP();
+
+	virtual ~DSPOMDP();
+	virtual std::string GetActionDescription(int) const { return """"; }
+	/* ========================================================================
+	 * Deterministic simulative model and related functions
+	 * ========================================================================*/
+	/**
+	 * Determistic simulative model for POMDP.
+	 */
+	virtual bool Step(State& state, double random_num, int action,
+		double& reward, OBS_TYPE& obs) const = 0;
+
+	/**
+	 * Override this to get speedup for LookaheadUpperBound.
+	 */
+	virtual bool Step(State& state, double random_num, int action,
+		double& reward) const;
+
+	/**
+	 * Simulative model for POMDP.
+	 */
+	virtual bool Step(State& state, int action, double& reward,
+		OBS_TYPE& obs) const;
+
+	/* ========================================================================
+	 * Action
+	 * ========================================================================*/
+	/**
+	 * Returns number of actions.
+	 */
+	virtual int NumActions() const = 0;
+
+	/* ========================================================================
+	 * Functions related to beliefs and starting states.
+	 * ========================================================================*/
+	/**
+	 * Returns the observation probability.
+	 */
+	virtual double ObsProb(OBS_TYPE obs, const State& state,
+		int action) const = 0;
+
+	/**
+	 * Returns a starting state.
+	 */
+	virtual State* CreateStartState(std::string type = ""DEFAULT"") const = 0;
+
+	/**
+	 * Returns the initial belief.
+	 */
+	virtual Belief* InitialBelief(const State* start,
+		std::string type = ""DEFAULT"") const = 0;
+
+	/* ========================================================================
+	 * Bound-related functions.
+	 * ========================================================================*/
+	/**
+	 * Returns the maximum reward.
+	 */
+	virtual double GetMaxReward() const = 0;
+	virtual ParticleUpperBound* CreateParticleUpperBound(std::string name = ""DEFAULT"") const;
+	virtual ScenarioUpperBound* CreateScenarioUpperBound(std::string name = ""DEFAULT"",
+		std::string particle_bound_name = ""DEFAULT"") const;
+
+	/**
+	 * Returns (a, v), where a is an action with largest minimum reward when it is
+	 * executed, and v is its minimum reward, that is, a = \max_{a'} \min_{s}
+	 * R(a', s), and v = \min_{s} R(a, s).
+	 */
+	virtual ValuedAction GetMinRewardAction() const = 0;
+	virtual ParticleLowerBound* CreateParticleLowerBound(std::string name = ""DEFAULT"") const;
+	virtual ScenarioLowerBound* CreateScenarioLowerBound(std::string bound_name = ""DEFAULT"",
+		std::string particle_bound_name = ""DEFAULT"") const;
+
+	virtual POMCPPrior* CreatePOMCPPrior(std::string name = ""DEFAULT"") const;
+
+	/* ========================================================================
+	 * Display
+	 * ========================================================================*/
+	/**
+	 * Prints a state.
+	 */
+	virtual void PrintState(const State& state, std::ostream& out = std::cout) const = 0;
+	virtual std::string PrintStateStr(const State &state) const { return """"; };
+
+	/**
+	 * Prints an observation.
+	 */
+	virtual void PrintObs(const State& state, OBS_TYPE obs,
+		std::ostream& out = std::cout) const = 0;
+
+	virtual std::string PrintObs(int action, OBS_TYPE obs) const { return """"; }
+
+	/**
+	 * Prints an action.
+	 */
+	virtual void PrintAction(int action, std::ostream& out = std::cout) const = 0;
+
+	/**
+	 * Prints a belief.
+	 */
+	virtual void PrintBelief(const Belief& belief,
+		std::ostream& out = std::cout) const = 0;
+
+	/* ========================================================================
+	 * Memory management.
+	 * ========================================================================*/
+	/**
+	 * Allocate a state.
+	 */
+	virtual State* Allocate(int state_id = -1, double weight = 0) const = 0;
+
+	/**
+	 * Returns a copy of the state.
+	 */
+	virtual State* Copy(const State* state) const = 0;
+
+	/**
+	 * Returns a copy of the particle.
+	 */
+	virtual void Free(State* state) const = 0;
+
+	/**
+	 * Returns a copy of the particles.
+	 */
+	std::vector<State*> Copy(const std::vector<State*>& particles) const;
+
+	/**
+	 * Returns number of allocated particles.
+	 */
+	virtual int NumActiveParticles() const = 0;
+
+	/**
+	 * Returns a copy of this model.
+	 */
+	inline virtual DSPOMDP* MakeCopy() const {
+		return NULL;
+	}
+};
+
+/* =============================================================================
+ * BeliefMDP class
+ * =============================================================================*/
+/**
+ * The BeliefMDP class provides an interface for the belief MDP, which is
+ * commonly used in belief tree search algorithms.
+ *
+ * @see AEMS
+ */
+
+class BeliefMDP: public DSPOMDP {
+public:
+	BeliefMDP();
+	virtual ~BeliefMDP();
+
+	virtual BeliefLowerBound* CreateBeliefLowerBound(std::string name) const;
+	virtual BeliefUpperBound* CreateBeliefUpperBound(std::string name) const;
+
+  /**
+   * Transition function for the belief MDP.
+   */
+	virtual Belief* Tau(const Belief* belief, int action,
+		OBS_TYPE obs) const = 0;
+
+  /**
+   * Observation function for the belief MDP.
+   */
+	virtual void Observe(const Belief* belief, int action,
+		std::map<OBS_TYPE, double>& obss) const = 0;
+
+  /**
+   * Reward function for the belief MDP.
+   */
+	virtual double StepReward(const Belief* belief, int action) const = 0;
+};
+
+} // namespace despot
+
+#endif
+";
+    return file;
+}
+
 public static string GetClosedModelPolicyHeaderFile(PLPsData data)
 {
     string file = @"
@@ -3355,8 +3844,9 @@ class ClosedModelPolicy {
             string file = @"#ifndef ACTION_MANAGER_H
 #define ACTION_MANAGER_H
 
-#include ""state.h""
-#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
+#include ""enum_map_" + data.ProjectName + @".h"" 
+#include <despot/core/pomdp.h>
+#include ""state_var_types.h""
 #include <vector>
 #include <utility>
 #include <string>
@@ -3368,7 +3858,7 @@ namespace despot {
     public:
         int actionId;
         ActionType actionType;
-        virtual void SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes);
+        virtual void SetActionParametersByState(State *state, std::vector<std::string> indexes);
         virtual std::string GetActionParametersJson_ForActionExecution() { return """"; };
         virtual std::string GetActionParametersJson_ForActionRegistration() { return """"; };
         
@@ -3379,7 +3869,7 @@ namespace despot {
 class ActionManager {
 public:
 	static std::vector<ActionDescription*> actions;
-    static void Init(" + data.ProjectNameWithCapitalLetter + @"State* state);
+    static void Init(State* state);
 };
 
 
@@ -3389,11 +3879,11 @@ class Prints
 " + GetPrintEnvironmentEnumPrintFunctionDeclarations(data) + @"
 	static std::string PrintActionDescription(ActionDescription*);
 	static std::string PrintActionType(ActionType);
-	static std::string PrintState(" + data.ProjectNameWithCapitalLetter + @"State state);
+	static std::string PrintState(State state);
 	static std::string PrintObs(int action, int obs);
     static void SaveBeliefParticles(vector<State *> particles);
     static std::string GetStateJson(State &state);
-    static void GetStateFromJson(" + data.ProjectNameWithCapitalLetter + @"State &state, std::string jsonStr, int stateIndex);
+    static void GetStateFromJson(State &state, std::string jsonStr, int stateIndex);
 };
 }
 #endif //ACTION_MANAGER_H
@@ -3514,8 +4004,6 @@ class Prints
 #define ENUM_MAP_" + data.ProjectName.ToUpper() + @"_H
 
 #include <map>
-
-#include ""state.h""
 #include <vector>
 #include <utility>
 #include <string>
@@ -3671,7 +4159,7 @@ namespace despot
             result += "    std::map<std::string, anyValue*> anyValueUpdateDic;" + Environment.NewLine;
             return result;
         }
-
+/*
         public static string GetStateHeaderFile(PLPsData data)
         {
             string file = @"#ifndef STATE_H
@@ -3695,8 +4183,7 @@ public:
 #endif //STATE_H";
             return file;
         }
-
-
+*/
 
 
         private static string GetClassesFunctionDefinitionForActionManagerCPP(PLPsData data)
@@ -4439,7 +4926,7 @@ namespace despot {
         }
 
 
-        public static string GetStateCppFile(PLPsData data)
+       /* public static string GetStateCppFile(PLPsData data)
         {
             string file = @"#include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
 namespace despot {
@@ -4455,7 +4942,7 @@ namespace despot {
 		}
 }// namespace despot";
             return file;
-        }
+        }*/
 
 
 
@@ -5123,8 +5610,7 @@ namespace despot {
 #include <despot/solver/pomcp.h>
 #include <sstream>
 #include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h> 
-#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
-#include <despot/model_primitives/" + data.ProjectName + @"/state.h> 
+#include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>  
 #include <algorithm>
 #include <cmath> 
 #include <despot/util/mongoDB_Bridge.h>
