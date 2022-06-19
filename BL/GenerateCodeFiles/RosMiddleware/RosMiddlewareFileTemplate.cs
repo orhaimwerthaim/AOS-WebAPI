@@ -676,8 +676,12 @@ class ListenToMongoDbCommands:
         if DEBUG:
             print(""moduleResponse result:"")
             print(moduleResponse)
+        moduleLocalVars = {}
+        if moduleName in self._topicListener.localVarNamesAndValues.keys():
+            moduleLocalVars=self._topicListener.localVarNamesAndValues[moduleName]
         moduleResponseItem = {""Module"": moduleName, ""ActionSequenceId"": actionSequenceID,
-                ""ModuleResponseText"": moduleResponse, ""StartTime"": startTime, ""EndTime"": datetime.datetime.utcnow(), ""ActionForExecutionId"":self.currentActionFotExecutionId}
+                ""ModuleResponseText"": moduleResponse, ""StartTime"": startTime, ""EndTime"": datetime.datetime.utcnow(), ""ActionForExecutionId"":self.currentActionFotExecutionId, 
+                ""LocalVariables"":moduleLocalVars}
 
 
         #aos_ModuleResponses_collection.insert_one(moduleResponseItem)

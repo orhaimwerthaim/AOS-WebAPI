@@ -2172,20 +2172,23 @@ bool Evaluator::RunStep(int step, int round) {
 	
 
 	ReportStepReward();
+
+ 
+
 	end_t = get_time_second();
 
-	double step_end_t;
-	if (terminal) {
-		step_end_t = get_time_second();
-		logi << ""[RunStep] Time for step: actual / allocated = ""
-			<< (step_end_t - step_start_t) << "" / "" << EvalLog::allocated_time
-			<< endl;
-		if (!Globals::config.silence && out_)
-			*out_ << endl;
-		step_++; 
+	// double step_end_t;
+	// if (terminal) {
+	// 	step_end_t = get_time_second();
+	// 	logi << ""[RunStep] Time for step: actual / allocated = ""
+	// 		<< (step_end_t - step_start_t) << "" / "" << EvalLog::allocated_time
+	// 		<< endl;
+	// 	if (!Globals::config.silence && out_)
+	// 		*out_ << endl;
+	// 	step_++; 
 
-		return true;
-	}
+	// 	return true;
+	// }
 
 	*out_<<endl;
 
@@ -2212,6 +2215,12 @@ bool Evaluator::RunStep(int step, int round) {
 	logi << ""[RunStep] Time spent in Update(): "" << (end_t - start_t) << endl;
 
 	step_++;
+
+    BeliefStateVariables bv = BeliefStateVariables(solver_->belief()->Sample(1000));
+	if(bv.__isTermianl_mean > 0.9 && bv.__isTermianl_std < 0.10)
+	{
+		return true;
+	}
 	return false;
 }
 
@@ -3320,6 +3329,29 @@ using namespace std;
 
 namespace despot {
 
+BeliefStateVariables::BeliefStateVariables(vector<State *> bs)
+   {
+	   int numOfSamples = bs.size();
+	   __isTermianl_mean = 0;
+	   __isTermianl_variance = 0;
+	   __isTermianl_std = 0;
+	   
+	   //first loop
+	   for (State *s : bs)
+	   {
+		   State &state = *s;
+		   __isTermianl_mean += (float)state.__isTermianl / numOfSamples;
+	   }
+
+		//second loop
+	   for (State *s : bs)
+	   {
+		   State &state = *s;
+		   __isTermianl_variance += pow((float)state.__isTermianl - __isTermianl_mean,2)/numOfSamples;
+	   }
+
+	   __isTermianl_std = sqrt(__isTermianl_variance);
+   }
 
 " + GetStateVarTypesCppConstructors(data) + @"
 
@@ -3526,6 +3558,20 @@ public static string GetPOMDPHeaderFile(PLPsData data)
 namespace despot {
 
 /* =============================================================================
+ * BeliefStateVariables class
+ * =============================================================================*/
+class BeliefStateVariables
+{
+	public:
+		float __isTermianl_mean;
+		float __isTermianl_variance;
+		float __isTermianl_std;
+
+		BeliefStateVariables(vector<State *>);
+};
+
+
+/* =============================================================================
  * State class
  * =============================================================================*/
 /**
@@ -3553,19 +3599,14 @@ public:
 		return this;
 	}
 
+    bool __isTermianl = false;
 " + GetVariableDeclarationsForStateHeaderFile(data) + @"
 
 	public:
 		static void SetAnyValueLinks(State *state);
 };
 typedef State " + data.ProjectNameWithCapitalLetter + @"State;
-/* =============================================================================
- * BeliefStateVariables class
- * =============================================================================*/
-class BeliefStateVariables{
-	public:
-		float mean_isTerminal;
-};
+
 
 /* =============================================================================
  * StateIndexer class
@@ -5233,6 +5274,8 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionManager::Init(const_cast <" + data.ProjectNameWithCapitalLetter + @"State*> (startState));");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "double r;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "state.__isTermianl = ProcessSpecialStates(state, r);"); 
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "return startState;");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "}" + Environment.NewLine);
             return result;
@@ -5665,7 +5708,8 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 		bool terminal = " + data.ProjectName + @"_->Step(*particle, Random::RANDOM.NextDouble(),
 			actionId, reward, o);
  
-		if (!terminal && o == obs) 
+		//if (!terminal && o == obs)
+        if (o == obs) 
 			{
 				" + data.ProjectNameWithCapitalLetter + @"State &" + data.ProjectName + @"_particle = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particle);
 				//if(!Globals::IsInternalSimulation() && updates.size() > 0)
@@ -5896,6 +5940,7 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 	Free(s_state);
 	Free(s_state_);
 	bool finalState = ProcessSpecialStates(state__, reward);
+    state__.__isTermianl = state__.__isTermianl || finalState;
 
     if (!meetPrecondition)
 	{
