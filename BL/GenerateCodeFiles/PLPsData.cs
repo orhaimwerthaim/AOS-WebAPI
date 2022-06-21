@@ -100,9 +100,9 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
     
     for(int i=0; i < bits.Length;i++)
     {
-        if(GenerateFilesUtils.IsPrimitiveType(bits[i]))
+        if(GenerateFilesUtils.IsPrimitiveType(bits[i], true))
         {
-            return bits[i];
+            return bits[i] == ANY_VALUE_TYPE_NAME ? "bool" : bits[i];
         }    
         else
         {
@@ -175,7 +175,9 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
         {
             foreach (KeyValuePair<string, string> code in allCodeSections)
             {
-                string c = code.Key.Replace(" ", "");
+                //original line
+                //string c = code.Key.Replace(" ", "");
+                string c = code.Key;//Or Wertheim removed the replace(" ","")
                 bool found = false;
                 string functionName = type == DistributionType.Normal ? NORMAL_DISTRIBUTION_FUNCTION_NAME :
                         type == DistributionType.Discrete ? DISCRETE_DISTRIBUTION_FUNCTION_NAME :
@@ -1097,8 +1099,10 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                 Assignment oAssignment = new Assignment();
                 oAssignment.LatestReachableState = assignmentLatestPointInTime;
                 oAssignment.AssignmentName = docAssignment.Contains("AssignmentName") ? docAssignment["AssignmentName"].ToString() : "";
-                
-                oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString().Replace(" ", "") : "";
+
+                //original line
+                //oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString().Replace(" ", "") : "";
+                oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString() : "";//OR Wertheim removed the replace(" ","")
 
                 string iterateVar = docAssignment.Contains("IteratePreviousStateVars") ? "IteratePreviousStateVars" :
                     docAssignment.Contains("IterateNextStateVars") ? "IterateNextStateVars" : null;

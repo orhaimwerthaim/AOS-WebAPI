@@ -77,7 +77,7 @@ src/closed_model.cpp
 #src/mongoDB_Bridge.cpp
 )
 
- target_link_libraries(""${PROJECT_NAME}_turtleBotVisitLocations""
+ target_link_libraries(""${PROJECT_NAME}_"+projectName+@"""
    ${TinyXML_LIBRARIES}
    PRIVATE nlohmann_json::nlohmann_json #adding json
  )
@@ -1323,7 +1323,7 @@ void SimpleTUI::OptionParse(option::Option *options, int &num_runs,
     solver_type = options[E_SOLVER].arg;
 
 //  int verbosity = 0;
-  int verbosity = " + (initProj.SolverConfiguration.DebugOn ? "3" : "0") + @";//TODO:: remove debug log
+  int verbosity = " + (initProj.SolverConfiguration.DebugOn ? "3" : "0") + @";
   if (options[E_VERBOSITY])
     verbosity = atoi(options[E_VERBOSITY].arg);
   logging::level(verbosity);
