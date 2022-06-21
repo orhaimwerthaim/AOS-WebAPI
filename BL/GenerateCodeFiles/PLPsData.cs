@@ -568,6 +568,65 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
             }
         }
 
+
+        private List<string> GetParameterizedGlobalVarData(GlobalVariableDeclaration oVarDec, BsonDocument docVar)
+        {
+            List<string> errors = new List<string>();
+
+            oVarDec.ParametersData.IncludeParametersCode = !docVar.Contains("IncludeParametersCode") ? "true" : 
+            (docVar["IncludeParametersCode"].ToString().Replace(" ","").Equals("") ? "true" : docVar["IncludeParametersCode"].ToString());
+            if(docVar.Contains("Parameters"))
+            {
+                string[] pars = docVar["Parameters"].ToString().Replace(" ","").Split(',');
+                foreach (BsonValue bVal in docVar["Parameters"].AsBsonArray)
+                {
+                    string parStr = bVal.ToString();
+                    GlobalVariableDeclarationParameter p = new GlobalVariableDeclarationParameter();
+                    EnumVarTypePLP enumP = GlobalEnumTypes.Where(x=> x.TypeName == parStr).FirstOrDefault();
+                    if(enumP != null)
+                    {
+                        p.EnumParameterType = enumP;
+                        oVarDec.ParametersData.Parameters.Add(p);
+                        continue;
+                    }
+                    else if(parStr.Contains("(") && parStr.Contains(")"))
+                    {
+                        string[] bits = parStr.Replace("(","").Replace(")","").Split(',');
+                        bool hasError = false;
+                        if(bits.Length != 3)
+                        {
+                            hasError = true;
+                            
+                        }
+                        else
+                        {
+                            int temp;
+                            hasError |= !int.TryParse(bits[0], out temp);
+                            p.Start = temp;
+                            
+                            hasError |= !int.TryParse(bits[1], out temp);
+                            p.Stop = temp;
+
+                            hasError |= !int.TryParse(bits[2], out temp);
+                            p.Step = temp;
+                        }
+                        if(hasError)
+                        {
+                            errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", in 'GlobalVariablesDeclaration', variable '"+oVarDec.Name+
+                            "' has an invalid parameter. Valid parameters are either enum types or integer range with the following form '(Start,End,Step)' e.g. '(1,10,1)'");
+                            continue;
+                        }
+                        else
+                        {
+                            oVarDec.ParametersData.Parameters.Add(p);
+                            continue;
+                        }
+                    }
+                }
+            }
+            return errors;
+        }
+
         private List<string> GetGlobalVariablesDeclaration()
         {
             List<string> errors = new List<string>();
@@ -584,7 +643,7 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                 oVarDec.IsActionParameterValue = docVar.Contains("IsActionParameterValue") ? docVar["IsActionParameterValue"].AsBoolean : false;
 
                 oVarDec.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
-
+                errors.AddRange(GetParameterizedGlobalVarData(oVarDec, docVar));
                 if (oVarDec.UnderlineLocalVariableType != null && oVarDec.Type != ANY_VALUE_TYPE_NAME)
                 {
                     errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", in 'GlobalVariablesDeclaration',  'UnderlineLocalVariableType' is defined while type '" + oVarDec.Type + "' is not '" + ANY_VALUE_TYPE_NAME + "'!");
@@ -1257,7 +1316,30 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
         public List<GlobalVariableDeclaration> SubCompoundFeilds = new List<GlobalVariableDeclaration>();
         public string StateVariableName;
         public string UnderlineLocalVariableType;
+        public ParameterizedGlobalVariableData ParametersData = new ParameterizedGlobalVariableData(); 
 
+        public string GetVariableDefinition()
+        {
+            return this.ParametersData.Parameters.Count() > 0 ?
+                 "std::map<tuple<" + string.Join(",", this.ParametersData.Parameters.Select(x=> x.EnumParameterType == null ? "int" : x.EnumParameterType.TypeName).ToList()) + ">,"+this.Type+"> " + this.Name + ";"
+                 : this.Type + " " + this.Name + ";";
+        }
+    }
+
+    public class ParameterizedGlobalVariableData
+    {
+        public string IncludeParametersCode;
+        public List<GlobalVariableDeclarationParameter> Parameters = new List<GlobalVariableDeclarationParameter>(); 
+
+        
+    }
+
+    public class GlobalVariableDeclarationParameter
+    {
+        public int Start=0;
+        public int Stop=0;
+        public int Step=0;
+        public EnumVarTypePLP EnumParameterType = null;
     }
 
     public class LocalVariableConstant

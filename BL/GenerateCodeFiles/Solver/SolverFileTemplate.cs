@@ -3468,6 +3468,8 @@ public static string GetPOMDPHeaderFile(PLPsData data)
 #include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>  
 #include <despot/model_primitives/" + data.ProjectName + @"/state_var_types.h>
 #include <vector>
+#include <tuple>
+#include <map>
 namespace despot {
 
 /* =============================================================================
@@ -4071,9 +4073,9 @@ namespace despot
         {
             string result = "";
 
-            //
+            
             result += "    bool OneTimeRewardUsed[" + data.SpecialStates.Count + "]={" + string.Join(",", data.SpecialStates.Select(x => "true")) + "};" + Environment.NewLine;
-
+            
             foreach (EnumVarTypePLP oEnumType in data.GlobalEnumTypes)
             {
                 result += "    std::vector<" + oEnumType.TypeName + "> " + oEnumType.TypeName + "Objects;" + Environment.NewLine;
@@ -4104,40 +4106,17 @@ namespace despot
                 result += "    std::map<std::string, " + paramType + "> " + paramType + "ObjectsForActions;" + Environment.NewLine;
             }
 
-            bool HasAnyValue = false;
+            //bool HasAnyValue = false;
             foreach (GlobalVariableDeclaration oVarDec in data.GlobalVariableDeclarations)
             {
-                HasAnyValue = oVarDec.Type == PLPsData.ANY_VALUE_TYPE_NAME ? true : HasAnyValue;
-                result += "    " + oVarDec.Type + " " + oVarDec.Name + ";" + Environment.NewLine;
+                //HasAnyValue = oVarDec.Type == PLPsData.ANY_VALUE_TYPE_NAME ? true : HasAnyValue; 
+                result += "    " + oVarDec.GetVariableDefinition() + Environment.NewLine;
+              
             }
             result += "    std::map<std::string, anyValue*> anyValueUpdateDic;" + Environment.NewLine;
             return result;
         }
-/*
-        public static string GetStateHeaderFile(PLPsData data)
-        {
-            string file = @"#ifndef STATE_H
-#define STATE_H
-#include <vector>
-#include <despot/core/pomdp.h> 
-#include ""state_var_types.h""
-namespace despot
-{
-
-
-class " + data.ProjectNameWithCapitalLetter + @"State : public State {
-public:
-" + GetVariableDeclarationsForStateHeaderFile(data) + @"
-
-	public:
-		static void SetAnyValueLinks(" + data.ProjectNameWithCapitalLetter + @"State *state);
-		
-};
-}
-#endif //STATE_H";
-            return file;
-        }
-*/
+ 
 
 
         private static string GetClassesFunctionDefinitionForActionManagerCPP(PLPsData data)
@@ -4617,6 +4596,8 @@ std::string Prints::GetStateJson(State& _state)
 
         private static string AddStateJsonTransformVarLine(GlobalVariableDeclaration gVar, bool IsStateFromJson, bool isForPrintStateFunc = false)
         {
+            if(gVar.ParametersData.Parameters.Count() > 0)return "";
+
             string result = "";
             if (gVar.SubCompoundFeilds.Count == 0)
             {
@@ -4649,7 +4630,7 @@ std::string Prints::GetStateJson(State& _state)
 
 ";
             foreach (var variable in data.GlobalVariableDeclarations)
-            {
+            {   
                 function += AddStateJsonTransformVarLine(variable, true);
             }
 
@@ -4899,20 +4880,7 @@ namespace despot {
                 if(!oStateVar.IsActionParameterValue)
                 {
                     result += AddStateJsonTransformVarLine(oStateVar, false, true);
-                }
-                if (data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oStateVar.Type)).Count() == 0)
-                {
-                    
-                    // result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + oStateVar.Name + ":\";");
-                    // if (data.GlobalEnumTypes.Where(x => x.TypeName.Equals(oStateVar.Type)).Count() > 0)
-                    // {
-                    //     result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  Prints::Print" + oStateVar.Type + "(state." + oStateVar.Name + ");");
-                    // }
-                    // else
-                    // {
-                    //     result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss <<  state." + oStateVar.Name + ";");
-                    // }
-                }
+                } 
             }
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "return ss.str();");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}" + Environment.NewLine);
@@ -5119,11 +5087,11 @@ namespace despot {
                     {
                         result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + oVar.Type + "();");
                     }
-                    if (oVar.Default != null)
+                    if (oVar.Default != null && oVar.ParametersData.Parameters.Count() == 0)
                     {
                         result += GenerateFilesUtils.GetIndentationStr(1, 4, "state." + oVar.Name + " = " + HandleCodeLine(data, oVar.Default, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
                     }
-                    if (oVar.DefaultCode != null)
+                    if (oVar.DefaultCode != null && oVar.ParametersData.Parameters.Count() == 0)
                     {
                         foreach (string codeLine in oVar.DefaultCode.Split(";"))
                         {
@@ -5132,6 +5100,47 @@ namespace despot {
                                 result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
                             }
                         }
+                    }
+                    if(oVar.ParametersData.Parameters.Count() > 0 && oVar.DefaultCode != null)
+                    {
+                        for(int i=1; i <= oVar.ParametersData.Parameters.Count(); i++)
+                        {
+                            GlobalVariableDeclarationParameter p = oVar.ParametersData.Parameters[i-1];
+                            if(p.EnumParameterType != null)
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(i, 4, "for (int par"+i+"_ = "+p.EnumParameterType.TypeName+"::"+p.EnumParameterType.Values[0]+";; par"+i+"_++)");
+                            }
+                            else
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(i, 4, "for (int par"+i+" = "+p.Start+";par"+i+" < "+p.Stop+"; par"+i+"+="+p.Step+")");
+                            }
+                            result += GenerateFilesUtils.GetIndentationStr(i, 4,"{");
+                            if(p.EnumParameterType != null)
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(i+1, 4, ""+p.EnumParameterType.TypeName+" par"+i+" = ("+p.EnumParameterType.TypeName+")par"+i+"_;");
+                            }
+                        } 
+                        result += GenerateFilesUtils.GetIndentationStr(1+oVar.ParametersData.Parameters.Count(), 4, "if (!("+oVar.ParametersData.IncludeParametersCode+"))continue;");
+                        foreach (string codeLine in oVar.DefaultCode.Split(";"))
+                        {
+                            if (codeLine.Length > 0)
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(1+oVar.ParametersData.Parameters.Count(), 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
+                            }
+                        }
+
+
+                        for(int i=oVar.ParametersData.Parameters.Count(); i > 0; i--)
+                        {
+                            GlobalVariableDeclarationParameter p = oVar.ParametersData.Parameters[i-1];
+                            if(p.EnumParameterType != null)
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(i, 4, "if (par"+i+" == "+p.EnumParameterType.TypeName+"::"+p.EnumParameterType.Values[p.EnumParameterType.Values.Count()-1]+"){break;}");
+                            }
+                            result += GenerateFilesUtils.GetIndentationStr(i, 4,"}");
+                        }
+                        
+
                     }
                 }
             }
@@ -5636,6 +5645,8 @@ public static string GetModelCppFile(PLPsData data, InitializeProject initProj)
 #include <unistd.h>
 #include <iomanip>
 #include <float.h>
+#include <map>
+#include <tuple>
 
 using namespace std;
 
