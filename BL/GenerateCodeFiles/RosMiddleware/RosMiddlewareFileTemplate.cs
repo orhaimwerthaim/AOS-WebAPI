@@ -301,6 +301,9 @@ include_directories(
                             string[] bits = oGlVar.FromGlobalVariable.Split(".");
                             string varDesc = "[\"" + String.Join("\"][\"", bits) + "\"]";
                             result += GenerateFilesUtils.GetIndentationStr(3, 4, oGlVar.InputLocalVariable + " = params[\"ParameterValues\"]" + varDesc);
+
+                            result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.updateLocalVariableValue(\""+oGlVar.InputLocalVariable+"\", "+oGlVar.InputLocalVariable+")");
+                            //self._topicListener.updateLocalVariableValue("nav_to_y", nav_to_y)
                         }
                         //  result += GenerateFilesUtils.GetIndentationStr(3, 4, "self._topicListener.localVarNamesAndValues[\"" + glue.Name + "\"][\"" + oGlVar.InputLocalVariable + "\"] = " + underlineType.TypeName + "ToDict(" + oGlVar.InputLocalVariable + ")");
                         //self._topicListener.localVarNamesAndValues["navigate"]["desired_location"]

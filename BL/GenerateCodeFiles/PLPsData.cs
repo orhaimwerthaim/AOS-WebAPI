@@ -35,8 +35,11 @@ namespace WebApiCSharp.GenerateCodeFiles
         public List<Assignment> InitialBeliefAssignments = new List<Assignment>();
         public List<Assignment> ExtrinsicChangesDynamicModel = new List<Assignment>();
         public List<EnumVarTypePLP> GlobalEnumTypes = new List<EnumVarTypePLP>();
+        public List<BaseGlobalVarType> BaseGlobalVarTypes = new List<BaseGlobalVarType>();
         public List<CompoundVarTypePLP> GlobalCompoundTypes = new List<CompoundVarTypePLP>();
 
+        public List<LocalVariableBase> LocalVariablesListings = new List<LocalVariableBase>();
+    
         public List<GlobalVariableDeclaration> GlobalVariableDeclarations = new List<GlobalVariableDeclaration>();
 
         public List<string> AnyValueStateVariableNames = new List<string>();
@@ -57,7 +60,9 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public const string FLOAT_VARIABLE_TYPE_NAME = "float";
         public const string BOOL_VARIABLE_TYPE_NAME = "bool";
-        public static readonly string[] PRIMITIVE_TYPES = { FLOAT_VARIABLE_TYPE_NAME, ENUM_VARIABLE_TYPE_NAME, INT_VARIABLE_TYPE_NAME, BOOL_VARIABLE_TYPE_NAME };
+        public const string STRING_VARIABLE_TYPE_NAME = "string";
+        public const string DOUBLE_VARIABLE_TYPE_NAME = "double";
+        public static readonly string[] PRIMITIVE_TYPES = { FLOAT_VARIABLE_TYPE_NAME, ENUM_VARIABLE_TYPE_NAME, INT_VARIABLE_TYPE_NAME, BOOL_VARIABLE_TYPE_NAME , DOUBLE_VARIABLE_TYPE_NAME, STRING_VARIABLE_TYPE_NAME};
         public const string MODULE_EXECUTION_TIME_VARIABLE_NAME = "__moduleExecutionTime";
         public const string MODULE_REWARD_VARIABLE_NAME = "__reward";
 
@@ -83,6 +88,45 @@ namespace WebApiCSharp.GenerateCodeFiles
         private Dictionary<string, BsonDocument> bsonGlues = new Dictionary<string, BsonDocument>();
         #endregion
 
+
+
+
+private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string skillName)
+{
+    PLP plp = PLPs[skillName];
+    string[] bits = globalVarName.Split('.');
+    string globalVarType = plp.GlobalVariableModuleParameters.Where(x=> x.Name == bits[0]).FirstOrDefault()?.Type;
+    bits[0] = globalVarType;
+    
+    for(int i=0; i < bits.Length;i++)
+    {
+        if(GenerateFilesUtils.IsPrimitiveType(bits[i]))
+        {
+            return bits[i];
+        }    
+        else
+        {
+            CompoundVarTypePLP gl1 = GlobalCompoundTypes.Where(x=> x.TypeName == bits[i]).FirstOrDefault();        
+            if(gl1 == null)
+            {
+                throw new Exception("Skill '"+skillName+"' defines a local variable based on the global variable '"+globalVarName+"'. Could not find compound type named '"+bits[i]+"'!");
+            }
+            else
+            {
+                CompoundVarTypePLP_Variable v1 = gl1.Variables.Where(x=> x.Name == bits[i+1]).FirstOrDefault();
+                if(gl1 == null)
+                {
+                    throw new Exception("Skill '"+skillName+"' defines a local variable based on the global variable '"+globalVarName+"'. Could not find the field '"+bits[i+1]+"'in compound type named '"+bits[i]+"'!");
+                }
+                bits[i+1]=v1.Type;
+            }
+                
+        }
+        
+        
+    } 
+    return "";
+}
         public PLPsData(out List<string> errors)
         {
             errors = new List<string>();
@@ -202,6 +246,9 @@ namespace WebApiCSharp.GenerateCodeFiles
         private List<KeyValuePair<string, string>> GetC_CodeSections()
         {
             List<KeyValuePair<string, string>> codeSections = new List<KeyValuePair<string, string>>();
+
+            List<Assignment> assignments = new List<Assignment>(); 
+
             foreach (PLP plp in PLPs.Values)
             {
                 foreach (Assignment assign in plp.DynamicModel_VariableAssignments)
@@ -213,7 +260,13 @@ namespace WebApiCSharp.GenerateCodeFiles
                 {
                     codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, plp.Name));
                 }
+
+                foreach (Assignment assign in plp.StateGivenObservationModel_VariableAssignments)
+                {
+                    codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, plp.Name));
+                }
             }
+ 
 
             foreach (Assignment assign in InitialBeliefAssignments)
             {
@@ -448,7 +501,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                     spState.Reward = docState["Reward"].AsDouble;
                     SpecialStates.Add(spState);
                 }
-                catch (Exception e)
+                catch (Exception e2)
                 {
                     errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"SpecialStates.IsGoalState\" and \"IsOneTimeReward\"(default is 'true') must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
                 }
@@ -484,6 +537,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                         enu.Values.AddRange(GetEnumValues(doc, "EnumValues", out errors));
 
                         GlobalEnumTypes.Add(enu);
+                        BaseGlobalVarTypes.Add(enu);
                         break;
                     case "compound":
                         CompoundVarTypePLP comp = new CompoundVarTypePLP();
@@ -506,6 +560,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                             comp.Variables.Add(oVar);
                         }
                         GlobalCompoundTypes.Add(comp);
+                        BaseGlobalVarTypes.Add(comp);
                         break;
                 }
             }
@@ -688,7 +743,11 @@ namespace WebApiCSharp.GenerateCodeFiles
 
                         oVar.FromGlobalVariable = docVar["FromGlobalVariable"].ToString();
                         oVar.InputLocalVariable = docVar["InputLocalVariable"].ToString();
+                        oVar.SkillName = rosGlue.Name;
+                        oVar.VariableType = GetLocalVariableTypeByGlobalVarName(oVar.FromGlobalVariable, oVar.SkillName);
+                        
                         rosGlue.LocalVariablesInitializationFromGlobalVariables.Add(oVar);
+                        LocalVariablesListings.Add(oVar);
                     }
                     else
                     {
@@ -699,7 +758,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                         oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
                         oVar.VariableType = GetBsonStringField(docVar, "VariableType");
                         oVar.RosParameterPath = GetBsonStringField(docVar, "RosParameter");
-
+                        oVar.SkillName = rosGlue.Name;
                         tempErrors.Clear();
                         oVar.FromROSServiceResponse = GetBoolFieldFromBsonNullIfNotThere(rosGlue.Name, PLPsData.PLP_TYPE_NAME_GLUE, docVar, "FromROSServiceResponse", null, out tempErrors);
                         errors.AddRange(tempErrors);
@@ -710,7 +769,7 @@ namespace WebApiCSharp.GenerateCodeFiles
                         oVar.InitialValue = GetBsonStringField(docVar, "InitialValue");
 
                         rosGlue.GlueLocalVariablesInitializations.Add(oVar);
-
+                        LocalVariablesListings.Add(oVar);
 
                         if (oVar.LocalVarName == null)
                         {
@@ -728,6 +787,16 @@ namespace WebApiCSharp.GenerateCodeFiles
                         }
                     }
                 }
+            }
+
+            Dictionary<string,string> localVarsNameType = new Dictionary<string,string>();
+            foreach(LocalVariableBase lv in LocalVariablesListings)
+            {
+                if(localVarsNameType.ContainsKey(lv.VariableName) && lv.VariableType != localVarsNameType[lv.VariableName])
+                {
+                    errors.Add(GetPLPDescriptionForError(lv.SkillName, "Glue") + ", local variable named '"+lv.VariableName+"' of type '"+lv.VariableType+"' is defined. There is a local variable with the same name and a different type defined in anoter glue file. It is not possible to have two local variables with the same name and different types!");
+                }
+                localVarsNameType[lv.VariableName]= lv.VariableType;
             }
 
             if (!bRosGlue.Contains("ModuleActivation"))
@@ -917,6 +986,14 @@ namespace WebApiCSharp.GenerateCodeFiles
             errors.AddRange(tempErrors);
             plp.DynamicModel_VariableAssignments.AddRange(nextStateAssignments);
 
+
+            if (bPlp.Contains("StateGivenObservationModel") && bPlp["StateGivenObservationModel"].AsBsonDocument.Contains("Assignments"))
+            {
+                tempErrors.Clear();
+                List<Assignment> stateGivenObservationAssignments = LoadAssignment(bPlp["StateGivenObservationModel"]["Assignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.eNextState);
+                errors.AddRange(tempErrors);
+                plp.StateGivenObservationModel_VariableAssignments.AddRange(stateGivenObservationAssignments);
+            }
             return plp;
         }
         private ModuleDocumentationFile ProcessModuleDocumentationFile(BsonDocument bPlp, out List<string> errors)
@@ -1107,9 +1184,12 @@ namespace WebApiCSharp.GenerateCodeFiles
         }
     }
 
-    public class EnumVarTypePLP
+    public class EnumVarTypePLP:BaseGlobalVarType
     {
-        public string TypeName;
+        public bool IsCompundType
+        {
+            get => false;
+        }
         public List<string> Values;
 
         public EnumVarTypePLP()
@@ -1117,10 +1197,17 @@ namespace WebApiCSharp.GenerateCodeFiles
             Values = new List<string>();
         }
     }
-
-    public class CompoundVarTypePLP
+    public class BaseGlobalVarType
     {
         public string TypeName;
+        public bool IsCompundType;
+    }
+    public class CompoundVarTypePLP:BaseGlobalVarType
+    {
+        public bool IsCompundType
+        {
+            get => true;
+        }
         public List<CompoundVarTypePLP_Variable> Variables;
 
         public CompoundVarTypePLP()

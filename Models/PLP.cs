@@ -15,11 +15,13 @@ namespace WebApiCSharp.Models
 
           public List<Assignment> ModuleExecutionTimeDynamicModel{ get; set; }
           public List<Assignment> DynamicModel_VariableAssignments { get; set; }
+          public List<Assignment> StateGivenObservationModel_VariableAssignments { get; set; }
         public PLP()
         { 
             GlobalVariableModuleParameters = new List<GlobalVariableModuleParameter>(); 
             ModuleExecutionTimeDynamicModel = new List<Assignment>();
             DynamicModel_VariableAssignments = new List<Assignment>();
+            StateGivenObservationModel_VariableAssignments = new List<Assignment>();
             Preconditions_GlobalVariablePreconditionAssignments = new List<Assignment>();
             Preconditions_PlannerAssistancePreconditionsAssignments = new List<Assignment>();
             
@@ -36,11 +38,7 @@ namespace WebApiCSharp.Models
 
     }
 
-    public class LocalVariablesInitializationFromGlobalVariable
-    {
-        public string InputLocalVariable;
-        public string FromGlobalVariable;
-    }
+  
 
     public class ResponseRule
     {

@@ -59,9 +59,15 @@ clean:
 ";
         }
 
-        public static string GetProjectExample_CMakeLists(string projectName)
+        public static string GetProjectExample_CMakeLists(string projectName, Configuration conf)
         {
             string file = @"cmake_minimum_required(VERSION 2.8.3)
+
+##################################
+#adding json
+set(JSON_BuildTests OFF CACHE INTERNAL """")
+include_directories("""+conf.SolverPath+@"/nlohmann_json"")  
+##################################
 
 add_executable(""${PROJECT_NAME}_" + projectName + @"""
 #src/state_var_types.cpp   
@@ -71,6 +77,10 @@ src/closed_model.cpp
 #src/mongoDB_Bridge.cpp
 )
 
+ target_link_libraries(""${PROJECT_NAME}_turtleBotVisitLocations""
+   ${TinyXML_LIBRARIES}
+   PRIVATE nlohmann_json::nlohmann_json #adding json
+ )
 
 
 ##############
@@ -333,20 +343,13 @@ struct Config {
 #include <despot/util/logging.h>
 #include <iostream>
 #include <fstream>
-
-#ifdef WITH_ROOT_EPSILON_GREEDY 
-#include <random>
-#endif
+ 
 
 using namespace std;
 
 using namespace std;
 
 namespace despot {
-#ifdef WITH_ROOT_EPSILON_GREEDY 
-std::default_random_engine POMCP::generator;
-std::uniform_int_distribution<int> POMCP::rand_action_distribution(0,"+(data.NumberOfActions-1)+@");
-#endif
 /* =============================================================================
  * POMCPPrior class
  * =============================================================================*/
@@ -354,9 +357,6 @@ std::uniform_int_distribution<int> POMCP::rand_action_distribution(0,"+(data.Num
 POMCPPrior::POMCPPrior(const DSPOMDP* model) :
 	model_(model) {
 	double x = (40 / Globals::config.search_depth) > 1 ? (40 / Globals::config.search_depth) : 1;
-    #ifdef WITH_ROOT_EPSILON_GREEDY
-	x = 1;
-	#endif
 	exploration_constant_ = (model->GetMaxReward() - model->GetMinRewardAction().value) * x;
 }
 
@@ -445,11 +445,8 @@ ValuedAction POMCP::Search(double timeout) {
 		for (int i = 0; i < particles.size(); i++) {
 			State* particle = particles[i];
 			logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
-#ifdef WITH_ROOT_EPSILON_GREEDY
-            Simulate(particle, root_, model_, prior_, simulatedActionSequence,true);
-#else
 			Simulate(particle, root_, model_, prior_, simulatedActionSequence);
- #endif
+ 
 			
  
 			num_sims++;
@@ -518,8 +515,7 @@ void POMCP::belief(Belief* b) {
 }
 
 
-//void POMCP::Update(int action, OBS_TYPE obs, std::map<std::string, bool> updatesFromAction)
-void POMCP::Update(int action, OBS_TYPE obs)
+void POMCP::Update(int action, OBS_TYPE obs, std::map<std::string, std::string> localVariablesFromAction)
 {
 	double start = get_time_second();
 
@@ -539,67 +535,22 @@ void POMCP::Update(int action, OBS_TYPE obs)
 
 	prior_->Add(action, obs);
 	history_.Add(action, obs);
-	//belief_->Update(action, obs, updatesFromAction);
-	belief_->Update(action, obs);
+	belief_->Update(action, obs, localVariablesFromAction);
 
 	logi << ""[POMCP::Update] Updated belief, history and root with action ""
 		<< action << "", observation "" << obs
 		<< "" in "" << (get_time_second() - start) << ""s"" << endl;
 }
-// void POMCP::Update(int action, OBS_TYPE obs) {
-// 	std::map<std::string, bool> updatesFromAction;
-// 	POMCP::Update(action, obs, updatesFromAction);
-// }
-#ifdef WITH_ROOT_EPSILON_GREEDY
-        int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant, bool is_root_node) {
-#ifdef WITH_FULL_EPSILON_GREEDY
-			is_root_node = true;
-#endif
-			const vector<QNode *> &qnodes = vnode->children();
-			double best_ub = Globals::NEG_INFTY;
-			int best_action = -1;
-			 
-			float rand_ = ((float)rand() / RAND_MAX);
-			bool random_action = is_root_node && (rand_ > 0.8);
-			bool take_max = is_root_node && !random_action;
-			if (random_action)
-			{
 
-				int rand_act = rand_action_distribution(generator);
-				while (qnodes[rand_act]->value() < -900000)
-				{
-					rand_act = rand_action_distribution(generator);
-				}
-				return rand_act;
-			}
-
-			for (int action = 0; action < qnodes.size(); action++)
-			{
-				if (qnodes[action]->count() == 0)
-					return action;
-
-				double ub = qnodes[action]->value() + explore_constant * sqrt(log(vnode->count() + 1) / qnodes[action]->count());
-
-				if (take_max)
-				{
-					ub = qnodes[action]->value();
-				}
-
-				if (ub > best_ub)
-				{
-					best_ub = ub;
-					best_action = action;
-				}
-			}
-
-			assert(best_action != -1);
-			return best_action;
-		}
-
-#endif
 int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant)
 {
 	return UpperBoundAction(vnode, explore_constant, NULL, NULL);
+}
+
+void POMCP::Update(int action, OBS_TYPE obs) 
+{
+	std::map<std::string, std::string> updatesFromAction;
+	POMCP::Update(action, obs, updatesFromAction);
 }
 
 int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant, const DSPOMDP* model, Belief* belief) {
@@ -755,44 +706,7 @@ double POMCP::Simulate(State* particle, RandomStreams& streams, VNode* vnode,
 
 	return reward;
 }
-#ifdef WITH_ROOT_EPSILON_GREEDY
-// static
-double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
-	POMCPPrior* prior, std::vector<int>* simulateActionSequence, bool is_root_node) {
-	assert(vnode != NULL);
-	if (vnode->depth() >= Globals::config.search_depth)
-		return 0;
 
-	double explore_constant = prior->exploration_constant();
-
-	int action = simulateActionSequence && simulateActionSequence->size() > vnode->depth() ? (*simulateActionSequence)[vnode->depth()] : UpperBoundAction(vnode, explore_constant,is_root_node);
-			
-	double reward;
-	OBS_TYPE obs;
-	bool terminal = model->Step(*particle, action, reward, obs);
-
-	QNode* qnode = vnode->Child(action);
-	if (!terminal) {
-		prior->Add(action, obs);
-		map<OBS_TYPE, VNode*>& vnodes = qnode->children();
-		if (vnodes[obs] != NULL) {
-			reward += Globals::Discount()
-				* Simulate(particle, vnodes[obs], model, prior,simulateActionSequence, false);
-		} else { // Rollout upon encountering a node not in curren tree, then add the node
-			vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
-				model);
-			reward += Globals::Discount()
-				* Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
-		}
-		prior->PopLast();
-	}
-
-	qnode->Add(reward);
-	vnode->Add(reward);
-
-	return reward;
-}
-#endif
 // static
 double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 	POMCPPrior* prior, std::vector<int>* simulateActionSequence) {
@@ -1019,11 +933,11 @@ VNode* DPOMCP::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 	return root;
 }
 
-void DPOMCP::Update(int action, OBS_TYPE obs) {
+void DPOMCP::Update(int action, OBS_TYPE obs, std::map<std::string, std::string> localVariablesFromAction) {
 	double start = get_time_second();
 
 	history_.Add(action, obs);
-	belief_->Update(action, obs);
+	belief_->Update(action, obs, localVariablesFromAction);;
 
 	logi << ""[DPOMCP::Update] Updated belief, history and root with action ""
 		<< action << "", observation "" << obs
@@ -1862,8 +1776,8 @@ public:
 
 	bool RunStep(int step, int round);
 
-	virtual double EndRound() = 0; // Return total undiscounted reward for this round.
-	virtual bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates, std::string& obsStr) = 0;
+	virtual double EndRound() = 0; // Return total undiscounted reward for this round. 
+    virtual bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, std::string>& localVariablesFromAction, std::string& obsStr) = 0;
 	//IcapsResponseModuleAndTempEnums CalculateModuleResponse(std::string moduleName);
 	virtual void ReportStepReward();
 	virtual double End() = 0; // Free resources and return total reward collected
@@ -1898,7 +1812,7 @@ public:
 	int Handshake(std::string instance);
 	void InitRound();
 	double EndRound();
-	bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates, std::string& obsStr);
+	bool ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, std::string>& localVariablesFromAction, std::string& obsStr);
 	double End();
 	void UpdateTimePerMove(double step_time);
 };
@@ -2151,14 +2065,14 @@ bool Evaluator::RunStep(int step, int round) {
     logi << endl
 		 << ""Before:"" << endl;
     model_->PrintState(*state_);
-	std::map<std::string, bool> updatesFromAction;
+	std::map<std::string, std::string> localVariablesFromAction;
 
 	if(MongoDB_Bridge::currentActionSequenceId == 0)
 	{
 		Evaluator::SaveBeliefToDB();
 	}
     std::string obsStr;
-	bool terminal = ExecuteAction(action, reward, obs, updatesFromAction, obsStr);
+	bool terminal = ExecuteAction(action, reward, obs, localVariablesFromAction, obsStr);
     logi << endl
 		 << ""After:"" << endl;
 	model_->PrintState(*state_);
@@ -2207,8 +2121,7 @@ bool Evaluator::RunStep(int step, int round) {
 	}
 	else if(action_sequence_to_sim.size() == 0)
 	{
-		solver_->Update(action, obs);
-		//solver_->Update(action, obs, updatesFromAction);
+		solver_->Update(action, obs, localVariablesFromAction);
 		Evaluator::SaveBeliefToDB();
 	}
 	end_t = get_time_second();
@@ -2343,7 +2256,7 @@ double POMDPEvaluator::EndRound() {
 	return total_undiscounted_reward_;
 }
 
-bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, bool>& updates, std::string& obsStr) {
+bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, std::string>& localVariablesFromAction, std::string& obsStr) {
 	MongoDB_Bridge::currentActionSequenceId++;
 	ActionDescription &actDesc = *ActionManager::actions[action];
     ActionType acType(actDesc.actionType);
@@ -2370,7 +2283,7 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 	else
 	{ 
 		obsStr = """";
-		updates = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
+		localVariablesFromAction = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
 		obs = enum_map_" + data.ProjectName + @"::vecStringToResponseEnum[obsStr];
 	}
@@ -3191,8 +3104,8 @@ public:
 	static int num_particles; 
 	" + data.ProjectNameWithCapitalLetter + @"Belief(std::vector<State*> particles, const DSPOMDP* model, Belief* prior =
 		NULL);
-	void Update(int actionId, OBS_TYPE obs);
-	//void Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates);
+	//void Update(int actionId, OBS_TYPE obs);
+	void Update(int actionId, OBS_TYPE obs, std::map<std::string,std::string> localVariablesFromAction);
 };
 
 /* ==============================================================================
@@ -4325,14 +4238,7 @@ public:
         {
             string file = "";
             file = @"#ifndef POMCP_H
-#define POMCP_H
-//#define WITH_ROOT_EPSILON_GREEDY
-//#define WITH_FULL_EPSILON_GREEDY
-
-
-#ifdef WITH_FULL_EPSILON_GREEDY
-#define WITH_ROOT_EPSILON_GREEDY
-#endif
+#define POMCP_H 
 
 #include <despot/core/pomdp.h>
 #include <despot/core/node.h>
@@ -4434,8 +4340,8 @@ public:
 
 	void reuse(bool r);
 	virtual void belief(Belief* b);
-	virtual void Update(int action, OBS_TYPE obs);
-	//virtual void Update(int action, OBS_TYPE obs, std::map<std::string, bool> updatesFromAction);
+	void Update(int action, OBS_TYPE obs);
+	virtual void Update(int action, OBS_TYPE obs, std::map<std::string, std::string> localVariablesFromAction);
 	static VNode* CreateVNode(int depth, const State*, POMCPPrior* prior,
 		const DSPOMDP* model);
 	static double Simulate(State* particle, RandomStreams& streams,
@@ -4451,13 +4357,7 @@ public:
     static double Simulate(State* particle, VNode* root, const DSPOMDP* model,
 		POMCPPrior* prior, std::vector<int>* simulateActionSequence);
 
-#ifdef WITH_ROOT_EPSILON_GREEDY
-static std::default_random_engine generator;
-static std::uniform_int_distribution<int> rand_action_distribution;
-static int UpperBoundAction(const VNode* vnode, double explore_constant, bool is_root_node);
-static double Simulate(State* particle, VNode* root, const DSPOMDP* model,
-		POMCPPrior* prior, std::vector<int>* simulateActionSequence, bool is_root_node);
-#endif
+ 
 
 	static ValuedAction OptimalAction(const VNode* vnode);
 	static int Count(const VNode* vnode);
@@ -4481,7 +4381,7 @@ public:
 		History& history, double timeout);
 
 	virtual void belief(Belief* b);
-	virtual void Update(int action, OBS_TYPE obs);
+	virtual void Update(int action, OBS_TYPE obs, std::map<std::string, std::string> localVariablesFromAction);
 	
 };
 
@@ -5597,6 +5497,7 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
             return result;
         }
+        
         private static string GetExtrinsicChangesDynamicModelFunction(PLPsData data)
         {
             string result = "";
@@ -5605,16 +5506,7 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             
             result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, data.ExtrinsicChangesDynamicModel, 2, 4);
-            // foreach (Assignment assign in data.ExtrinsicChangesDynamicModel)
-            // {
-            //     foreach (string codeLine in assign.AssignmentCode.Split(";"))
-            //     {
-            //         if (codeLine.Length > 0)
-            //         {
-            //             result += GenerateFilesUtils.GetIndentationStr(1, 4, HandleCodeLine(data, codeLine, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ";");
-            //         }
-            //     }
-            // }
+            
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
             return result;
         }
@@ -5645,7 +5537,89 @@ namespace despot {
             return result;
         }
 
-        public static string GetModelCppFile(PLPsData data, InitializeProject initProj)
+ 
+private static string AddStateGivenObservationModel(PLPsData data)
+{
+            string result = "";
+            foreach(PLP plp in data.PLPs.Values)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(5, 4, "if(actType == "+plp.Name+"Action)");
+                result += GenerateFilesUtils.GetIndentationStr(5, 4, "{");
+                
+                result += GetAssignmentsCode(data, plp.Name, plp.StateGivenObservationModel_VariableAssignments, 6, 4);
+                result += GenerateFilesUtils.GetIndentationStr(5, 4, "}");
+            }
+            return result;
+        }
+
+private static string AssignLocalVariablesValue(PLPsData data)
+{
+    string result = @"
+    try
+    {
+";
+    foreach(PLP plp in data.PLPs.Values)
+    {
+        result += GenerateFilesUtils.GetIndentationStr(2, 4, "if(actType == "+plp.Name+"Action)");
+        result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
+        foreach(LocalVariableBase localVar in data.LocalVariablesListings)
+        {
+            if(plp.Name == localVar.SkillName && GenerateFilesUtils.IsPrimitiveType(localVar.VariableType))
+            {
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(localVariables.find(\""+localVar.VariableName+"\") != localVariables.end())");
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "{");
+                if(localVar.VariableType == PLPsData.FLOAT_VARIABLE_TYPE_NAME || localVar.VariableType == PLPsData.DOUBLE_VARIABLE_TYPE_NAME)
+                {
+                    
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, localVar.VariableName + " = std::stod(localVariables[\""+localVar.VariableName+"\"]);");
+                }
+
+                if(localVar.VariableType == PLPsData.BOOL_VARIABLE_TYPE_NAME)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, localVar.VariableName + " = localVariables[\""+localVar.VariableName+"\"] == \"true\";");
+                }
+
+                if(localVar.VariableType == PLPsData.STRING_VARIABLE_TYPE_NAME)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, localVar.VariableName + " = localVariables[\""+localVar.VariableName+"\"];");
+                }
+
+                if(localVar.VariableType == PLPsData.INT_VARIABLE_TYPE_NAME)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, localVar.VariableName + " = std::stoi(localVariables[\""+localVar.VariableName+"\"]);");
+                }
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "}");
+            }
+            
+        }
+        result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
+    }
+    result +=@"
+    }
+    catch(const std::exception& e)
+    {
+        std::string s =""Error: problem loading LocalVariables data for belief state update. "";
+        MongoDB_Bridge::AddError(s + e.what());
+    }";
+
+    return result;
+}
+
+private static string RegisterLocalVariablesForBeliefUpdate(PLPsData data)
+{
+    string result="";
+    Dictionary<string, string> localVariablesNameType = new Dictionary<string, string>();
+    foreach(LocalVariableBase localVar in data.LocalVariablesListings)
+    {
+        if(GenerateFilesUtils.IsPrimitiveType(localVar.VariableType))
+        {
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, localVar.VariableType + " " + localVar.VariableName + ";");
+        }
+    } 
+    return result;
+}
+        
+public static string GetModelCppFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"#include """ + data.ProjectName + @".h""
 #include <despot/core/pomdp.h> 
@@ -5695,9 +5669,13 @@ int " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex =
 		 return Prints::PrintActionDescription(ActionManager::actions[actionId]);
 	 }
 
-//void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs, std::map<std::string,bool> updates) {
-void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs) {
+void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs, map<std::string, std::string> localVariables) {
 	history_.Add(actionId, obs);
+
+    ActionType &actType = ActionManager::actions[actionId]->actionType;
+"+RegisterLocalVariablesForBeliefUpdate(data)+@"
+
+"+AssignLocalVariablesValue(data)+@"
 
 	vector<State*> updated;
 	double reward;
@@ -5711,7 +5689,13 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 		//if (!terminal && o == obs)
         if (o == obs) 
 			{
-				" + data.ProjectNameWithCapitalLetter + @"State &" + data.ProjectName + @"_particle = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particle);
+                if(!Globals::IsInternalSimulation())
+                {
+				" + data.ProjectNameWithCapitalLetter + @"State &state__ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particles_[cur]);
+                " + data.ProjectNameWithCapitalLetter + @"State &state___ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particle);
+"+AddStateGivenObservationModel(data)+@"
+
+
 				//if(!Globals::IsInternalSimulation() && updates.size() > 0)
 				//{
 				//	" + data.ProjectNameWithCapitalLetter + @"State::SetAnyValueLinks(&" + data.ProjectName + @"_particle);
@@ -5721,6 +5705,8 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 				//		*(" + data.ProjectName + @"_particle.anyValueUpdateDic[it->first]) = it->second; 
 				//	} 
 				//}
+
+                }
 				updated.push_back(particle);
 		} else {
 			" + data.ProjectName + @"_->Free(particle);

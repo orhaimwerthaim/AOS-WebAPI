@@ -45,14 +45,39 @@ namespace WebApiCSharp.Models
         public string MsgFieldName;
     }
 
-    public class GlueLocalVariablesInitialization
+    public class LocalVariableBase
     {
-        public string LocalVarName;
+        public string VariableName;
+        public string VariableType;
+        public string SkillName;
+    }
+
+    public class LocalVariablesInitializationFromGlobalVariable:LocalVariableBase
+    {
+        public string InputLocalVariable
+        {
+            get => VariableName;
+            set
+            {
+                VariableName = value;
+            }
+        }
+        public string FromGlobalVariable;
+    }
+
+    public class GlueLocalVariablesInitialization:LocalVariableBase
+    {
+        public string LocalVarName
+        {
+            get => VariableName;
+            set
+            {
+                VariableName = value;
+            }
+        }
         public string RosTopicPath;
         public string AssignmentCode;
-        public string TopicMessageType;
-        public string VariableType;
-
+        public string TopicMessageType; 
         public string RosParameterPath;
 
         public string InitialValue;
