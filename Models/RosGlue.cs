@@ -50,6 +50,7 @@ namespace WebApiCSharp.Models
         public string VariableName;
         public string VariableType;
         public string SkillName;
+        public bool IsHeavyVariable;
     }
 
     public class LocalVariablesInitializationFromGlobalVariable:LocalVariableBase

@@ -380,10 +380,13 @@ include_directories(
 
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "if DEBUG:");
                 result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + glue.Name + " action local variables:\")");
-                foreach (string varName in localVarNames)
+                foreach (var oVar in glue.GlueLocalVariablesInitializations)
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + varName + ":\")");
-                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(" + varName + ")");
+                    if(!oVar.IsHeavyVariable)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(\"" + oVar.LocalVarName + ":\")");
+                        result += GenerateFilesUtils.GetIndentationStr(4, 4, "print(" + oVar.LocalVarName + ")");
+                    }
                 }
 
                 foreach (var responseRule in glue.ResponseRules)
@@ -415,7 +418,7 @@ include_directories(
             string result = codeLine;
             foreach (string varName in localVarNames.OrderByDescending(x => x.Length))
             {
-                string pattern = @"\b" + varName + @"\b";
+                string pattern = @"\b(?<!\.)" + varName + @"\b";
                 string replaceTo = "self.localVarNamesAndValues[self.listenTargetModule][\"" + varName + "\"]";
                 result = Regex.Replace(result, pattern, replaceTo);
             }
@@ -593,8 +596,9 @@ include_directories(
 
 
             result += @"
+
     def updateLocalVariableValue(self, varName, value):
-        if DEBUG:
+        if DEBUG and varName not in getHeavyLocalVarList(self.listenTargetModule):
             print(""update local var:"")
             print(varName)
             print(value)
@@ -602,15 +606,31 @@ include_directories(
             if DEBUG:
                 print(""ACTUAL UPDATE --------------------------------------------------------------------------"")
             self.localVarNamesAndValues[self.listenTargetModule][varName]=value
-            aos_local_var_collection.replace_one({""Module"": self.listenTargetModule, ""VarName"":varName}, {""Module"": self.listenTargetModule, ""VarName"":varName, ""Value"":value}, upsert=True)
-            aosStats_local_var_collection.insert_one(
-                {""Module"": self.listenTargetModule, ""VarName"": varName, ""value"": value, ""Time"": datetime.datetime.utcnow()})
-            if DEBUG:
-                print(""WAS UPDATED --------------------------------------------------------------------------"")
+            if varName not in getHeavyLocalVarList(self.listenTargetModule):
+                aos_local_var_collection.replace_one({""Module"": self.listenTargetModule, ""VarName"":varName}, {""Module"": self.listenTargetModule, ""VarName"":varName, ""Value"":value}, upsert=True)
+                aosStats_local_var_collection.insert_one(
+                    {""Module"": self.listenTargetModule, ""VarName"": varName, ""value"": value, ""Time"": datetime.datetime.utcnow()})
+                if DEBUG:
+                    print(""WAS UPDATED --------------------------------------------------------------------------"")
 
 ";
             return result;
         }
+
+
+    private static string GetHeavyLocalVariablesList(PLPsData data)
+    {
+        string result = "";;
+        foreach(PLP plp in data.PLPs.Values)
+        {
+            string plpHeavyVars = string.Join<String>(",", data.LocalVariablesListings.Where(x=>x.IsHeavyVariable && x.SkillName == plp.Name).Select(x=> "\"" + x.VariableName + "\"" ).ToArray());
+            if (plpHeavyVars.Length > 0)
+            {
+                result += (result.Length > 0 ? ", " : "") + "\"" + plp.Name + "\" : [" + plpHeavyVars + "]";
+            }
+        } 
+        return "HEAVY_LOCAL_VARS={" + result + "}";
+    }
         public static string GetAosRosMiddlewareNodeFile(PLPsData data, InitializeProject initProj)
         {
 
@@ -622,7 +642,8 @@ import operator
 import traceback
 " + GetImportsForMiddlewareNode(data, initProj) + @"
  
-DEBUG = " + (initProj.MiddlewareConfiguration.DebugOn ? "True" : "False") + @"
+DEBUG = " + (initProj.MiddlewareConfiguration.DebugOn ? "True" : "False") + Environment.NewLine +
+GetHeavyLocalVariablesList(data) + @"
 aosDbConnection = pymongo.MongoClient(""mongodb://localhost:27017/"")
 aosDB = aosDbConnection[""AOS""]
 aos_statisticsDB = aosDbConnection[""AOS_Statistics""]
@@ -649,6 +670,11 @@ def registerLog(str):
              ""Time"": datetime.datetime.utcnow()}
     collLogs.insert_one(error)
 
+def getHeavyLocalVarList(moduleName):
+    if moduleName in HEAVY_LOCAL_VARS:
+        return HEAVY_LOCAL_VARS[moduleName]
+    else:
+        return []
 
 " + GetLocalVariableTypeClasses(data) + @"
 
@@ -658,7 +684,22 @@ class ListenToMongoDbCommands:
 
 " + GetHandleModuleFunction(data) + @"
 
+
+    def saveHeavyLocalVariableToDB(self):
+        for varName in getHeavyLocalVarList(self._topicListener.listenTargetModule):
+            value = self._topicListener.localVarNamesAndValues[self._topicListener.listenTargetModule][varName]
+            aos_local_var_collection.replace_one({""Module"": self._topicListener.listenTargetModule, ""VarName"": varName},
+                                                 {""Module"": self._topicListener.listenTargetModule, ""VarName"": varName,
+                                                  ""Value"": value}, upsert=True)
+            aosStats_local_var_collection.insert_one(
+                {""Module"": self.listenTargetModule, ""VarName"": varName, ""value"": value,
+                 ""Time"": datetime.datetime.utcnow()})
+
+
+
+
     def registerModuleResponse(self, moduleName, startTime, actionSequenceID, responseNotByLocalVariables):
+        self.saveHeavyLocalVariableToDB()
         filter1 = {""ActionSequenceId"": actionSequenceID}
         if DEBUG:
             print(""registerModuleResponse()"")

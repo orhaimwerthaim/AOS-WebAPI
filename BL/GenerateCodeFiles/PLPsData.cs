@@ -57,6 +57,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public const string ENUM_VARIABLE_TYPE_NAME = "enum";
         public const string INT_VARIABLE_TYPE_NAME = "int";
+        public const string ARRAY_VARIABLE_TYPE_NAME = "[]";
 
         public const string FLOAT_VARIABLE_TYPE_NAME = "float";
         public const string BOOL_VARIABLE_TYPE_NAME = "bool";
@@ -640,6 +641,7 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                 oVarDec.Type = docVar["Type"].ToString();
                 oVarDec.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
                 oVarDec.DefaultCode = docVar.Contains("DefaultCode") ? (docVar["DefaultCode"].ToString().Equals("") ? null : docVar["DefaultCode"].ToString()) : null;
+                oVarDec.IsArray = docVar.Contains("IsArray") ? docVar["IsArray"].AsBoolean : false;
                 oVarDec.IsActionParameterValue = docVar.Contains("IsActionParameterValue") ? docVar["IsActionParameterValue"].AsBoolean : false;
 
                 oVarDec.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
@@ -816,6 +818,7 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                         oVar.LocalVarName = GetBsonStringField(docVar, "LocalVariableName");
                         oVar.RosTopicPath = GetBsonStringField(docVar, "RosTopicPath");
                         oVar.TopicMessageType = GetBsonStringField(docVar, "TopicMessageType");
+                        oVar.IsHeavyVariable = docVar.Contains("IsHeavyVariable") ? docVar["IsHeavyVariable"].AsBoolean : false;
                         oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
                         oVar.VariableType = GetBsonStringField(docVar, "VariableType");
                         oVar.RosParameterPath = GetBsonStringField(docVar, "RosParameter");
@@ -1312,6 +1315,7 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
         public string Default;
         public string DefaultCode;
         public bool IsActionParameterValue;
+        public bool IsArray;
 
         public List<GlobalVariableDeclaration> SubCompoundFeilds = new List<GlobalVariableDeclaration>();
         public string StateVariableName;
@@ -1320,9 +1324,18 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
 
         public string GetVariableDefinition()
         {
-            return this.ParametersData.Parameters.Count() > 0 ?
-                 "std::map<tuple<" + string.Join(",", this.ParametersData.Parameters.Select(x=> x.EnumParameterType == null ? "int" : x.EnumParameterType.TypeName).ToList()) + ">,"+this.Type+"> " + this.Name + ";"
-                 : this.Type + " " + this.Name + ";";
+            if(IsArray)
+            {
+
+            }
+            if(this.ParametersData.Parameters.Count() > 0)
+            {
+                return "std::map<tuple<" + string.Join(",", this.ParametersData.Parameters.Select(x=> x.EnumParameterType == null ? "int" : x.EnumParameterType.TypeName).ToList()) + ">,"+this.Type+"> " + this.Name + ";";
+            }
+            else
+            {
+                return (IsArray ? "vector<" : "") + this.Type +(IsArray?">":"")+ " " + this.Name + ";";
+            } 
         }
     }
 

@@ -3905,6 +3905,7 @@ class Prints
 {
 ";
             int i = 0;
+            result += "    default_moduleResponse" + (data.PLPs.Keys.Count() > 0 ? "," : "");
             foreach (string plpName in data.PLPs.Keys)
             {
                 result += "    " + plpName + "Action" + (i == data.PLPs.Count - 1 ? "" : ",") + Environment.NewLine;
@@ -4604,10 +4605,32 @@ std::string Prints::GetStateJson(State& _state)
                 List<string> bits = gVar.StateVariableName.Split(".").ToList();
                 int skip = bits[0] == "state" ? 1 : 0;
                 string dictionarySection = string.Join("\"][\"", bits.Skip(skip).ToArray());
-                result += !isForPrintStateFunc && IsStateFromJson
-                    ? GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];")
-                    : (!isForPrintStateFunc ? GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = " + gVar.StateVariableName + ";")
-                        : GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + gVar.StateVariableName + ":\";") + GenerateFilesUtils.GetIndentationStr(2, 4, "ss << " + gVar.StateVariableName + ";"));
+                if(!isForPrintStateFunc && IsStateFromJson)
+                {
+                    string forArray = ".get<std::vector<"+gVar.Type+">>()";
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"]"+(gVar.IsArray ? forArray : "")+";");    
+                }
+                else if(!isForPrintStateFunc)
+                {
+                    if(gVar.IsArray)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, "json j" + gVar.Name + "(" + gVar.StateVariableName + ");");
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = j" + gVar.Name + ";");
+                    }
+                    else
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = " + gVar.StateVariableName + ";");    
+                    }
+                }
+                else
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + gVar.StateVariableName + ":\";") + GenerateFilesUtils.GetIndentationStr(2, 4, "ss << " + gVar.StateVariableName + ";");
+                }
+                // result += !isForPrintStateFunc && IsStateFromJson
+                //     ? GenerateFilesUtils.GetIndentationStr(2, 4, gVar.StateVariableName + " = j[stateIndex][\"" + dictionarySection + "\"];")
+                //     : (
+                //         !isForPrintStateFunc ? GenerateFilesUtils.GetIndentationStr(2, 4, "j[\"" + dictionarySection + "\"] = " + gVar.StateVariableName + ";")
+                //         : GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"|" + gVar.StateVariableName + ":\";") + GenerateFilesUtils.GetIndentationStr(2, 4, "ss << " + gVar.StateVariableName + ";"));
             }
             else
             {
@@ -5460,7 +5483,8 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "std::hash<std::string> hasher;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "observation = -1;");
-            result += GenerateFilesUtils.GetIndentationStr(1, 4, "int startObs = observation;");
+            //result += GenerateFilesUtils.GetIndentationStr(1, 4, "int startObs = observation;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "observation = default_moduleResponse;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "std::string __moduleResponseStr = \"NoStrResponse\";");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "OBS_TYPE &__moduleResponse = observation;");
             foreach (PLP plp in data.PLPs.Values)
@@ -5496,13 +5520,13 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "__moduleResponse = responseHash;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
 
-            result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(startObs == __moduleResponse)");
+            /*result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(startObs == __moduleResponse)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "stringstream ss;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ss << \"Observation/__moduleResponse Not initialized!!! on action:\" << Prints::PrintActionDescription(ActionManager::actions[actionId]) << endl;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "loge << ss.str() << endl;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "throw 1;");
-            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");*/
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "}");
             return result;
         }
@@ -5556,6 +5580,43 @@ private static string AddStateGivenObservationModel(PLPsData data)
                 result += GenerateFilesUtils.GetIndentationStr(5, 4, "{");
                 
                 result += GetAssignmentsCode(data, plp.Name, plp.StateGivenObservationModel_VariableAssignments, 6, 4);
+                //List<LocalVariableBase> 
+                //List<> 
+/*
+bool isArray = localVar.VariableType.EndsWith(PLPsData.ARRAY_VARIABLE_TYPE_NAME);
+            string subType = isArray ? localVar.VariableType.Replace(PLPsData.ARRAY_VARIABLE_TYPE_NAME,"") : localVar.VariableType;
+            bool supportedType = GenerateFilesUtils.IsPrimitiveType(subType);
+            if(plp.Name == localVar.SkillName && supportedType)
+            {
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(localVariables.find(\""+localVar.VariableName+"\") != localVariables.end())");
+                result += GenerateFilesUtils.GetIndentationStr(3, 4, "{");
+                if(localVar.VariableType == PLPsData.FLOAT_VARIABLE_TYPE_NAME || localVar.VariableType == PLPsData.DOUBLE_VARIABLE_TYPE_NAME)
+                {
+                    
+*/
+
+
+                foreach(var lVar in data.LocalVariablesListings)
+                {
+                    GlobalVariableDeclaration gVar = data.GlobalVariableDeclarations.Where(x=> x.Name == lVar.VariableName).FirstOrDefault();
+                    if(gVar!= null)
+                    {
+                        bool isArray = lVar.VariableType.EndsWith(PLPsData.ARRAY_VARIABLE_TYPE_NAME);
+                        string subType = isArray ? lVar.VariableType.Replace(PLPsData.ARRAY_VARIABLE_TYPE_NAME,"") : lVar.VariableType;
+                        if(GenerateFilesUtils.IsPrimitiveType(subType))
+                        {
+                            if(isArray)
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(6, 4, "state___."+lVar.VariableName+".clear();");
+                                result += GenerateFilesUtils.GetIndentationStr(6, 4, "state___."+lVar.VariableName+".insert(state___."+lVar.VariableName+".begin(), "+lVar.VariableName+".begin(), "+lVar.VariableName+".end());");
+                            }else
+                            {
+                                result += GenerateFilesUtils.GetIndentationStr(6, 4, "state___."+lVar.VariableName+" = " + lVar.VariableName + ";");        
+                            }
+                        } 
+                        
+                    }
+                }
                 result += GenerateFilesUtils.GetIndentationStr(5, 4, "}");
             }
             return result;
@@ -5573,7 +5634,10 @@ private static string AssignLocalVariablesValue(PLPsData data)
         result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
         foreach(LocalVariableBase localVar in data.LocalVariablesListings)
         {
-            if(plp.Name == localVar.SkillName && GenerateFilesUtils.IsPrimitiveType(localVar.VariableType))
+            bool isArray = localVar.VariableType.EndsWith(PLPsData.ARRAY_VARIABLE_TYPE_NAME);
+            string subType = isArray ? localVar.VariableType.Replace(PLPsData.ARRAY_VARIABLE_TYPE_NAME,"") : localVar.VariableType;
+            bool supportedType = GenerateFilesUtils.IsPrimitiveType(subType);
+            if(plp.Name == localVar.SkillName && supportedType)
             {
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "if(localVariables.find(\""+localVar.VariableName+"\") != localVariables.end())");
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "{");
@@ -5597,6 +5661,17 @@ private static string AssignLocalVariablesValue(PLPsData data)
                 {
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, localVar.VariableName + " = std::stoi(localVariables[\""+localVar.VariableName+"\"]);");
                 }
+                if(isArray && subType == PLPsData.INT_VARIABLE_TYPE_NAME)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(4,4,"vector<int> tempVec;");
+                    result += GenerateFilesUtils.GetIndentationStr(4,4,"stringstream text_stream(localVariables[\""+localVar.VariableName+"\"].substr(1, localVariables[\""+localVar.VariableName+"\"].size() - 2));");
+                    result += GenerateFilesUtils.GetIndentationStr(4,4,"string item;");
+                    result += GenerateFilesUtils.GetIndentationStr(4,4,"while (std::getline(text_stream, item, ',')) {");
+                    result += GenerateFilesUtils.GetIndentationStr(4,4,"tempVec.push_back(stoi(item));");
+                    result += GenerateFilesUtils.GetIndentationStr(4,4,"}");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, localVar.VariableName + " = tempVec;");
+                }
+
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "}");
             }
             
@@ -5623,6 +5698,14 @@ private static string RegisterLocalVariablesForBeliefUpdate(PLPsData data)
         if(GenerateFilesUtils.IsPrimitiveType(localVar.VariableType))
         {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, localVar.VariableType + " " + localVar.VariableName + ";");
+        }
+        else if(localVar.VariableType.EndsWith(PLPsData.ARRAY_VARIABLE_TYPE_NAME))
+        {
+            string subType = localVar.VariableType.Replace(PLPsData.ARRAY_VARIABLE_TYPE_NAME,"");
+            if(GenerateFilesUtils.IsPrimitiveType(subType))
+            {
+                result += GenerateFilesUtils.GetIndentationStr(1, 4, "vector<"+subType + "> " + localVar.VariableName + ";");
+            }
         }
     } 
     return result;
