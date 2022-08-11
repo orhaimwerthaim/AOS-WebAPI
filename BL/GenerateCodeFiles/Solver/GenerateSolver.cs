@@ -92,6 +92,7 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/solver/pomcp.cpp", SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath, conf.SolverGraphPDF_Depth, initProj, data));
 
 
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/util/mongoDB_Bridge.cpp", SolverFileTemplate.GetMongoBridgeCppFile(data));
 
         }
 

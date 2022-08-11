@@ -47,6 +47,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         #endregion
         public const string GLOBAL_VARIABLE_STATE_REF = "state.";
         public const string PLP_TYPE_NAME_ENVIRONMENT = "Environment";
+        public const string PLP_TYPE_NAME_ENVIRONMENT_ExtrinsicChanges = "Environment_ExtrinsicChanges";
         public const string PLP_TYPE_NAME_ENVIRONMENT_GLUE = "EnvironmentGlue";
 
         public const string PLP_TYPE_NAME_GLUE = "Glue";

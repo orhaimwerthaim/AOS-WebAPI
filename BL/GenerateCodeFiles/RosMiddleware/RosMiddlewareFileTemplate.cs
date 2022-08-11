@@ -389,6 +389,11 @@ include_directories(
                     }
                 }
 
+                if(glue.ResponseRules.Count == 0)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"\":");
+                    result += GenerateFilesUtils.GetIndentationStr(4, 4, "moduleResponse = \"DefaultObservation\"");
+                }
                 foreach (var responseRule in glue.ResponseRules)
                 {
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "if moduleResponse == \"\" and " + (string.IsNullOrEmpty(responseRule.Condition) ? "True" : responseRule.Condition) + ":");
@@ -602,6 +607,8 @@ include_directories(
             print(""update local var:"")
             print(varName)
             print(value)
+        if self.listenTargetModule not in self.localVarNamesAndValues:
+            return
         if self.localVarNamesAndValues[self.listenTargetModule][varName] != value:
             if DEBUG:
                 print(""ACTUAL UPDATE --------------------------------------------------------------------------"")
@@ -685,21 +692,21 @@ class ListenToMongoDbCommands:
 " + GetHandleModuleFunction(data) + @"
 
 
-    def saveHeavyLocalVariableToDB(self):
-        for varName in getHeavyLocalVarList(self._topicListener.listenTargetModule):
-            value = self._topicListener.localVarNamesAndValues[self._topicListener.listenTargetModule][varName]
-            aos_local_var_collection.replace_one({""Module"": self._topicListener.listenTargetModule, ""VarName"": varName},
-                                                 {""Module"": self._topicListener.listenTargetModule, ""VarName"": varName,
+    def saveHeavyLocalVariableToDB(self, moduleName):
+        for varName in getHeavyLocalVarList(moduleName):
+            value = self._topicListener.localVarNamesAndValues[moduleName][varName]
+            aos_local_var_collection.replace_one({""Module"": moduleName, ""VarName"": varName},
+                                                 {""Module"": moduleName, ""VarName"": varName,
                                                   ""Value"": value}, upsert=True)
             aosStats_local_var_collection.insert_one(
-                {""Module"": self.listenTargetModule, ""VarName"": varName, ""value"": value,
+                {""Module"": moduleName, ""VarName"": varName, ""value"": value,
                  ""Time"": datetime.datetime.utcnow()})
 
 
 
 
     def registerModuleResponse(self, moduleName, startTime, actionSequenceID, responseNotByLocalVariables):
-        self.saveHeavyLocalVariableToDB()
+        self.saveHeavyLocalVariableToDB(moduleName)
         filter1 = {""ActionSequenceId"": actionSequenceID}
         if DEBUG:
             print(""registerModuleResponse()"")
@@ -717,7 +724,7 @@ class ListenToMongoDbCommands:
         assignGlobalVar = {}
 " + GetModuleResponseFunctionPart(data) + @"
 
-        if DEBUG:
+        if DEBUG and len(getHeavyLocalVarList(moduleName)) == 0:
             print(""moduleResponse result:"")
             print(moduleResponse)
         moduleLocalVars = {}
