@@ -3524,11 +3524,14 @@ public:
  
 	" + data.ProjectNameWithCapitalLetter + @"(); 
 
+";
+string constS = data.OneStateModel ? "" : "const ";
+file +=@"
 private:
 	void SampleModuleExecutionTime(const " + data.ProjectNameWithCapitalLetter + @"State& state, double rand_num, int actionId, int &moduleExecutionTime) const;
-	void ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& initState, " + data.ProjectNameWithCapitalLetter + @"State& afterExState, double rand_num, int actionId,
-		const int &moduleExecutionTime) const;
-	void ModuleDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State &initState, const " + data.ProjectNameWithCapitalLetter + @"State &afterExState, " + data.ProjectNameWithCapitalLetter + @"State &nextState, double rand_num, int actionId, double &reward,
+	void ExtrinsicChangesDynamicModel(" + constS + data.ProjectNameWithCapitalLetter + @"State& initState, " + data.ProjectNameWithCapitalLetter + @"State& afterExState, double rand_num, int actionId,
+		const int &moduleExecutionTime,  double &reward) const;
+	void ModuleDynamicModel(" + constS + data.ProjectNameWithCapitalLetter + @"State &initState, " + constS + data.ProjectNameWithCapitalLetter + @"State &afterExState, " + data.ProjectNameWithCapitalLetter + @"State &nextState, double rand_num, int actionId, double &reward,
 								 OBS_TYPE &observation, const int &moduleExecutionTime, const bool &__meetPrecondition) const;
 	bool ProcessSpecialStates(" + data.ProjectNameWithCapitalLetter + @"State &state, double &reward) const;
 
@@ -3553,8 +3556,8 @@ private:
             foreach (string plpName in data.PLPs.Keys)
             {
                 PLP plp = data.PLPs[plpName];
-                if (plp.GlobalVariableModuleParameters.Count > 0)
-                {
+                //if (plp.GlobalVariableModuleParameters.Count > 0)
+                //{
                     result += @"class " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription: public ActionDescription
 {
     public:
@@ -3568,7 +3571,7 @@ private:
                         result += "        std::string strLink_" + param.Name + ";" + Environment.NewLine;
                     }
 
-                    result += "        " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + "ActionDescription(";
+                    result += "        " + (plp.GlobalVariableModuleParameters.Count == 0 ? "//" : "") + GenerateFilesUtils.ToUpperFirstLetter(plpName) + "ActionDescription(";
                     string parameters = "";
                     foreach (GlobalVariableModuleParameter param in plp.GlobalVariableModuleParameters)
                     {
@@ -3584,7 +3587,7 @@ private:
 };
 
 ";
-                }
+                //}
             }
 
             return result;
@@ -5853,9 +5856,10 @@ namespace despot {
         }
         private static string GetModuleDynamicModelFunction(PLPsData data)
         {
+            string constS = data.OneStateModel ? "" : "const ";
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::ModuleDynamicModel(const " +
-                data.ProjectNameWithCapitalLetter + "State &state, const " + data.ProjectNameWithCapitalLetter + @"State &state_, " +
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::ModuleDynamicModel(" + constS +
+                data.ProjectNameWithCapitalLetter + "State &state, " + constS + data.ProjectNameWithCapitalLetter + @"State &state_, " +
                 data.ProjectNameWithCapitalLetter + "State &state__, double rand_num, int actionId, double &__reward, OBS_TYPE &observation, const int &__moduleExecutionTime, const bool &__meetPrecondition) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
 
@@ -5913,7 +5917,9 @@ namespace despot {
         private static string GetExtrinsicChangesDynamicModelFunction(PLPsData data)
         {
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(const " + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, const int &__moduleExecutionTime)  const");
+            
+            string constS = data.OneStateModel ? "" : "const ";
+            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(" + constS + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, const int &__moduleExecutionTime,  double &__reward)  const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actionType = ActionManager::actions[actionId]->actionType;");
             
@@ -6383,29 +6389,72 @@ bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double r
 	Random random(rand_num);
 	int __moduleExecutionTime = -1;
 	bool meetPrecondition = false;
-	
+	double tReward = 0;
+
 	" + data.ProjectNameWithCapitalLetter + @"State &state__ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(s_state__);
 	 logd << ""[" + data.ProjectNameWithCapitalLetter + @"::Step] Selected Action:"" << Prints::PrintActionDescription(ActionManager::actions[actionId]) << ""||State""<< Prints::PrintState(state__);
 	CheckPreconditions(state__, reward, meetPrecondition, actionId);
-	 
-	State *s_state = Copy(&s_state__);
+	";
+    if(!data.HasExtrinsicChanges || data.OneStateModel)
+    {
+        file += @"State *s_state = &s_state__;
+	" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
+    SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
+   ";
+   file += data.HasExtrinsicChanges ? "ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime, tReward);": "//no ExtrinsicChangesDynamicModel";
+    }
+    else
+    {
+        file+= @"State *s_state = Copy(&s_state__);
 	" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
 
 	
 	SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
 
-	ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime);
+	ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime, tReward);";
+    }
+
+    file +=@"
+    reward += tReward;
+    tReward = 0;
+    ";
+
+    if(!data.HasDynamicModelChanges || data.OneStateModel)
+    {
+        file +=@"
+
+	State *s_state_ = &s_state__;
+	" + data.ProjectNameWithCapitalLetter + @"State &state_ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state_);
+
+	";
+    file +=data.HasDynamicModelChanges ? @"ModuleDynamicModel(state, state_, state__, rand_num, actionId, tReward, observation, __moduleExecutionTime, meetPrecondition);
+    " : @"//No skill have ModuleDynamicModel
+    ";
+
+    }
+    else
+    {
+        file +=@"
 
 	State *s_state_ = Copy(&s_state__);
 	" + data.ProjectNameWithCapitalLetter + @"State &state_ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state_);
 
-    double tReward = 0;
+    
 	ModuleDynamicModel(state, state_, state__, rand_num, actionId, tReward,
 					   observation, __moduleExecutionTime, meetPrecondition);
-	reward += tReward;
+    ";    
+    }
 
-	Free(s_state);
-	Free(s_state_);
+    file +=@"
+	";
+file+= (!data.HasDynamicModelChanges || data.OneStateModel) ? "" : @"
+    Free(s_state_);";
+
+file+= (!data.HasExtrinsicChanges || data.OneStateModel) ? "" : @"
+    Free(s_state);";
+
+file +=@"
+	reward += tReward;
 	bool finalState = ProcessSpecialStates(state__, reward);
     state__.__isTermianl = state__.__isTermianl || finalState;
 

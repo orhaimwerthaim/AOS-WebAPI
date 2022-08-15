@@ -27,6 +27,22 @@ namespace WebApiCSharp.GenerateCodeFiles
         public Dictionary<string, PLP> PLPs = new Dictionary<string, PLP>();
         public Dictionary<string, RosGlue> RosGlues = new Dictionary<string, RosGlue>();
 
+        public bool OneStateModel = false;//no previos state or after Extrinsic changes state, only one state (changes override it)
+        public bool HasExtrinsicChanges {
+            get{return !(ExtrinsicChangesDynamicModel.Count() == 0);}
+        }
+        public bool HasDynamicModelChanges {
+            get
+        {
+            bool hasChanges = false;
+            foreach(var plp in PLPs.Values)
+            {
+                hasChanges |= plp.DynamicModel_VariableAssignments.Count() > 0;
+            }
+            return hasChanges;
+        }
+
+        }
         public List<SpecialState> SpecialStates = new List<SpecialState>();
         public List<LocalVariableConstant> LocalVariableConstants = new List<LocalVariableConstant>();
         public List<LocalVariableTypePLP> LocalVariableTypes = new List<LocalVariableTypePLP>();
@@ -365,6 +381,8 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                             errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"EnvironmentGeneral.Discount\" must be defined with decimal value!");
                         }
                         Discount = (float)environmentPLP["EnvironmentGeneral"]["Discount"].AsDouble;
+
+                        OneStateModel = environmentPLP.Contains("EnvironmentGeneral") && environmentPLP["EnvironmentGeneral"].AsBsonDocument.Contains("OneStateModel") ? environmentPLP["EnvironmentGeneral"]["OneStateModel"].AsBoolean : false;
                     }
                     break;
                 case PLP_TYPE_NAME_ENVIRONMENT_GLUE:
@@ -726,6 +744,38 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
             }
         }
 
+        private string GetBsonStringOrStringArrayField(BsonDocument oDoc, string field, string innerField = null)
+        {
+            string result="";
+            if(!oDoc.Contains(field)) return "";
+            if(innerField != null && !oDoc[field].AsBsonDocument.Contains(innerField)) return "";
+            
+            BsonDocument doc = null;
+            BsonArray bArr= null;
+
+            if(innerField != null)
+            {
+                result = oDoc[field][innerField].IsBsonArray ? "" : oDoc[field][innerField].ToString();
+                bArr = oDoc[field][innerField].IsBsonArray ? oDoc[field][innerField].AsBsonArray : null;
+            }
+            else
+            {
+                result = oDoc[field].IsBsonArray ? "" : oDoc[field].ToString();
+                bArr = oDoc[field].IsBsonArray ? oDoc[field].AsBsonArray : null;
+            } 
+            
+            if(bArr != null)
+            {
+                for(int i=0; i < bArr.Count; i++)
+                {
+                    BsonValue bVal = bArr[i];
+                    result += i > 0 ? Environment.NewLine : "";
+                    result += bVal.ToString();
+                }
+            } 
+            return result;
+        }
+
         private string GetPLPDescriptionForError(ModuleDocumentationFile docFile)
         {
             return "PLP name='" + docFile.Name + "',type = '" + docFile.Type + "'";
@@ -820,7 +870,8 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                         oVar.RosTopicPath = GetBsonStringField(docVar, "RosTopicPath");
                         oVar.TopicMessageType = GetBsonStringField(docVar, "TopicMessageType");
                         oVar.IsHeavyVariable = docVar.Contains("IsHeavyVariable") ? docVar["IsHeavyVariable"].AsBoolean : false;
-                        oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
+                        //oVar.AssignmentCode = GetBsonStringField(docVar, "AssignmentCode");
+                         oVar.AssignmentCode = GetBsonStringOrStringArrayField(docVar, "AssignmentCode");//Or Wertheim changed to allow string arrays as code lines
                         oVar.VariableType = GetBsonStringField(docVar, "VariableType");
                         oVar.RosParameterPath = GetBsonStringField(docVar, "RosParameter");
                         oVar.SkillName = rosGlue.Name;
@@ -1165,8 +1216,8 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
 
                 //original line
                 //oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString().Replace(" ", "") : "";
-                oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString() : "";//OR Wertheim removed the replace(" ","")
-
+                //oAssignment.AssignmentCode = docAssignment.Contains("AssignmentCode") ? docAssignment["AssignmentCode"].ToString() : "";//OR Wertheim removed the replace(" ","")
+                oAssignment.AssignmentCode = GetBsonStringOrStringArrayField(docAssignment, "AssignmentCode");//Or Wertheim changed to allow string arrays as code lines
                 string iterateVar = docAssignment.Contains("IteratePreviousStateVars") ? "IteratePreviousStateVars" :
                     docAssignment.Contains("IterateNextStateVars") ? "IterateNextStateVars" : null;
 
