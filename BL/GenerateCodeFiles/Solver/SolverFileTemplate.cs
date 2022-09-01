@@ -3445,6 +3445,10 @@ class AOSUtils
 {
 	public:
 	static bool Bernoulli(double);
+    static int SampleDiscrete(vector<float>);
+    static int SampleDiscrete(vector<double>);
+	static std::default_random_engine generator;
+    static std::uniform_real_distribution<float> real_unfirom_dist;
 };
  
 
@@ -4252,6 +4256,13 @@ class Prints
                     }
                 }
             }
+            string extrinsicChanges = "ExtrinsicChangesDynamicModel";
+            string initialBelief = "InitialBeliefState";
+            enumMappingsForModuleResponseAndTempVar.Add(extrinsicChanges, new Dictionary<string, string>());
+            enumMappingsForModuleResponseAndTempVar.Add(initialBelief, new Dictionary<string, string>());
+            result += ListEnums(data.ExtrinsicChangesDynamicModel, extrinsicChanges,  ref responseModuleAndTempEnums, ref enumMappingsForModuleResponseAndTempVar);
+            result += ListEnums(data.InitialBeliefAssignments, initialBelief, ref responseModuleAndTempEnums, ref enumMappingsForModuleResponseAndTempVar);
+            
 
             result += @"
       default_moduleResponse = 99999, 
@@ -4259,8 +4270,36 @@ class Prints
   };
 ";
 
+
             return result;
         }
+
+
+private static string ListEnums(List<Assignment> assignments, string codeSectionName, ref List<string> responseModuleAndTempEnums, ref Dictionary<string, Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar)
+{   
+    string result = "";
+    string sFullEnumName = "";
+    foreach (var assign in assignments)
+    {
+        if (assign.TempVariable.Type == PLPsData.ENUM_VARIABLE_TYPE_NAME)
+        {
+            //sFullEnumName = codeSectionName + "_" + assign.TempVariable.EnumName;
+            sFullEnumName = assign.TempVariable.EnumName;
+            enumMappingsForModuleResponseAndTempVar[codeSectionName].Add(assign.TempVariable.EnumName, sFullEnumName);
+            result += "	  " + sFullEnumName + "," + Environment.NewLine;
+            foreach (string sEnumVal in assign.TempVariable.EnumValues)
+            {
+                //sFullEnumName = codeSectionName + "_" + sEnumVal;
+                sFullEnumName = sEnumVal;
+                enumMappingsForModuleResponseAndTempVar[codeSectionName].Add(sEnumVal, sFullEnumName);
+                //result += "	  " + codeSectionName + "_" + sEnumVal + "," + Environment.NewLine;
+                result += "	  " + sEnumVal + "," + Environment.NewLine;
+                responseModuleAndTempEnums.Add(sFullEnumName);
+            }
+        }
+    }
+    return result;
+}
 
         private static string GetActionTypeEnum(PLPsData data)
         {
@@ -5382,7 +5421,9 @@ namespace despot {
         }
         private static string HandleCodeLine(PLPsData data, string codeLine, string fromFile)
         {
-            bool environmentFileCode = fromFile == PLPsData.PLP_TYPE_NAME_ENVIRONMENT;
+            //bool environmentFileCode = fromFile == PLPsData.PLP_TYPE_NAME_ENVIRONMENT; replced with line below to fix bug. Environment extrinsic changes assignments act different than initial belief assignment with AOS.SampleDiscreat
+            
+            bool environmentFileCode = false;
             string code = codeLine;
             code = HandleC_Code_AOS_SingleVariableFunctions_str(code, PLPsData.AOS_INITIALIZED_FUNCTION_NAME);
             code = HandleC_Code_AOS_SingleVariableFunctions_str(code, PLPsData.AOS_UN_INITIALIZED_FUNCTION_NAME);
@@ -6092,12 +6133,19 @@ private static string RegisterLocalVariablesForBeliefUpdate(PLPsData data)
         {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, localVar.VariableType + " " + localVar.VariableName + ";");
         }
-        else if(localVar.VariableType.EndsWith(PLPsData.ARRAY_VARIABLE_TYPE_NAME))
+        else
         {
-            string subType = localVar.VariableType.Replace(PLPsData.ARRAY_VARIABLE_TYPE_NAME,"");
-            if(GenerateFilesUtils.IsPrimitiveType(subType))
+            if(localVar.VariableType == null)
             {
-                result += GenerateFilesUtils.GetIndentationStr(1, 4, "vector<"+subType + "> " + localVar.VariableName + ";");
+                throw new Exception("Local Variable '"+localVar.VariableName + "' has no 'VariableType' defined!");
+            }
+            if(localVar.VariableType.EndsWith(PLPsData.ARRAY_VARIABLE_TYPE_NAME))
+            {
+                string subType = localVar.VariableType.Replace(PLPsData.ARRAY_VARIABLE_TYPE_NAME,"");
+                if(GenerateFilesUtils.IsPrimitiveType(subType))
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "vector<"+subType + "> " + localVar.VariableName + ";");
+                }
             }
         }
     } 
@@ -6129,6 +6177,35 @@ using namespace std;
 namespace despot {
 
 "+data.ProjectNameWithCapitalLetter+@" "+data.ProjectNameWithCapitalLetter+@"::gen_model;
+
+std::uniform_real_distribution<float> AOSUtils::real_unfirom_dist(0.0,1.0);
+std::default_random_engine AOSUtils::generator;
+
+int AOSUtils::SampleDiscrete(vector<float> weights)
+{
+    float rand = real_unfirom_dist(generator);
+    float total = 0;
+    for (int i = 0; i < weights.size();i++)
+    {
+        total += weights[i];
+        if (rand < total)
+            return i;
+    }
+    return -1;
+}
+
+int AOSUtils::SampleDiscrete(vector<double> weights)
+{
+    float rand = real_unfirom_dist(generator);
+    float total = 0;
+    for (int i = 0; i < weights.size();i++)
+    {
+        total += weights[i];
+        if (rand < total)
+            return i;
+    }
+    return -1;
+}
 
 bool AOSUtils::Bernoulli(double p)
 {
@@ -6384,6 +6461,7 @@ void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int 
 
 bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
 	OBS_TYPE& observation) const {
+    observation = default_moduleResponse;
     reward = 0;
 	bool isNextStateFinal = false;
 	Random random(rand_num);

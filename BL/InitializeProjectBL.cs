@@ -93,7 +93,13 @@ catkin_make";
 
             // Redirect standard input as well.  This stream
             // is used synchronously. 
+            try{
             process.Start();
+            }
+            catch(Exception e)
+            {
+               throw new Exception("There were build errors in the AOS-Solver! How to fix: 1)try to build manually, 2)find the errors, 3)correct your documentation accordingly.");
+            }
         }
         private static string BuildAosSolver()
         {
