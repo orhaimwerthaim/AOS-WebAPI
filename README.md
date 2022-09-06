@@ -22,13 +22,13 @@ a random player, you can observe in the videos that the robot
 sometimes ”counts” on a human mistake of not completing a
 sequence of three.</br> </br>
 
-*[tic-tac-toe Video 1: first expriment robot starts, we are letting it win :)](https://www.youtube.com/watch?v=45Vaf3C-Pco)
-*[tic-tac-toe Video 2: robot starts and plays as expected](https://www.youtube.com/watch?v=45Vaf3C-Pco)
-*[tic-tac-toe Video 3: robot starts](https://www.youtube.com/watch?v=Jlp6ddtmVz8)
-*[tic-tac-toe Video 4: human starts](https://www.youtube.com/watch?v=-rqX1sG5m9Y)
-*[tic-tac-toe Video 5: human starts](https://www.youtube.com/watch?v=fpwuh_1mInU)
-*[tic-tac-toe Video 6: human starts](https://www.youtube.com/watch?v=ZA5Wg_8KkMM)
-*[tic-tac-toe Video 7: human starts robot losses because it counts on the random opponent mistake.](https://www.youtube.com/watch?v=R4dBrP7SLe8)
+* [tic-tac-toe Video 1: first expriment robot starts, we are letting it win :)](https://www.youtube.com/watch?v=45Vaf3C-Pco)
+* [tic-tac-toe Video 2: robot starts and plays as expected](https://www.youtube.com/watch?v=45Vaf3C-Pco)
+* [tic-tac-toe Video 3: robot starts](https://www.youtube.com/watch?v=Jlp6ddtmVz8)
+* [tic-tac-toe Video 4: human starts](https://www.youtube.com/watch?v=-rqX1sG5m9Y)
+* [tic-tac-toe Video 5: human starts](https://www.youtube.com/watch?v=fpwuh_1mInU)
+* [tic-tac-toe Video 6: human starts](https://www.youtube.com/watch?v=ZA5Wg_8KkMM)
+* [tic-tac-toe Video 7: human starts robot losses because it counts on the random opponent mistake.](https://www.youtube.com/watch?v=R4dBrP7SLe8)
 
 ### Probabilistic tic-tac-toe
 We tested the AOS’s ability to adapt to changes in
