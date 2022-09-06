@@ -76,7 +76,32 @@ And again, this is not a manually written script for tic-tac-toe. It is a genera
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 
+### Armadillo Gazebo
+The [video's](https://youtu.be/10sTQ8a_N6c) speed is 7x
 
+The robot's goal is to deliver a can to the person in the corridor. The robot starts facing a table with a hard-to-pick can. There is an additional table with an easy-to-pick can on the other side of the room. The robot skills are Pick, Navigate (to face each table and to the corridor), Observe (if it is holding the can), another Observe (if the robot arm is outstretched dangerously), and a serve-to-a-person skill, which faces the robot in front of a person detected in the camera.
+</br></br>
+In this run, the robot failed to pick the can it was facing. It used the observe skill to detect its failure (even though "pick" reported success). It navigated to the other can, failed to pick it, identified its failure using observe again, and succeeded in picking the can in the second attempt. The robot navigated to the corridor and successfully served the can to the person. </br>
+
+More Armadillo Gazebo videos:</br>
+* [AOS pick experiment with observe skills](https://www.youtube.com/watch?v=_1iaG1N6nmI)
+
+
+### turtleBot3 Gazebo experiments
+This is a first integration experiment.</br>
+The [video](https://youtu.be/fx6CXGMWWEM) shows:</br>
+Starting the AOS.</br>
+We are sending an HTTP request to integrate and operate the robot by the PLPs.
+The robot simulation.</br>
+Sending another HTTP request to see a) the sequence of actions sent by the solver with their details and response given by the code modules b) the belief state as maintained by the AOS during the process (we defined to see only one particle of the belief state but this is configurable).
+This video demonstrates how the AOS finds the shortest path for the robot to visit seven critical points on the map. The user wrote a PLP describing his robot navigation skill and an environment file describing his goal: to visit all points while traveling the shortest distance. 
+In this simple example, the initial state is known, and the outcomes of the actions are deterministic (navigation always succeeds). The solver planning time was set to 0.1 seconds per action.
+</br> 
+The AOS is automatically integrating the user code. The user only needs to send a request to the AOS Restful API (HTTP request), and the integration and execution are performed automatically.</br> </br>
+
+More turtleBot3 Videos:</br>
+* [video 1: AOS and turtleBot3 find the shortest path to visit each point twice](https://youtu.be/9Fyund5sjcU)
+* [video 2: AOS and turtleBot3 integration in a simple shortest path navigation mission](https://youtu.be/2WQOsS4EikM)
 
 ## AOS Installtion
 #### Requirements
