@@ -96,13 +96,13 @@ In this run, the robot failed to pick the can it was facing. It used the observe
 * [Armadillo Gazebo, raw model, enhanced pick video 2: best](https://youtu.be/vpYgekGjoN0)
 * [Armadillo Gazebo, raw model, enhanced pick video 3](https://youtu.be/AzBEtJbo2gY)
 * [Armadillo Gazebo, raw model, enhanced pick video 4](https://youtu.be/_6GMCN3R5Us)
-* [Armadillo Gazebo, raw model, with all possible skills video 1]()
-* [Armadillo Gazebo, raw model, with all possible skills video 2]()
-* [Armadillo Gazebo, raw model, with all possible skills video 3]()
-* [Armadillo Gazebo, raw model, with all possible skills video 4]()
-* [Armadillo Gazebo, raw model, with all possible skills video 5]()
-* [Armadillo Gazebo, raw model, with all possible skills video 6]()
-* [Armadillo Gazebo, raw model, with all possible skills video 7]()
+* [Armadillo Gazebo, raw model, with all possible skills video 1](https://youtu.be/EfJByOeWO_Q)
+* [Armadillo Gazebo, raw model, with all possible skills video 2](https://youtu.be/wxVztzj9bzM)
+* [Armadillo Gazebo, raw model, with all possible skills video 3](https://youtu.be/qYvAjKNVbpY)
+* [Armadillo Gazebo, raw model, with all possible skills video 4](https://youtu.be/kh_7-Jr0dk4)
+* [Armadillo Gazebo, raw model, with all possible skills video 5](https://youtu.be/DW5REAoKT80)
+* [Armadillo Gazebo, raw model, with all possible skills video 6](https://youtu.be/mL_FgOCRN2E)
+* [Armadillo Gazebo, raw model, with all possible skills video 7](https://youtu.be/RR4An1TQ8p0)
 
 
 
