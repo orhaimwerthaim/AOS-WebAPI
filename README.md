@@ -1,5 +1,21 @@
-# Experiments and Videos
-##### Videos
+# AOS
+##### Links:
+* [Experimets](#experiments-and-videos)
+  - [videos](#videos)
+  - [Real Panda robot tic-tac-toe](#real-panda-robot-tic-tac-toe-experiments)
+    - [Basic](#basic-experiments)
+    - [Probabilistic](#probabilistic-tic-tac-toe-experiments)
+    - [Changing the rules of the game](#changing-the-rules-of-the-game-experiments)
+    - [Unknown Initial state](#unknown-initial-state)
+
+  - [Armadillo Gazebo](#armadillo-gazebo-experiments) 
+  - [Real Armadillo Robot](#real-armadillo-robot-experiments)
+  - [TurtleBot3 Gazebo](#turtlebot3-gazebo-experiments)
+* [installation](#aos-installtion)  
+  
+
+# Experiments and Videos:
+##### Videos:
 * [Basic tic-tac-toe](#basic-tic-tac-toe-vidoes)
 * [Probabilistic tic-tac-toe](#probabilistic-tic-tac-toe-videos)
 * [Tic-tac-toe changing the game rules](#tic-tac-toe-changing-the-game-rules-videos)
@@ -8,8 +24,8 @@
 * [Real Armadillo Robot](#real-armadillo-robot-videos)
 * [TurtleBot3](#turtlebot3-videos) 
 
-## tic-tac-toe experiments
-#### Basic Experiment
+## Real Panda robot tic-tac-toe experiments:
+#### Basic experiment:
 In this experiment, we programmed a Panda CoBot to play tic-tac-toe with a human. 
 An Intel RealSense D415 camera was attached to the robot arm, and an erasable board
 with a tic-tac-toe grid was placed within its reach. 
@@ -40,7 +56,7 @@ sequence of three.</br> </br>
 * [tic-tac-toe Video 6: human starts](https://www.youtube.com/watch?v=ZA5Wg_8KkMM)
 * [tic-tac-toe Video 7: human starts robot losses because it counts on the random opponent mistake.](https://www.youtube.com/watch?v=R4dBrP7SLe8)
 
-#### Probabilistic tic-tac-toe
+#### Probabilistic tic-tac-toe experiments:
 We tested the AOS’s ability to adapt to changes in
 the robot, environment, and task. First, we changed the circle
 drawing skill to emulate an arm with difficulty drawing in
@@ -55,12 +71,12 @@ selecting the center square when it is crucial. Imagine the effort
 of changing a script to adapt to this capability change. Notice
 that a classical solver cannot even model it.</br>
 </br>
-##### Probabilistic tic-tac-toe videos:
+##### Probabilistic tic-tac-toe videos: 
 * [Probabilistic tic-tac-toe video 1](https://www.youtube.com/watch?v=wdVrZBAW9k8)
 * [Probabilistic tic-tac-toe video 2](https://www.youtube.com/watch?v=gO49ZPzf6eE)
 * [Probabilistic tic-tac-toe video 3](https://www.youtube.com/watch?v=ZypCr8SoJr4)
 
-#### Changing the rules of the game
+#### Changing the rules of the game experiments:
 Our next experiment considered the case of a new task:
 players get a score for marking positions adjacent to corner
 squares they marked before. This is a different game played
@@ -76,8 +92,7 @@ planners would not be able to model this objective well.</br> </br>
 * [Altered tic-tac-tow video 2](https://www.youtube.com/watch?v=HhgTrNxjLzE)
 * [Altered tic-tac-tow video 3](https://www.youtube.com/watch?v=XLj1i3W5c2c)
 
-#### Initial state unknown
-
+#### Unknown Initial state experiments:  
 In this experiment, the robot starts with a board that was already played for three moves. We documented the initial belief, such that any legal three moves are possible. 
 An autonomous robot must be able to start from different possible states of the environment.
 And again, this is not a manually written script for tic-tac-toe. It is a general-purpose algorithm to operate an autonomous robot to maximize its objectives in a partially observable stochastic environment.</br></br>
@@ -89,7 +104,7 @@ And again, this is not a manually written script for tic-tac-toe. It is a genera
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 
-## Armadillo Gazebo
+## Armadillo Gazebo experiments: 
 The experiment simulation environment included a room with two
 tables, and a corridor with a person. Each table had a can
 on it. One of the cans was very difficult to pick (its true size
@@ -166,7 +181,7 @@ repeating the pick action is not desirable.</br> </br>
 * [Armadillo Gazebo, raw model, without observation video 2](https://youtu.be/z6BrZroydBI)
 * [Armadillo Gazebo, raw model, without observation video 3: best](https://youtu.be/4_g7Hcy5Ub4)
 
-## Real Armadillo Robot
+## Real Armadillo Robot experiments:
 Next, we tested the integration of AOS with the real
 Armadillo in a simple, clean-lab task. In our lab, there are six
 workstations and two trash cans. There are two empty cups
@@ -191,7 +206,7 @@ preparing the documentation files.</br>
 * [Real Armadillo brings a cup experiment video 2](https://youtu.be/rbfNdPcF8so)
 * [Real Armadillo brings a cup experiment video 2](https://youtu.be/JtQvxIHDFxo)
 
-### turtleBot3 Gazebo experiments
+### turtleBot3 Gazebo experiments:
 This is a first integration experiment.</br>
 The [video](https://youtu.be/fx6CXGMWWEM) shows:</br>
 Starting the AOS.</br>
@@ -223,4 +238,4 @@ The AOS is automatically integrating the user code. The user only needs to send 
 * Download the Planning Engine base into your <_planning engine directory_> </br>
 `git clone https://github.com/orhaimwerthaim/AOS-Solver`
 
-...
+...TBD
