@@ -5,6 +5,7 @@
 * [Tic-tac-toe changing the game rules](#tic-tac-toe-changing-the-game-rules-videos)
 * [Tic-tac-toe with unknown initial state](#tic-tac-toe-with-unknown-initial-state-videos)
 * [Armadillo Gazebo](#armadillo-gazebo-videos)
+* [Real Armadillo Robot](#real-armadillo-robot-videos)
 * [TurtleBot3](#turtlebot3-videos) 
 
 ## tic-tac-toe experiments
@@ -165,8 +166,26 @@ repeating the pick action is not desirable.</br> </br>
 * [Armadillo Gazebo, raw model, without observation video 2](https://youtu.be/z6BrZroydBI)
 * [Armadillo Gazebo, raw model, without observation video 3: best](https://youtu.be/4_g7Hcy5Ub4)
 
-
-
+## Real Armadillo Robot
+Next, we tested the integration of AOS with the real
+Armadillo in a simple, clean-lab task. In our lab, there are six
+workstations and two trash cans. There are two empty cups
+somewhere in stations 1,2, or 3 and two in stations 4,5 or 6.
+The robot can navigate to each of the stations and trash cans.
+It can observe if an empty cup is placed on a nearby station;
+it can pick a nearby cup and throw one into a nearby trash
+can. The robot should collect all the cups and place them in
+the trash cans as fast as possible. Navigation cost is relative
+to the distance to the destination, so the robot would find the
+shortest path to perform its task. We implemented each of these
+skills, which are deterministic, and mapped our lab using ROS’
+gmapping package [] so we can use ROS’s navigation stack.
+We documented the skills, environment, and robot objective
+and activated the robot that utilized its skills to clean our lab
+as expected. As above, the only integration effort needed was
+preparing the documentation files.
+###### Real Armadillo Robot videos:
+* [Simple experiment 1](https://youtu.be/CU-eUKAByPs)
 ### turtleBot3 Gazebo experiments
 This is a first integration experiment.</br>
 The [video](https://youtu.be/fx6CXGMWWEM) shows:</br>
