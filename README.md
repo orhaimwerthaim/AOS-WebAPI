@@ -1,5 +1,5 @@
-## Experiments and Videos
-### tic-tac-toe experiments
+# Experiments and Videos
+## tic-tac-toe experiments
 #### Basic Experiment
 In this experiment, we programmed a Panda CoBot to play tic-tac-toe with a human. 
 An Intel RealSense D415 camera was attached to the robot arm, and an erasable board
@@ -30,7 +30,7 @@ sequence of three.</br> </br>
 * [tic-tac-toe Video 6: human starts](https://www.youtube.com/watch?v=ZA5Wg_8KkMM)
 * [tic-tac-toe Video 7: human starts robot losses because it counts on the random opponent mistake.](https://www.youtube.com/watch?v=R4dBrP7SLe8)
 
-### Probabilistic tic-tac-toe
+#### Probabilistic tic-tac-toe
 We tested the AOS’s ability to adapt to changes in
 the robot, environment, and task. First, we changed the circle
 drawing skill to emulate an arm with difficulty drawing in
@@ -49,7 +49,7 @@ that a classical solver cannot even model it.</br>
 * [Probabilistic tic-tac-toe video 2](https://www.youtube.com/watch?v=gO49ZPzf6eE)
 * [Probabilistic tic-tac-toe video 3](https://www.youtube.com/watch?v=ZypCr8SoJr4)
 
-### Changing the rules of the game
+#### Changing the rules of the game
 Our next experiment considered the case of a new task:
 players get a score for marking positions adjacent to corner
 squares they marked before. This is a different game played
@@ -64,7 +64,7 @@ planners would not be able to model this objective well.</br> </br>
 * [Altered tic-tac-tow video 2](https://www.youtube.com/watch?v=HhgTrNxjLzE)
 * [Altered tic-tac-tow video 3](https://www.youtube.com/watch?v=XLj1i3W5c2c)
 
-### Initial state unknown
+#### Initial state unknown
 
 In this experiment, the robot starts with a board that was already played for three moves. We documented the initial belief, such that any legal three moves are possible. 
 An autonomous robot must be able to start from different possible states of the environment.
@@ -76,15 +76,34 @@ And again, this is not a manually written script for tic-tac-toe. It is a genera
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 
-### Armadillo Gazebo
+## Armadillo Gazebo
 The [video's](https://youtu.be/10sTQ8a_N6c) speed is 7x
 
 The robot's goal is to deliver a can to the person in the corridor. The robot starts facing a table with a hard-to-pick can. There is an additional table with an easy-to-pick can on the other side of the room. The robot skills are Pick, Navigate (to face each table and to the corridor), Observe (if it is holding the can), another Observe (if the robot arm is outstretched dangerously), and a serve-to-a-person skill, which faces the robot in front of a person detected in the camera.
 </br></br>
 In this run, the robot failed to pick the can it was facing. It used the observe skill to detect its failure (even though "pick" reported success). It navigated to the other can, failed to pick it, identified its failure using observe again, and succeeded in picking the can in the second attempt. The robot navigated to the corridor and successfully served the can to the person. </br>
 
-More Armadillo Gazebo videos:</br>
+#### More Armadillo Gazebo videos:</br>
 * [AOS pick experiment with observe skills](https://www.youtube.com/watch?v=_1iaG1N6nmI)
+* [Armadillo Gazebo, finer model, enhanced pick: video 1](https://youtu.be/9zy52vlDZOs)
+* [Armadillo Gazebo, finer model, with all possible skills video 1](https://youtu.be/89PtHg0LpkI)
+* [Armadillo Gazebo, finer model, with all possible skills video 2](https://youtu.be/c2UTeYKGSV4)
+* [Armadillo Gazebo, finer model, with all possible skills video 3: nice](https://youtu.be/wPfAhS4Er7o)
+* [Armadillo Gazebo, finer model, with without observation video 1](https://youtu.be/B9e8b01Mm7Y)
+* [Armadillo Gazebo, finer model, with without observation video 2](https://youtu.be/TwL33YrbNz8)
+* [Armadillo Gazebo, finer model, with without observation video 3](https://youtu.be/bAQ-WKGmTlg)
+* [Armadillo Gazebo, raw model, enhanced pick video 1](https://youtu.be/Fn4cvCr94OI)
+* [Armadillo Gazebo, raw model, enhanced pick video 2: best](https://youtu.be/vpYgekGjoN0)
+* [Armadillo Gazebo, raw model, enhanced pick video 3](https://youtu.be/AzBEtJbo2gY)
+* [Armadillo Gazebo, raw model, enhanced pick video 4](https://youtu.be/_6GMCN3R5Us)
+* [Armadillo Gazebo, raw model, with all possible skills video 1]()
+* [Armadillo Gazebo, raw model, with all possible skills video 2]()
+* [Armadillo Gazebo, raw model, with all possible skills video 3]()
+* [Armadillo Gazebo, raw model, with all possible skills video 4]()
+* [Armadillo Gazebo, raw model, with all possible skills video 5]()
+* [Armadillo Gazebo, raw model, with all possible skills video 6]()
+* [Armadillo Gazebo, raw model, with all possible skills video 7]()
+
 
 
 ### turtleBot3 Gazebo experiments
