@@ -1,4 +1,12 @@
 # Experiments and Videos
+##### Videos
+* [Basic tic-tac-toe](#basic-tic-tac-toe-vidoes)
+* [Probabilistic tic-tac-toe](#probabilistic-tic-tac-toe-videos)
+* [Tic-tac-toe changing the game rules](#tic-tac-toe-changing-the-game-rules-videos)
+* [Tic-tac-toe with unknown initial state](#tic-tac-toe-with-unknown-initial-state-videos)
+* [Armadillo Gazebo](#armadillo-gazebo-videos)
+* [TurtleBot3](#turtlebot3-videos) 
+
 ## tic-tac-toe experiments
 #### Basic Experiment
 In this experiment, we programmed a Panda CoBot to play tic-tac-toe with a human. 
@@ -22,6 +30,7 @@ a random player, you can observe in the videos that the robot
 sometimes ”counts” on a human mistake of not completing a
 sequence of three.</br> </br>
 
+##### Basic tic-tac-toe vidoes:
 * [tic-tac-toe Video 1: first expriment robot starts, we are letting it win :)](https://www.youtube.com/watch?v=45Vaf3C-Pco)
 * [tic-tac-toe Video 2: robot starts and plays as expected](https://www.youtube.com/watch?v=45Vaf3C-Pco)
 * [tic-tac-toe Video 3: robot starts](https://www.youtube.com/watch?v=Jlp6ddtmVz8)
@@ -45,6 +54,7 @@ selecting the center square when it is crucial. Imagine the effort
 of changing a script to adapt to this capability change. Notice
 that a classical solver cannot even model it.</br>
 </br>
+##### Probabilistic tic-tac-toe videos:
 * [Probabilistic tic-tac-toe video 1](https://www.youtube.com/watch?v=wdVrZBAW9k8)
 * [Probabilistic tic-tac-toe video 2](https://www.youtube.com/watch?v=gO49ZPzf6eE)
 * [Probabilistic tic-tac-toe video 3](https://www.youtube.com/watch?v=ZypCr8SoJr4)
@@ -60,6 +70,7 @@ completely new script would have to be written and would
 require figuring out good strategies for this game. Classical
 planners would not be able to model this objective well.</br> </br>
 
+##### tic-tac-toe changing the game rules videos: 
 * [Altered tic-tac-tow video 1](https://www.youtube.com/watch?v=llIDKMD1yCA)
 * [Altered tic-tac-tow video 2](https://www.youtube.com/watch?v=HhgTrNxjLzE)
 * [Altered tic-tac-tow video 3](https://www.youtube.com/watch?v=XLj1i3W5c2c)
@@ -70,6 +81,7 @@ In this experiment, the robot starts with a board that was already played for th
 An autonomous robot must be able to start from different possible states of the environment.
 And again, this is not a manually written script for tic-tac-toe. It is a general-purpose algorithm to operate an autonomous robot to maximize its objectives in a partially observable stochastic environment.</br></br>
 
+##### tic-tac-toe with unknown initial state videos:
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 * [tic-tac-toe with unknown initial state video 2](https://www.youtube.com/watch?v=O5zKoOIBL-U)
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
@@ -128,7 +140,7 @@ modeled as independent. However, when sensing is integrated
 into the pick action, it cannot do independent sensing, and
 repeating the pick action is not desirable.</br> </br>
 
-#### Armadillo Gazebo videos:</br>
+##### Armadillo Gazebo videos:</br>
 * [An experiment 7x video](https://youtu.be/10sTQ8a_N6c) 
 * [AOS pick experiment with observe skills](https://www.youtube.com/watch?v=_1iaG1N6nmI)
 * [Armadillo Gazebo, finer model, enhanced pick: video 1](https://youtu.be/9zy52vlDZOs)
@@ -167,7 +179,7 @@ In this simple example, the initial state is known, and the outcomes of the acti
 </br> 
 The AOS is automatically integrating the user code. The user only needs to send a request to the AOS Restful API (HTTP request), and the integration and execution are performed automatically.</br> </br>
 
-More turtleBot3 Videos:</br>
+##### turtleBot3 videos:</br>
 * [video 1: AOS and turtleBot3 find the shortest path to visit each point twice](https://youtu.be/9Fyund5sjcU)
 * [video 2: AOS and turtleBot3 integration in a simple shortest path navigation mission](https://youtu.be/2WQOsS4EikM)
 
