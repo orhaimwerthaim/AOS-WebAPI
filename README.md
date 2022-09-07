@@ -183,9 +183,14 @@ gmapping package [] so we can use ROS’s navigation stack.
 We documented the skills, environment, and robot objective
 and activated the robot that utilized its skills to clean our lab
 as expected. As above, the only integration effort needed was
-preparing the documentation files.
+preparing the documentation files.</br>
+
 ###### Real Armadillo Robot videos:
-* [Simple experiment 1](https://youtu.be/CU-eUKAByPs)
+* [Real Armadillo brings a cup experiment (speed x6) with two video angles at the end](https://youtu.be/CU-eUKAByPs)
+* [Real Armadillo brings a cup experiment video 1](https://youtu.be/8NzD2Ea1Z2c)
+* [Real Armadillo brings a cup experiment video 2](https://youtu.be/rbfNdPcF8so)
+* [Real Armadillo brings a cup experiment video 2](https://youtu.be/JtQvxIHDFxo)
+
 ### turtleBot3 Gazebo experiments
 This is a first integration experiment.</br>
 The [video](https://youtu.be/fx6CXGMWWEM) shows:</br>
