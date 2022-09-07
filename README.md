@@ -26,6 +26,7 @@
 
 ## Real Panda robot tic-tac-toe experiments:
 #### Basic experiment:
+skills documentation can be found [at](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/panda_tic_tac_toe/panda_tic_tac_toe_original)</br>
 In this experiment, we programmed a Panda CoBot to play tic-tac-toe with a human. 
 An Intel RealSense D415 camera was attached to the robot arm, and an erasable board
 with a tic-tac-toe grid was placed within its reach. 
@@ -57,6 +58,7 @@ sequence of three.</br> </br>
 * [tic-tac-toe Video 7: human starts robot losses because it counts on the random opponent mistake.](https://www.youtube.com/watch?v=R4dBrP7SLe8)
 
 #### Probabilistic tic-tac-toe experiments:
+skills documentation can be found [at](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/panda_tic_tac_toe/panda_tic_tac_toe_prob)</br>
 We tested the AOS’s ability to adapt to changes in
 the robot, environment, and task. First, we changed the circle
 drawing skill to emulate an arm with difficulty drawing in
@@ -77,6 +79,7 @@ that a classical solver cannot even model it.</br>
 * [Probabilistic tic-tac-toe video 3](https://www.youtube.com/watch?v=ZypCr8SoJr4)
 
 #### Changing the rules of the game experiments:
+skills documentation can be found [at](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/panda_tic_tac_toe/panda_tic_tac_toe_chaged_game)</br>
 Our next experiment considered the case of a new task:
 players get a score for marking positions adjacent to corner
 squares they marked before. This is a different game played
@@ -93,6 +96,7 @@ planners would not be able to model this objective well.</br> </br>
 * [Altered tic-tac-tow video 3](https://www.youtube.com/watch?v=XLj1i3W5c2c)
 
 #### Unknown Initial state experiments:  
+skills documentation can be found [at](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/panda_tic_tac_toe/panda_tic_tac_toe_initialStateUnknown)</br>
 In this experiment, the robot starts with a board that was already played for three moves. We documented the initial belief, such that any legal three moves are possible. 
 An autonomous robot must be able to start from different possible states of the environment.
 And again, this is not a manually written script for tic-tac-toe. It is a general-purpose algorithm to operate an autonomous robot to maximize its objectives in a partially observable stochastic environment.</br></br>
@@ -105,6 +109,7 @@ And again, this is not a manually written script for tic-tac-toe. It is a genera
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 
 ## Armadillo Gazebo experiments: 
+A detailed description of how we built this experiment and the  documentation used can be found [at](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/armadillo_pick).</br>
 The experiment simulation environment included a room with two
 tables, and a corridor with a person. Each table had a can
 on it. One of the cans was very difficult to pick (its true size
@@ -182,6 +187,7 @@ repeating the pick action is not desirable.</br> </br>
 * [Armadillo Gazebo, raw model, without observation video 3: best](https://youtu.be/4_g7Hcy5Ub4)
 
 ## Real Armadillo Robot experiments:
+skills documentation can be found [at](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/AdditionalExamples/Real%20Armadillo-%20Clean%20Lab)</br>
 Next, we tested the integration of AOS with the real
 Armadillo in a simple, clean-lab task. In our lab, there are six
 workstations and two trash cans. There are two empty cups
@@ -207,6 +213,7 @@ preparing the documentation files.</br>
 * [Real Armadillo brings a cup experiment video 2](https://youtu.be/JtQvxIHDFxo)
 
 ### turtleBot3 Gazebo experiments:
+skills documentation can be found [at](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/AdditionalExamples/turtleBotVisitLocations)</br>
 This is a first integration experiment.</br>
 The [video](https://youtu.be/fx6CXGMWWEM) shows:</br>
 Starting the AOS.</br>
