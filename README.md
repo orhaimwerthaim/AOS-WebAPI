@@ -77,13 +77,59 @@ And again, this is not a manually written script for tic-tac-toe. It is a genera
 * [tic-tac-toe with unknown initial state video 1](https://www.youtube.com/watch?v=Q86ZCDcSAGk)
 
 ## Armadillo Gazebo
-The [video's](https://youtu.be/10sTQ8a_N6c) speed is 7x
+The experiment simulation environment included a room with two
+tables, and a corridor with a person. Each table had a can
+on it. One of the cans was very difficult to pick (its true size
+was 10% of the size perceived by the robot). The robot was
+located near the table with the difficult can. The goal was to
+give the can to a person in the corridor. We implemented three
+skills: pick-can, navigate to a person or a table, and serve-
+can which handed the can to the person. For the experiments,
+we used two versions of the pick PLP: a ”rough” model that
+assumes that the probability of successful pick is independent
+of the selected table, and a ”finer” model in which the success
+probability is conditioned on the robot’s position.</br>
 
-The robot's goal is to deliver a can to the person in the corridor. The robot starts facing a table with a hard-to-pick can. There is an additional table with an easy-to-pick can on the other side of the room. The robot skills are Pick, Navigate (to face each table and to the corridor), Observe (if it is holding the can), another Observe (if the robot arm is outstretched dangerously), and a serve-to-a-person skill, which faces the robot in front of a person detected in the camera.
-</br></br>
-In this run, the robot failed to pick the can it was facing. It used the observe skill to detect its failure (even though "pick" reported success). It navigated to the other can, failed to pick it, identified its failure using observe again, and succeeded in picking the can in the second attempt. The robot navigated to the corridor and successfully served the can to the person. </br>
+First, we experimented with each skill and used observed
+statistics of their behavior to write their PLP files. Then, we
+specified the AM files and the task specification. As above,
+this information was enough to enable the AOS to control the
+robot through the task. During plan execution, we observed
+that, occasionally, the pick skill ends with the arm outstretched.
+Attempting to serve the person in this state causes a collision
+(i.e., injured the person). Moreover, pick returned success if
+motion planning and motion execution succeeded, but this did
+not imply that the can was successfully picked. Therefore,
+we wrote two new skills: detect-hold-can and detect-arm-
+stretched. This was almost immediate for two reasons: these
+sensing skills are easy to define using the AM files because
+they simply map low-level data published by the robot (gripper
+pressure, arm-joint angles) into the abstract variables used
+by the PLPs. We also implemented an alternative pick skill
+with integrated success sensing. Its return value reflected the
+outcome of sensing whether the can is held. This, too, is
+very easy to do through the output specification in the PLP.
+Both changes involve adding two lines to the respective file.
+Detect-hold-can is noisy and was modeled as such. Detect-
+arm-stretched is not noisy.</br>
 
-#### More Armadillo Gazebo videos:</br>
+First, with the rough model, the robot (correctly) tries to
+pick the problematic can because it saves the cost of navigating
+to the other table, while with the finer mode, it first moves
+to the other table where pick is more likely to succeed.
+Second, without sensing actions, the robot serves the can,
+but then, because it has no feedback, goes back to the tables
+and tries to repeat the process, while with sensing, the robot
+verifies success, if the result is yes, only then does it serve
+the can and stop. Moreover, since sensing is noisy, the robot
+performs multiple sense actions to achieve a belief state with
+less uncertainty because the results of the sensing actions are
+modeled as independent. However, when sensing is integrated
+into the pick action, it cannot do independent sensing, and
+repeating the pick action is not desirable.</br> </br>
+
+#### Armadillo Gazebo videos:</br>
+* [An experiment 7x video](https://youtu.be/10sTQ8a_N6c) 
 * [AOS pick experiment with observe skills](https://www.youtube.com/watch?v=_1iaG1N6nmI)
 * [Armadillo Gazebo, finer model, enhanced pick: video 1](https://youtu.be/9zy52vlDZOs)
 * [Armadillo Gazebo, finer model, with all possible skills video 1](https://youtu.be/89PtHg0LpkI)
