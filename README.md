@@ -11,6 +11,7 @@
   - [Armadillo Gazebo](#armadillo-gazebo-experiments) 
   - [Real Armadillo Robot](#real-armadillo-robot-experiments)
   - [TurtleBot3 Gazebo](#turtlebot3-gazebo-experiments)
+  - [RDDLSim vs. AOS Sampling rates (link to external git)](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/AdditionalExamples/compareRDDLSimToAOS)
 * [installation](#aos-installtion)  
   
 
