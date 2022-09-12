@@ -47,9 +47,10 @@ namespace WebApiCSharp.BL
 
         private static string GetRunSolverBashFile(PLPsData data)
         {
+            string homePath = System.Environment.GetEnvironmentVariable("HOME");
             string file = @"#!/bin/bash
 
-cd ~/AOS/AOS-Solver/build/examples/cpp_models/" + data.ProjectName + @"
+cd "+homePath+"@/AOS/AOS-Solver/build/examples/cpp_models/" + data.ProjectName + @"
 pwd
 ./despot_" + data.ProjectName;
             return file;
@@ -66,10 +67,11 @@ catkin_make";
 
         private static string GetBuildSolverBashFile()
         {
+            string homePath = System.Environment.GetEnvironmentVariable("HOME");
             string buildType = "Release";//"Debug"  
             string file = @"#!/bin/bash
 
-/opt/cmake-3.19.8-Linux-x86_64/bin/cmake --build ~/AOS/AOS-Solver/build --config "+buildType+ @" --target all -j 14 --
+/opt/cmake-3.19.8-Linux-x86_64/bin/cmake --build "+homePath+@"/AOS/AOS-Solver/build --config "+buildType+ @" --target all -j 14 --
 ";
             return file;
         }
