@@ -9,7 +9,7 @@ namespace WebApiCSharp.Services
         private static Configuration configuration;
         static ConfigurationService()
         {
-            configuration = new Configuration() { SolverPath = "/home/or/Projects/AOS-Solver", SolverGraphPDF_DirectoryPath = "/home/or/Projects", SolverGraphPDF_Depth = 1 };
+            configuration = new Configuration() { SolverPath = "~/AOS/AOS-Solver", SolverGraphPDF_DirectoryPath = "~/AOS", SolverGraphPDF_Depth = 1 };
         }
 
 
