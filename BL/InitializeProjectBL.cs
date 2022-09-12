@@ -49,7 +49,7 @@ namespace WebApiCSharp.BL
         {
             string file = @"#!/bin/bash
 
-cd /home/or/Projects/AOS-Solver/build/examples/cpp_models/" + data.ProjectName + @"
+cd ~/AOS/AOS-Solver/build/examples/cpp_models/" + data.ProjectName + @"
 pwd
 ./despot_" + data.ProjectName;
             return file;
@@ -69,7 +69,7 @@ catkin_make";
             string buildType = "Release";//"Debug"  
             string file = @"#!/bin/bash
 
-/opt/cmake-3.19.8-Linux-x86_64/bin/cmake --build /home/or/Projects/AOS-Solver/build --config "+buildType+ @" --target all -j 14 --
+/opt/cmake-3.19.8-Linux-x86_64/bin/cmake --build ~/AOS/AOS-Solver/build --config "+buildType+ @" --target all -j 14 --
 ";
             return file;
         }
