@@ -3553,7 +3553,7 @@ private:
 
 
 
-        private static string GetClassesGetActionManagerHeader(PLPsData data)
+        private static string GetClassesGetActionManagerHeader(PLPsData data, bool onlyClasses = false)
         {
             string result = "";
 
@@ -3584,10 +3584,16 @@ private:
                     }
                     result += parameters + ");" + Environment.NewLine;
 
-                    result += @"        virtual void SetActionParametersByState(State *state, std::vector<std::string> indexes);
+                    result += @"        virtual void SetActionParametersByState(State *state, std::vector<std::string> indexes);";
+                    if(!onlyClasses)
+                    {
+                        result+= @"
+                        
         virtual std::string GetActionParametersJson_ForActionExecution();
         virtual std::string GetActionParametersJson_ForActionRegistration();
-        " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription(){};
+        ";
+                    }
+        result +=  GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription(){};
 };
 
 ";
@@ -3597,7 +3603,7 @@ private:
             return result;
         }
         
-public static string GetPOMDPCPPFile(PLPsData data)
+public static string GetPOMDPCPPFile(PLPsData data, bool forSingleFileModel = false)
 {
     string file = @"#include <despot/core/pomdp.h>
 #include <despot/core/policy.h>
@@ -3633,7 +3639,9 @@ BeliefStateVariables::BeliefStateVariables(vector<State *> bs)
 	   __isTermianl_std = sqrt(__isTermianl_variance);
    }
 
-" + GetStateVarTypesCppConstructors(data) + @"
+";
+file = forSingleFileModel ? "" : file;
+file += GetStateVarTypesCppConstructors(data) + @"
 
 
 
@@ -3641,7 +3649,9 @@ BeliefStateVariables::BeliefStateVariables(vector<State *> bs)
 		{
 " + GetStateCppUpdateDicInit(data) + @"
 		}
-
+";
+if(forSingleFileModel)return file;
+file +=@"
 /* =============================================================================
  * State class
  * =============================================================================*/
@@ -4162,7 +4172,7 @@ class ClosedModelPolicy {
 #endif //CLOSED_MODEL_POLICY_H";
     return file;
 }
-        public static string GetActionManagerHeaderFile(PLPsData data)
+        public static string GetActionManagerHeaderFile(PLPsData data, bool onlyClasses = false)
         {
             string file = @"#ifndef ACTION_MANAGER_H
 #define ACTION_MANAGER_H
@@ -4173,7 +4183,9 @@ class ClosedModelPolicy {
 #include <vector>
 #include <utility>
 #include <string>
-namespace despot { 
+namespace despot { ";
+file = onlyClasses ? "" : file;
+ file+=@"
 
 
     class ActionDescription
@@ -4187,7 +4199,7 @@ namespace despot {
         
     };
 
-" + GetClassesGetActionManagerHeader(data) + @"
+" + GetClassesGetActionManagerHeader(data, onlyClasses) + @"
 
 class ActionManager {
 public:
@@ -4208,13 +4220,16 @@ class Prints
     static std::string GetStateJson(State &state);
     static void GetStateFromJson(State &state, std::string jsonStr, int stateIndex);
 };
+";
+if(onlyClasses) return file;
+file += @"
 }
 #endif //ACTION_MANAGER_H
 ";
             return file;
         }
 
-        private static string GetResponseModuleAndTempEnumsList(PLPsData data, out List<string> responseModuleAndTempEnums, out Dictionary<string, Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar)
+        public static string GetResponseModuleAndTempEnumsList(PLPsData data, out List<string> responseModuleAndTempEnums, out Dictionary<string, Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar)
         {
             enumMappingsForModuleResponseAndTempVar = new Dictionary<string, Dictionary<string, string>>();
             responseModuleAndTempEnums = new List<string>();
@@ -4301,7 +4316,7 @@ private static string ListEnums(List<Assignment> assignments, string codeSection
     return result;
 }
 
-        private static string GetActionTypeEnum(PLPsData data)
+        public static string GetActionTypeEnum(PLPsData data)
         {
             string result = @"
   enum ActionType
@@ -4405,7 +4420,7 @@ namespace despot
         }
 
 
-        private static string GetGetStateVarTypesHeaderCompoundTypes(PLPsData data)
+        public static string GetGetStateVarTypesHeaderCompoundTypes(PLPsData data)
         {
             string result = "";
             foreach (CompoundVarTypePLP complType in data.GlobalCompoundTypes)
@@ -4432,7 +4447,7 @@ namespace despot
             }
             return result;
         }
-        private static string GetGetStateVarTypesHeaderEnumTypes(PLPsData data)
+        public static string GetGetStateVarTypesHeaderEnumTypes(PLPsData data)
         {
             string result = "";
             foreach (EnumVarTypePLP enumlVar in data.GlobalEnumTypes)
@@ -4473,7 +4488,7 @@ namespace despot
             return file;
         }
 
-        private static string GetVariableDeclarationsForStateHeaderFile(PLPsData data)
+        public static string GetVariableDeclarationsForStateHeaderFile(PLPsData data)
         {
             string result = "";
 
@@ -4523,7 +4538,7 @@ namespace despot
  
 
 
-        private static string GetClassesFunctionDefinitionForActionManagerCPP(PLPsData data)
+        private static string GetClassesFunctionDefinitionForActionManagerCPP(PLPsData data, bool forSingleFileModel=false)
         {
             string result = "";
 
@@ -4547,6 +4562,8 @@ namespace despot
                     //------------------------------------------------------------------------------------------------------------------------------------
 
                     //PLPActionDescription::GetActionParametersJson_ForActionExecution()
+                    if(!forSingleFileModel)
+                    {
                     result += @"std::string " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription::GetActionParametersJson_ForActionExecution()
 {  
     json j;
@@ -4576,9 +4593,12 @@ namespace despot
     std::string str(j.dump().c_str());
     return str;
 }" + Environment.NewLine;
+                    }
                     //------------------------------------------------------------------------------------------------------------------------------------
 
                     //PLPActionDescription::GetActionParametersJson_ForActionRegistration()
+                    if(!forSingleFileModel)
+                    {
                     result += @"std::string " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription::GetActionParametersJson_ForActionRegistration()
 {
     json j;" + Environment.NewLine;
@@ -4608,7 +4628,7 @@ namespace despot
     std::string str(j.dump().c_str());
     return str;
 }";
-
+                    }
 
                 }
             }
@@ -4908,7 +4928,7 @@ int ClosedModelPolicy::getBestAction()
 }";
     return file;
 }
-        public static string GetActionManagerCPpFile(PLPsData data, out int totalNumberOfActionsInProject)
+        public static string GetActionManagerCPpFile(PLPsData data, out int totalNumberOfActionsInProject, bool forSingleFileModel=false)
         {
             string file = @"
 #include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h>
@@ -4922,37 +4942,50 @@ using json = nlohmann::json;
 #include <utility>
 #include <string>
 namespace despot { 
+    ";
+    file = forSingleFileModel ? "" : file;
+    file += @"
     void ActionDescription::SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes){}
     std::vector<ActionDescription*> ActionManager::actions;
 
 
-" + GetClassesFunctionDefinitionForActionManagerCPP(data) + @"
+" + GetClassesFunctionDefinitionForActionManagerCPP(data, forSingleFileModel) + @"
 
 void ActionManager::Init(" + data.ProjectNameWithCapitalLetter + @"State* state)
 {
 	
 	int id = 0;
-" + GetAddingActionForActionManagerCPP(data, out totalNumberOfActionsInProject) + @"
+" + GetAddingActionForActionManagerCPP(data, out totalNumberOfActionsInProject);
+if(!forSingleFileModel)
+{ file += @"
 
     for(int j=0;j< ActionManager::actions.size();j++)
     {
         std::string actDesc = Prints::PrintActionDescription(ActionManager::actions[j]);
         MongoDB_Bridge::RegisterAction(ActionManager::actions[j]->actionId, enum_map_" + data.ProjectName + @"::vecActionTypeEnumToString[ActionManager::actions[j]->actionType], ActionManager::actions[j]->GetActionParametersJson_ForActionRegistration(), actDesc);
     }
+    ";
+}
+file +=@"
 }
 
 
  
 " + GetGlobalVarEnumsPrintFunctions(data) + GetPrintActionDescriptionFunction(data) + @"
 
+
+" + GetPrintStateFunction(data) + @"
+ 
+" + GetPrintActionType(data);
+if(forSingleFileModel)return file;
+
+file += GetStateJsonFunctionForActionManagerCPP(data) + GetStateFromJsonFunctionForActionManagerCPP(data) + @"
+
 std::string Prints::PrintObs(int action, int obs)
 {
 	" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums eObs = (" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs;
 	return enum_map_" + data.ProjectName + @"::vecResponseEnumToString[eObs]; 
 }
-" + GetPrintStateFunction(data) + @"
- 
-" + GetPrintActionType(data) + GetStateJsonFunctionForActionManagerCPP(data) + GetStateFromJsonFunctionForActionManagerCPP(data) + @"
 
 void Prints::SaveBeliefParticles(vector<State*> particles)
 {
@@ -5295,7 +5328,7 @@ namespace despot {
 
 
 
-        private static string GetPrintStateFunction(PLPsData data)
+        public static string GetPrintStateFunction(PLPsData data)
         {
             string result = GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::PrintState(" + data.ProjectNameWithCapitalLetter + @"State state)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
@@ -5312,7 +5345,7 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}" + Environment.NewLine);
             return result;
         }
-        private static string GetPrintActionDescriptionFunction(PLPsData data)
+        public static string GetPrintActionDescriptionFunction(PLPsData data)
         {
             string result = GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::PrintActionDescription(ActionDescription* act)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
@@ -5364,7 +5397,7 @@ namespace despot {
         }
 
 
-        private static string GetPrintActionType(PLPsData data)
+        public static string GetPrintActionType(PLPsData data)
         {
             string result = @"";
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::PrintActionType(ActionType actType)");
@@ -5380,7 +5413,7 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
             return result;
         }
-        private static string GetGlobalVarEnumsPrintFunctions(PLPsData data)
+        public static string GetGlobalVarEnumsPrintFunctions(PLPsData data)
         {
             string result = "";
             foreach (EnumVarTypePLP enumType in data.GlobalEnumTypes)

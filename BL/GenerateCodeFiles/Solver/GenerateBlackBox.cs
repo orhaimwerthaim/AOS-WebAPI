@@ -7,12 +7,12 @@ using System.IO;
 using System.Collections.Generic;
 namespace WebApiCSharp.GenerateCodeFiles
 {
-    public class GenerateSolver
+    public class GenerateBlackBox
     {
         private PLPsData plpsData;
         private string projectNameWithCapitalFirstLetter;
         private static Configuration conf;
-        static GenerateSolver()
+        static GenerateBlackBox()
         {
             conf = ConfigurationService.Get();
         }
@@ -29,7 +29,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
 
 
-        public GenerateSolver(PLPsData data, InitializeProject initProj, Solver solverData)
+        public GenerateBlackBox(PLPsData data, InitializeProject initProj, Solver solverData)
         {
             int totalNumberOfActionsInProject;
             plpsData = data;
@@ -93,9 +93,6 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
 
 
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/util/mongoDB_Bridge.cpp", SolverFileTemplate.GetMongoBridgeCppFile(data));
-            GenerateFilesUtils.WriteTextFile("/home/or/myTestPybind/autoGenerate/singleFileModel.cpp", BlackBoxTemplate.GetSingleFileModel(data));
-
-            
 
         }
 
