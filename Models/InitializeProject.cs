@@ -19,6 +19,7 @@ namespace WebApiCSharp.Models
 
     public class RosTargetProject
     {
+        public string RosDistribution{get;set;}
         public string WorkspaceDirectortyPath { get; set; }
 
         public string TargetProjectLaunchFile { get; set; }

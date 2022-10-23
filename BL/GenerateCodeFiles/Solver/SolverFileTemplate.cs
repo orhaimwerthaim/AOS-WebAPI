@@ -4372,7 +4372,7 @@ private static string ListEnums(List<Assignment> assignments, string codeSection
         }
 
 
-        public static string GetEnumMapHeaderFile(PLPsData data, out Dictionary<string, Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar)
+        public static string GetEnumMapHeaderFile(PLPsData data, out Dictionary<string, Dictionary<string, string>> enumMappingsForModuleResponseAndTempVar, bool forSingleFileModel=false)
         {
             List<string> _responseModuleAndTempEnums;
             string file = @"#ifndef ENUM_MAP_" + data.ProjectName.ToUpper() + @"_H
@@ -4385,13 +4385,20 @@ private static string ListEnums(List<Assignment> assignments, string codeSection
 using namespace std;
 namespace despot
 {
-" + GetActionTypeEnum(data) + @"
+";
+file = forSingleFileModel ? "" : file;
+file +=  GetActionTypeEnum(data) + @"
 
 " + GetResponseModuleAndTempEnumsList(data, out _responseModuleAndTempEnums, out enumMappingsForModuleResponseAndTempVar) + @"
-
+";
+if(!forSingleFileModel)
+{
+    file +=@"
   struct enum_map_" + data.ProjectName + @"
   {
-" + GetCreateMapResponseEnumToString(data, _responseModuleAndTempEnums) + @"
+    ";
+}
+file += GetCreateMapResponseEnumToString(data, _responseModuleAndTempEnums) + @"
 		static map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> CreateMapStringToEnum(map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums,std::string> vecResponseEnumToString)
 	  {
           map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> m;
@@ -4404,11 +4411,17 @@ namespace despot
           return m;
         }
 
-" + GetCreateMapActionTypeEnumToString(data) + @"
+" + GetCreateMapActionTypeEnumToString(data); 
+if(forSingleFileModel)return file;
+file += @"
     static map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums,std::string> vecResponseEnumToString;
 	static map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> vecStringToResponseEnum;
 	static map<ActionType,std::string> vecActionTypeEnumToString;
 	static void Init();
+    ";
+
+
+file +=@"
   };
 
 } // namespace despot
@@ -5188,7 +5201,7 @@ std::string Prints::GetStateJson(State& _state)
 
         }
 
-        public static string GetEnumMapCppFile(PLPsData data)
+        public static string GetEnumMapCppFile(PLPsData data, bool forSingleFileModel = false)
         {
             string file = @"
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
@@ -5210,6 +5223,25 @@ namespace despot
 	}
 } // namespace despot
 ";
+
+if(forSingleFileModel)
+{
+    file = @" 
+	map<" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums, std::string> vecResponseEnumToString;
+	map<std::string, " + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums> vecStringToResponseEnum ;
+	map<ActionType,std::string> vecActionTypeEnumToString;
+
+	void InitMapEnumToString()
+	{
+		if(vecResponseEnumToString.size() > 0)
+			return; 
+
+		vecResponseEnumToString = CreateMapResponseEnumToString();
+	    vecStringToResponseEnum = CreateMapStringToEnum(vecResponseEnumToString);
+	    vecActionTypeEnumToString = CreateMapActionTypeEnumToString();
+	}
+";
+}
             return file;
         }
 
@@ -5505,11 +5537,13 @@ namespace despot {
 
 
 
-        private static string GetModelCppCreatStartStateFunction(PLPsData data, InitializeProject initProj)
+        public static string GetModelCppCreatStartStateFunction(PLPsData data, InitializeProject initProj, bool forSingleFileModel = false) //TODO: support load belief from DB
         {
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "State* " + data.ProjectNameWithCapitalLetter + "::CreateStartState(string type) const {");
-            result += GenerateFilesUtils.GetIndentationStr(1, 4, data.ProjectNameWithCapitalLetter + "State* startState = memory_pool_.Allocate();");
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "State* CreateStartState() {") : 
+                GenerateFilesUtils.GetIndentationStr(0, 4, "State* " + data.ProjectNameWithCapitalLetter + "::CreateStartState(string type) const {");
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(1, 4, "State* startState = new State();") : 
+                GenerateFilesUtils.GetIndentationStr(1, 4, data.ProjectNameWithCapitalLetter + "State* startState = memory_pool_.Allocate();");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, data.ProjectNameWithCapitalLetter + "State& state = *startState;");
 
             foreach (EnumVarTypePLP enumT in data.GlobalEnumTypes)
@@ -5520,7 +5554,7 @@ namespace despot {
                 }
             }
 
-            if (initProj.SolverConfiguration.LoadBeliefFromDB)
+            if (initProj != null && initProj.SolverConfiguration.LoadBeliefFromDB)
             {
                 result += @"
     if(" + data.ProjectNameWithCapitalLetter + @"Belief::beliefFromDB == """")
@@ -5639,7 +5673,7 @@ namespace despot {
                 }
             }
 
-            if (!initProj.SolverConfiguration.LoadBeliefFromDB)
+            if (initProj != null && !initProj.SolverConfiguration.LoadBeliefFromDB)
             {
                 result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, data.InitialBeliefAssignments, 1, 4);
                 /*foreach (Assignment assign in data.InitialBeliefAssignments)
@@ -5725,9 +5759,10 @@ namespace despot {
         }
 
         //preferred_actions_
-        private static string GetComputePreferredActionValueForModelCpp(PLPsData data)
+        public static string GetComputePreferredActionValueForModelCpp(PLPsData data, bool forSingleFileModel=false)
         {
-            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ComputePreferredActionValue(const " + data.ProjectNameWithCapitalLetter + "State& state, double &__heuristicValue, int actionId)");
+            string result = forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "void ComputePreferredActionValue(const State& state, double &__heuristicValue, int actionId)") : 
+                GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ComputePreferredActionValue(const " + data.ProjectNameWithCapitalLetter + "State& state, double &__heuristicValue, int actionId)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "__heuristicValue = 0;");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
@@ -5749,9 +5784,10 @@ namespace despot {
 
             return result;
         }
-        private static string GetCheckPreconditionsForModelCpp(PLPsData data)
+        public static string GetCheckPreconditionsForModelCpp(PLPsData data, bool forSingleFileModel=false)
         {
-            string result = GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + "State& state, double &reward, bool &__meetPrecondition, int actionId)");
+            string result = forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "void CheckPreconditions(const State& state, double &reward, bool &__meetPrecondition, int actionId)")
+                : GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(const " + data.ProjectNameWithCapitalLetter + "State& state, double &reward, bool &__meetPrecondition, int actionId)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "__meetPrecondition = true;");
@@ -5810,10 +5846,11 @@ namespace despot {
         }
 
 
-        private static string GetProcessSpecialStatesFunction(PLPsData data)
+        public static string GetProcessSpecialStatesFunction(PLPsData data, bool forSingleFileModel = false)
         {
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "bool " + data.ProjectNameWithCapitalLetter + "::ProcessSpecialStates(" + data.ProjectNameWithCapitalLetter + "State &state, double &reward) const");
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "bool ProcessSpecialStates(State &state, double &reward)") : 
+                GenerateFilesUtils.GetIndentationStr(0, 4, "bool " + data.ProjectNameWithCapitalLetter + "::ProcessSpecialStates(" + data.ProjectNameWithCapitalLetter + "State &state, double &reward) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "bool isFinalState = false;");
             for (int i = 0; i < data.SpecialStates.Count; i++)
@@ -5928,11 +5965,14 @@ namespace despot {
             }
             return result;
         }
-        private static string GetModuleDynamicModelFunction(PLPsData data)
+        public static string GetModuleDynamicModelFunction(PLPsData data, bool forSingleFileModel=false)
         {
             string constS = data.OneStateModel ? "" : "const ";
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::ModuleDynamicModel(" + constS +
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "void ModuleDynamicModel(" + constS +
+                "State &state, " + constS + @"State &state_, State &state__, int actionId, double &__reward, OBS_TYPE &observation, "+
+                "const int &__moduleExecutionTime, const bool &__meetPrecondition)")
+                : GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::ModuleDynamicModel(" + constS +
                 data.ProjectNameWithCapitalLetter + "State &state, " + constS + data.ProjectNameWithCapitalLetter + @"State &state_, " +
                 data.ProjectNameWithCapitalLetter + "State &state__, double rand_num, int actionId, double &__reward, OBS_TYPE &observation, const int &__moduleExecutionTime, const bool &__meetPrecondition) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
@@ -5972,8 +6012,10 @@ namespace despot {
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(__moduleResponseStr != \"NoStrResponse\")");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums responseHash = ("+ data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums)hasher(__moduleResponseStr);");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_"+data.ProjectName+"::vecResponseEnumToString[responseHash] = __moduleResponseStr;");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_"+data.ProjectName+"::vecStringToResponseEnum[__moduleResponseStr] = responseHash;");
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(2, 4, "vecResponseEnumToString[responseHash] = __moduleResponseStr;")
+                : GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_"+data.ProjectName+"::vecResponseEnumToString[responseHash] = __moduleResponseStr;");
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(2, 4, "vecStringToResponseEnum[__moduleResponseStr] = responseHash;") 
+                : GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_"+data.ProjectName+"::vecStringToResponseEnum[__moduleResponseStr] = responseHash;");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "__moduleResponse = responseHash;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
 
@@ -5988,12 +6030,13 @@ namespace despot {
             return result;
         }
         
-        private static string GetExtrinsicChangesDynamicModelFunction(PLPsData data)
+        public static string GetExtrinsicChangesDynamicModelFunction(PLPsData data, bool forSingleFileModel=false)
         {
             string result = "";
             
             string constS = data.OneStateModel ? "" : "const ";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(" + constS + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, const int &__moduleExecutionTime,  double &__reward)  const");
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "void ExtrinsicChangesDynamicModel(" + constS + @"State& state, State& state_, int actionId, const int &__moduleExecutionTime,  double &__reward)") 
+                : GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + @"::ExtrinsicChangesDynamicModel(" + constS + data.ProjectNameWithCapitalLetter + @"State& state, " + data.ProjectNameWithCapitalLetter + @"State& state_, double rand_num, int actionId, const int &__moduleExecutionTime,  double &__reward)  const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actionType = ActionManager::actions[actionId]->actionType;");
             
@@ -6003,10 +6046,11 @@ namespace despot {
             return result;
         }
 
-        private static string GetSampleModuleExecutionTimeFunction(PLPsData data)
+        public static string GetSampleModuleExecutionTimeFunction(PLPsData data, bool forSingleFileModel=false)
         {
             string result = "";
-            result += GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::SampleModuleExecutionTime(const " + data.ProjectNameWithCapitalLetter + "State& farstate, double rand_num, int actionId, int &__moduleExecutionTime) const");
+            result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "void SampleModuleExecutionTime(const State& farstate, int actionId, int &__moduleExecutionTime)") 
+                : GenerateFilesUtils.GetIndentationStr(0, 4, "void " + data.ProjectNameWithCapitalLetter + "::SampleModuleExecutionTime(const " + data.ProjectNameWithCapitalLetter + "State& farstate, double rand_num, int actionId, int &__moduleExecutionTime) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "ActionType &actType = ActionManager::actions[actionId]->actionType;");
             foreach (PLP plp in data.PLPs.Values)
@@ -6491,12 +6535,34 @@ void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int 
 
         next_state_hash = hasher(Prints::PrintState(ir_state));
     }
+" + GetCPPStepFunction(data) 
+ + GetCheckPreconditionsForModelCpp(data) + Environment.NewLine +
+ GetComputePreferredActionValueForModelCpp(data) + Environment.NewLine +
+ GetSampleModuleExecutionTimeFunction(data) + Environment.NewLine +
+ GetExtrinsicChangesDynamicModelFunction(data) + Environment.NewLine +
+ GetModuleDynamicModelFunction(data) + Environment.NewLine +
+ GetProcessSpecialStatesFunction(data) + Environment.NewLine + @"
 
-bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
+
+
+std::string " + data.ProjectNameWithCapitalLetter + @"::PrintObs(int action, OBS_TYPE obs) const 
+{
+	return Prints::PrintObs(action, obs);
+}
+
+std::string " + data.ProjectNameWithCapitalLetter + @"::PrintStateStr(const State &state) const { return """"; };
+}// namespace despot
+";
+
+            return file;
+        }
+
+public static string GetCPPStepFunction(PLPsData data, bool forSingleFileModel=false, bool forCppToPython = false)
+{
+    string file = "bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
 	OBS_TYPE& observation) const {
     observation = default_moduleResponse;
     reward = 0;
-	bool isNextStateFinal = false;
 	Random random(rand_num);
 	int __moduleExecutionTime = -1;
 	bool meetPrecondition = false;
@@ -6578,27 +6644,107 @@ file +=@"
 	return finalState;
 }
 
-" + GetCheckPreconditionsForModelCpp(data) + Environment.NewLine +
- GetComputePreferredActionValueForModelCpp(data) + Environment.NewLine +
- GetSampleModuleExecutionTimeFunction(data) + Environment.NewLine +
- GetExtrinsicChangesDynamicModelFunction(data) + Environment.NewLine +
- GetModuleDynamicModelFunction(data) + Environment.NewLine +
- GetProcessSpecialStatesFunction(data) + Environment.NewLine + @"
+";
+    
 
+    if(forSingleFileModel)
+    {
+        file = forCppToPython ? "std::tuple<double, OBS_TYPE, bool> Step(State& state__, int actionId) {" 
+            : @"bool Step(State& state__, int actionId, double& reward,
+	OBS_TYPE& observation) {";
+    
+    file += forCppToPython 
+        ? "    OBS_TYPE observation = default_moduleResponse;"
+        : "    observation = default_moduleResponse;";
 
+    file += forCppToPython 
+        ? "    double reward=0;"
+        : "    reward=0;";
 
-std::string " + data.ProjectNameWithCapitalLetter + @"::PrintObs(int action, OBS_TYPE obs) const 
-{
-	return Prints::PrintObs(action, obs);
+    file+= @" 
+	int __moduleExecutionTime = -1;
+	bool meetPrecondition = false;
+	double tReward = 0;
+ 
+	CheckPreconditions(state__, reward, meetPrecondition, actionId);
+	";
+    if(!data.HasExtrinsicChanges || data.OneStateModel)
+    {
+        file += @"State *p_state = &state__;
+    State state = *p_state;
+	//" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
+    SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
+   ";
+   file += data.HasExtrinsicChanges ? "ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime, tReward);": "//no ExtrinsicChangesDynamicModel";
+    }
+    else
+    {
+        file+= @"State *p_state = CopyToState(&state__, afterExtState);//Copy(&s_state__);
+        State state = *p_state;
+	//" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
+
+	
+	SampleModuleExecutionTime(state__, actionId, __moduleExecutionTime);
+
+	ExtrinsicChangesDynamicModel(state, state__, actionId, __moduleExecutionTime, tReward);";
+    }
+
+    file +=@"
+    reward += tReward;
+    tReward = 0;
+    ";
+
+    if(!data.HasDynamicModelChanges || data.OneStateModel)
+    {
+        file +=@"
+
+	State *p_state_ = &state__;
+    State state_ = *p_state_;
+	//" + data.ProjectNameWithCapitalLetter + @"State &state_ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state_);
+
+	";
+    file +=data.HasDynamicModelChanges ? @"ModuleDynamicModel(state, state_, state__, actionId, tReward, observation, __moduleExecutionTime, meetPrecondition);
+    " : @"//No skill have ModuleDynamicModel
+    ";
+
+    }
+    else
+    {
+        file +=@"
+
+	//State *s_state_ = Copy(&s_state__);
+    State *p_state_ = CopyToState(&state__, afterExtState);
+    State state_=*p_state_;
+	//" + data.ProjectNameWithCapitalLetter + @"State &state_ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state_);
+
+    
+	ModuleDynamicModel(state, state_, state__, actionId, tReward,
+					   observation, __moduleExecutionTime, meetPrecondition);
+    ";    
+    }
+
+    file +=@"
+	";
+file+= (!data.HasDynamicModelChanges || data.OneStateModel) ? "" : @"
+    //delete s_state_;";
+
+file+= (!data.HasExtrinsicChanges || data.OneStateModel) ? "" : @"
+    //delete s_state;";
+
+file +=@"
+	reward += tReward;
+	bool finalState = ProcessSpecialStates(state__, reward);
+    state__.__isTermianl = state__.__isTermianl || finalState;
+
+";
+file += forCppToPython ? "return std::make_tuple(reward, observation, finalState);" : "return finalState;";
+file+=@" 
 }
 
-std::string " + data.ProjectNameWithCapitalLetter + @"::PrintStateStr(const State &state) const { return """"; };
-}// namespace despot
 ";
-
-            return file;
-        }
-
+    }
+    return file;
+}
         private static string GetSetObjectRefenceForCopyFunction(PLPsData data)
         {
             string result = "";

@@ -44,6 +44,7 @@ namespace WebApiCSharp.Controllers
             initProj.SolverConfiguration = (initProj.SolverConfiguration == null) ? new SolverConfiguration() : initProj.SolverConfiguration;
             initProj.RunWithoutRebuild = initProj.RunWithoutRebuild == null ? false : initProj.RunWithoutRebuild;
             initProj.OnlyGenerateCode ??= false;
+            initProj.RosTarget.RosDistribution ??= "kinetic";
             initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB =
                 initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB > initProj.SolverConfiguration.NumOfParticles ?
                     initProj.SolverConfiguration.NumOfParticles :

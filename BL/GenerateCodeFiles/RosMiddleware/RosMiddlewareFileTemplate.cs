@@ -640,8 +640,8 @@ include_directories(
     }
         public static string GetAosRosMiddlewareNodeFile(PLPsData data, InitializeProject initProj)
         {
-
-            string file = @"#!/usr/bin/python
+            string pythonVersion = initProj.RosTarget.RosDistribution == "kinetic" ? "python" : "python3"; 
+            string file = @"#!/usr/bin/"+pythonVersion+@"
 import datetime
 import rospy  
 import pymongo

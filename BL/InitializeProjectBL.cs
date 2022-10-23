@@ -65,13 +65,18 @@ catkin_make";
             return file;
         }
 
-        private static string GetBuildSolverBashFile()
+        private static string GetBuildSolverBashFile(string projectName)
         {
+
             string homePath = System.Environment.GetEnvironmentVariable("HOME");
             string buildType = "Release";//"Debug"  
-            string file = @"#!/bin/bash
+            /*string file = @"#!/bin/bash
 
 /opt/cmake-3.19.8-Linux-x86_64/bin/cmake --build "+homePath+@"/AOS/AOS-Solver/build --config "+buildType+ @" --target all -j 14 --
+";*/
+string file = @"#!/bin/bash
+
+cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despot_"+projectName+@" -j 10 --
 ";
             return file;
         }
@@ -100,14 +105,17 @@ catkin_make";
             }
             catch(Exception e)
             {
-               throw new Exception("There were build errors in the AOS-Solver! How to fix: 1)try to build manually, 2)find the errors, 3)correct your documentation accordingly.");
+               throw new Exception("There were build errors in the AOS-Solver! How to fix: 1)try to build manually, 2)find the errors, 3)correct your documentation accordingly. (Error:"+e.Message+")." );
             }
         }
-        private static string BuildAosSolver()
+        private static string BuildAosSolver(PLPsData data)
         {
-            Directory.Delete(configuration.SolverPath + "/build/examples",true);//delete old builds
+            if(Directory.Exists(configuration.SolverPath + "/build/examples"))
+            {
+                Directory.Delete(configuration.SolverPath + "/build/examples",true);//delete old builds
+            }
             countdownEvent = new CountdownEvent(1);
-            GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/BuildSolverWrapper.sh", GetBuildSolverBashFile(), false);
+            GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/BuildSolverWrapper.sh", GetBuildSolverBashFile(data.ProjectName), false);
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
                 WorkingDirectory = configuration.SolverPath,// "/home/.../AOS-Solver",
@@ -217,7 +225,7 @@ catkin_make";
 
                     if (!initProj.OnlyGenerateCode.Value)
                     {
-                        buildOutput = BuildAosSolver();
+                        buildOutput = BuildAosSolver(plpData);
 
 
 
