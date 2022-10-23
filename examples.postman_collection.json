@@ -1,0 +1,783 @@
+{
+	"info": {
+		"_postman_id": "1f577f51-7f61-4697-bf8d-77fa4f80dc54",
+		"name": "Test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "initialize Project",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/ICAPS_Toy\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":5234,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":2\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize Project turtlebot",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/AOS/AOS-experiments/AdditionalExamples/turtleBotVisitLocations_noetic\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/simple_navigation_goals/launch/turtleBot3Exp_neotic.launch\",\n        \"RosTargetProjectPackages\":[\"simple_navigation_goals\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":0.5,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize Project turtlebot seminar demo",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/turtleBotVisitLocations\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/simple_navigation_goals/launch/turtleBot3Exp.launch\",\n        \"RosTargetProjectPackages\":[\"simple_navigation_goals\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":0.5,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize Project turtlebot PO",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/turtleBotVisitLocationsPO\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/simple_navigation_goals/launch/turtleBot3Exp.launch\",\n        \"RosTargetProjectPackages\":[\"simple_navigation_goals\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":0.5,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize Project turtlebot PO Noisy",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/turtleBotVisitLocationsPONoisy\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/simple_navigation_goals/launch/turtleBot3Exp.launch\",\n        \"RosTargetProjectPackages\":[\"simple_navigation_goals\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":true,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Temp for poster",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/turtleBotVisitLocationsPONoisy\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/simple_navigation_goals/launch/turtleBot3Exp.launch\",\n        \"RosTargetProjectPackages\":[\"simple_navigation_goals\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":true,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize Project turtleBot visitEveryPointTwice",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/turtleBotVisitLocationsPO\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/simple_navigation_goals/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"simple_navigation_goals\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":5234,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":true,\n        \"PlanningTimePerMoveInSeconds\":0.05,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize Project Debug",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/ICAPS_Toy\",\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{\n            \"SearchDepth\":45, \n        \"DiscountFactor\":0.988,\n        \"ActionsToSimulate\":[8,9,6,6,11,11,4,4,8,8,7,11,11,5],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":5.5\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Test Bp integer model Problem",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/Bp model with integers\",\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{  \n        \"Verbosity\":true,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":true,\n        \"PlanningTimePerMoveInSeconds\":2\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Test Bp integer model harder Problem",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/Bp model with integers\",\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{  \n        \"Verbosity\":true,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":true,\n        \"PlanningTimePerMoveInSeconds\":2\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Test Bp Problem",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/Bp\",\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{  \n        \"Verbosity\":true,\n        \"ActionsToSimulate\":[2,3],\n        \"IsInternalSimulation\":true,\n        \"PlanningTimePerMoveInSeconds\":1\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Test Bp Problem Debug",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/Bp\",\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{\n        \"ActionsToSimulate\":[8,9,6,6,11,11,4,4,8,8,7,11,11,5],\n        \"IsInternalSimulation\":true,\n        \"PlanningTimePerMoveInSeconds\":2\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Solver Actions",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/ICAPS_Toy\",\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/SolverAction",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"SolverAction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "test2",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/ICAPS_Toy\",\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{\n            \"SearchDepth\":45, \n        \"DiscountFactor\":0.988,\n        \"ActionsToSimulate\":[0],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":5.5\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update localVariable",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"varName\" : \"observedLocation\",\n    \"value\" : {\n        \"y\" : 2.20000004768372,\n        \"x\" : 2.0,\n        \"z\" : 5.0\n    },\n    \"module\" : \"observe\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/localvariable",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"localvariable"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "tornado API activate action",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"serviceName\":\"/turtle1/teleport_absolute\",\n    \"variables\":[{\"variableName\":\"x\", \"value\":1, \"type\":\"int\"},\n    {\"variableName\":\"y\", \"value\":2, \"type\":\"int\"},\n    {\"variableName\":\"theta\", \"value\":0.4, \"type\":\"int\"} ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3021/activate_action",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3021",
+					"path": [
+						"activate_action"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get LocalVariable",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/localvariable/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"localvariable",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Solvers",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/localvariable/{5}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"localvariable",
+						"{5}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Stop Robot",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/solver",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"solver"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "initialize Project IROS1",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/iros1/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/robotican_demos_upgrade/launch/iros_sim1.launch\",\n        \"RosTargetProjectPackages\":[\"robotican_demos_upgrade\",\"armadillo_navigation_upgrade\"],\n        \"TargetProjectInitializationTimeInSeconds\":15\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "IROS1 Pick baseline",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/iros_pick_base/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/robotican_demos_upgrade/launch/iros_pick.launch\",\n        \"RosTargetProjectPackages\":[\"robotican_demos_upgrade\",\"armadillo_navigation_upgrade\"],\n        \"TargetProjectInitializationTimeInSeconds\":30\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":3,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "IROS1 Pick baseline model2",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/better armadillo model/iros_pick_base_better_model/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/robotican_demos_upgrade/launch/iros_pick.launch\",\n        \"RosTargetProjectPackages\":[\"robotican_demos_upgrade\",\"armadillo_navigation_upgrade\"],\n        \"TargetProjectInitializationTimeInSeconds\":37\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":3,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "IROS1 Pick enhanced",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/iros_pick_enhanced/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/robotican_demos_upgrade/launch/iros_pick.launch\",\n        \"RosTargetProjectPackages\":[\"robotican_demos_upgrade\",\"armadillo_navigation_upgrade\"],\n        \"TargetProjectInitializationTimeInSeconds\":30\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":3,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":false\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "IROS1 Pick enhanced model2",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/better armadillo model/iros_pick_enhanced_better_model/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/robotican_demos_upgrade/launch/iros_pick.launch\",\n        \"RosTargetProjectPackages\":[\"robotican_demos_upgrade\",\"armadillo_navigation_upgrade\"],\n        \"TargetProjectInitializationTimeInSeconds\":30\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":3,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":false\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "IROS1 Pick base no observations",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/iros_pick_base_no_observations/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/robotican_demos_upgrade/launch/iros_pick.launch\",\n        \"RosTargetProjectPackages\":[\"robotican_demos_upgrade\",\"armadillo_navigation_upgrade\"],\n        \"TargetProjectInitializationTimeInSeconds\":30\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":false\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":false\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "IROS1 Pick no observations model2",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/better armadillo model/iros_pick_base_better_model_no_observations/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/robotican_demos_upgrade/launch/iros_pick.launch\",\n        \"RosTargetProjectPackages\":[\"robotican_demos_upgrade\",\"armadillo_navigation_upgrade\"],\n        \"TargetProjectInitializationTimeInSeconds\":30\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":false\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":false\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Execution Outcome",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/ExecutionOutcome?belief_size=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"ExecutionOutcome"
+					],
+					"query": [
+						{
+							"key": "belief_size",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "IROS panda tic tac toe",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/experiments/panda_tic_tac_toe/plps\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":false,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/panda_demo/launch/panda_demo.launch\",\n        \"RosTargetProjectPackages\":[\"panda_demo\",\"realsense2_camera\"],\n        \"TargetProjectInitializationTimeInSeconds\":7\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":40234,\n        \"NumOfBeliefStateParticlesToSaveInDB\":1,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":1,\n        \"DebugOn\":true\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
