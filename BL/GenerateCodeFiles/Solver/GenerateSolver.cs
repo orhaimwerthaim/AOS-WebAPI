@@ -94,7 +94,7 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
 
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/util/mongoDB_Bridge.cpp", SolverFileTemplate.GetMongoBridgeCppFile(data));
             GenerateFilesUtils.WriteTextFile(CppCorePath  + "/aos_domain.cpp", BlackBoxTemplate.GetSingleFileModel(data, false));
-            GenerateFilesUtils.WriteTextFile("/home/or/myTestPybind/autoGenerate/aos_domain_for_python.cpp", BlackBoxTemplate.GetSingleFileModel(data, true));
+            //GenerateFilesUtils.WriteTextFile("/home/or/myTestPybind/autoGenerate/aos_domain_for_python.cpp", BlackBoxTemplate.GetSingleFileModel(data, true));
 
             
 
