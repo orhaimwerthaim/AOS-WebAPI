@@ -61,7 +61,8 @@ pwd
             string file = @"#!/bin/bash
 
 cd " + initProj.RosTarget.WorkspaceDirectortyPath + @"
-catkin_make";
+catkin_make
+source ~/.bashrc";
             return file;
         }
 
@@ -330,6 +331,7 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
             countdownEvent.Wait();
             string buildOutputRos = buildOutput.ToString();
             buildOutputRos = buildOutputRos.Contains("[100%] Built target") ? "[100%] Built target" : buildOutputRos;
+
             return buildOutputRos;
         }
         private static List<String> LoadPLPs(string pLPsDirectoryPath, out List<string> remarks)
