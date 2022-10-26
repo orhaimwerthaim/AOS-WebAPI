@@ -200,7 +200,7 @@ cd ~/AOS/AOS-Solver
 dotnet build ~/AOS/AOS-WebAPI/WebApiCSharp.csproj /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary
  
 echo 'You should manually:'
-echo '    1) type "code" and then Install VSCode extensions "C/C++ for Visual Studio Code", "CMake Tools"'
+echo '    1) from (~/AOS/AOS-Solver) type "code" and then Install VSCode extensions "C/C++ for Visual Studio Code", "CMake Tools"'
 echo '"CMake Tools"'
 echo 'Open VSCode click ctl+shift+p and write "cmake:configure", click it and select debuger'
 echo '    2)POSTMAN from https://www.postman.com/downloads/ '
