@@ -6572,11 +6572,15 @@ public static string GetCPPStepFunction(PLPsData data, bool forSingleFileModel=f
 	 logd << ""[" + data.ProjectNameWithCapitalLetter + @"::Step] Selected Action:"" << Prints::PrintActionDescription(ActionManager::actions[actionId]) << ""||State""<< Prints::PrintState(state__);
 	CheckPreconditions(state__, reward, meetPrecondition, actionId);
 	";
+    string randNumS= forCppToPython ? "" : ", rand_num";
     if(!data.HasExtrinsicChanges || data.OneStateModel)
     {
         file += @"State *s_state = &s_state__;
 	" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
-    SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
+    ";
+    
+file+= "SampleModuleExecutionTime(state__"+randNumS+@", actionId, __moduleExecutionTime);
+
    ";
    file += data.HasExtrinsicChanges ? "ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime, tReward);": "//no ExtrinsicChangesDynamicModel";
     }
@@ -6586,7 +6590,7 @@ public static string GetCPPStepFunction(PLPsData data, bool forSingleFileModel=f
 	" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
 
 	
-	SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
+	SampleModuleExecutionTime(state__"+randNumS+@", actionId, __moduleExecutionTime);
 
 	ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime, tReward);";
     }
@@ -6673,7 +6677,7 @@ file +=@"
         file += @"State *p_state = &state__;
     State state = *p_state;
 	//" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
-    SampleModuleExecutionTime(state__, rand_num, actionId, __moduleExecutionTime);
+    SampleModuleExecutionTime(state__"+randNumS+@", actionId, __moduleExecutionTime);
    ";
    file += data.HasExtrinsicChanges ? "ExtrinsicChangesDynamicModel(state, state__, rand_num, actionId, __moduleExecutionTime, tReward);": "//no ExtrinsicChangesDynamicModel";
     }
@@ -6684,7 +6688,7 @@ file +=@"
 	//" + data.ProjectNameWithCapitalLetter + @"State &state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*s_state);
 
 	
-	SampleModuleExecutionTime(state__, actionId, __moduleExecutionTime);
+	SampleModuleExecutionTime(state__"+randNumS+@", actionId, __moduleExecutionTime);
 
 	ExtrinsicChangesDynamicModel(state, state__, actionId, __moduleExecutionTime, tReward);";
     }

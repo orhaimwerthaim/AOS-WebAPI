@@ -38,6 +38,9 @@ if(forCppToPython)
 #include <locale>
 #include <sys/time.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/complex.h>
+#include <pybind11/chrono.h> 
 #include <tuple>
 #include <string>
 namespace py = pybind11;";
@@ -142,6 +145,20 @@ SolverFileTemplate.GetCheckPreconditionsForModelCpp(data, true) + Environment.Ne
  if(forCppToPython)
  {
  file +=@"
+
+ vector<std::string> PrintActionsDescription()
+{
+    stringstream ss;
+    vector<std::string> res;
+    for(int i=0; i < ActionManager::actions.size();i++)
+    {
+        ss << Prints::PrintActionDescription(ActionManager::actions[i]) << endl;
+        res.push_back(Prints::PrintActionDescription(ActionManager::actions[i]));
+    }
+    //return ss.str();
+    return res;
+}
+
 PYBIND11_MODULE(aos_domain, m) {
     
     py::class_<State>(m, ""State"")
@@ -153,6 +170,7 @@ PYBIND11_MODULE(aos_domain, m) {
     m.def(""init_env"", &InitEnv, ""A function that adds two numbers"");
     m.def(""create_state"", &CreateStartState, ""create a new state that is sampled from the initial belief state"");
     m.def(""step"", &Step, ""samples the next state given the current one"");
+    m.def(""print_actions"", &PrintActionsDescription, ""print actions description"");
 }
 ";
  }
