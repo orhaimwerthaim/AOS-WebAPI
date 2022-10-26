@@ -232,18 +232,7 @@ The AOS is automatically integrating the user code. The user only needs to send 
 
 ## AOS Installtion
 #### Requirements
-* Ubuntu 16.04
-#### Install dependencies
-* [MongoDB](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/) 
-* [Postman](https://www.postman.com/downloads/)
-* Load DB (run this command from the AOS.archive directory)</br>
-`mongorestore -v --nsFrom "AOS.*" --nsTo "AOS.*" --uri="mongodb://localhost:27017/" --archive="AOS.archive"`
-
-#### Download code:
-* Download the AOS Web API </br>
-`git clone https://github.com/orhaimwerthaim/AOS-WebAPI` 
-
-* Download the Planning Engine base into your <_planning engine directory_> </br>
-`git clone https://github.com/orhaimwerthaim/AOS-Solver`
-
-...TBD
+* Ubuntu 20.04
+#### Installtion Steps
+* run bash script "AOS_ubuntu20_install_v5.bash" 
+* (optional) run bash script "ROS1_noetic_install.bash"
