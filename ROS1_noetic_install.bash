@@ -27,6 +27,7 @@ rosdep update
 
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/
+source ~/.bashrc
 catkin_make
 
 
