@@ -173,8 +173,8 @@ yes| sudo apt update
 yes| sudo apt install code 
 
 
-echo 'Install Postman takes a few minutes'
-yes| sudo snap install postman
+#echo 'Install Postman takes a few minutes'
+#yes| sudo snap install postman
 
 
 echo 'Install .NET framework'
