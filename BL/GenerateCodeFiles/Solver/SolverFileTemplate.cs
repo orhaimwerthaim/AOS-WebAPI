@@ -310,7 +310,7 @@ struct Config {
 		pomdpFilePath(""sarsop/examples/POMDP/auto_generate.pomdp""),
         solveProblemWithClosedPomdpModel(" + initProj.SolverConfiguration.SolveClosedPOMDP_model.ToString().ToLower() + @"),
         solverId(" + solverData.SolverId + @"),
-		search_depth(" + data.Horizon + @"),
+		search_depth(" + (data.Horizon+1) + @"),
 		discount(" + data.Discount + @"),
 		root_seed(42),
 		time_per_move(" + initProj.SolverConfiguration.PlanningTimePerMoveInSeconds + @"),
@@ -983,7 +983,7 @@ int POMCP::Count(const VNode* vnode) {
 VNode* POMCP::CreateVNode(int depth, const State* state, POMCPPrior* prior,
 	const DSPOMDP* model) {
 	VNode* vnode = new VNode(0, 0.0, depth);
-
+/*
 	prior->ComputePreference(*state);
 
 	const vector<int>& preferred_actions = prior->preferred_actions();
@@ -993,14 +993,14 @@ VNode* POMCP::CreateVNode(int depth, const State* state, POMCPPrior* prior,
 	double neg_infty = -1e10;
 
 	if (legal_actions.size() == 0) { // no prior knowledge, all actions are equal
-		for (int action = 0; action < model->NumActions(); action++) {
+*/		for (int action = 0; action < model->NumActions(); action++) {
 			QNode* qnode = new QNode(vnode, action);
 			qnode->count(0);
 			qnode->value(0);
 
 			vnode->children().push_back(qnode);
 		}
-	} else {
+/*	} else {
 		for (int action = 0; action < model->NumActions(); action++) {
 			QNode* qnode = new QNode(vnode, action);
 			qnode->count(large_count);
@@ -1022,7 +1022,7 @@ VNode* POMCP::CreateVNode(int depth, const State* state, POMCPPrior* prior,
 			qnode->value(prior->SmartValue(action));
 		}
 	}
-
+*/
 	return vnode;
 }
 
@@ -1388,11 +1388,11 @@ std::string POMCP::GenerateDebugJson(VNode* root, int depthLimit, const DSPOMDP*
 	POMCP::GenerateDebugJsonVnode(root, ssNodes, depthLimit, model_);
 
 	
-	ofstream MyFile(""/home/or/Projects/debug.json"");
+	ofstream MyFile(""" + debugPDF_Path + @"/debug.json"");
 	MyFile << ssNodes.str();
 	MyFile.close();
 	//run: ""dot -Tpdf  debug.dot > debug.pdf""
-	system(""(cd /home/or/Projects;dot -Tpdf  debug.dot > debug.pdf)"");
+	system(""(cd " + debugPDF_Path + @";dot -Tpdf  debug.dot > debug.pdf)"");
 	return ssNodes.str();
 }
 
@@ -5442,6 +5442,7 @@ namespace despot {
                 result += GenerateFilesUtils.GetIndentationStr(3, 4, "return \"" + plpName + "Action\";");
             }
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "return \"\";");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
             return result;
         }
@@ -5460,6 +5461,7 @@ namespace despot {
                     result += GenerateFilesUtils.GetIndentationStr(4, 4, "return \"" + val + "\";");
                 }
                 result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
+                result += GenerateFilesUtils.GetIndentationStr(2, 4, "return \"\";" + Environment.NewLine);
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "}" + Environment.NewLine);
             }
             return result;
@@ -6256,7 +6258,7 @@ namespace despot {
 "+data.ProjectNameWithCapitalLetter+@" "+data.ProjectNameWithCapitalLetter+@"::gen_model;
 
 std::uniform_real_distribution<float> AOSUtils::real_unfirom_dist(0.0,1.0);
-std::default_random_engine AOSUtils::generator;
+std::default_random_engine AOSUtils::generator(std::random_device{}());
 
 int AOSUtils::SampleDiscrete(vector<float> weights)
 {
@@ -6286,9 +6288,8 @@ int AOSUtils::SampleDiscrete(vector<double> weights)
 
 bool AOSUtils::Bernoulli(double p)
 {
-	/* generate secret number between 1 and 100: */ 
-	int randInt = rand() % 100 + 1;
-	return (p * 100) >= randInt;
+    float rand = real_unfirom_dist(generator);
+	return rand < p;
 }
 std::hash<std::string> " + data.ProjectNameWithCapitalLetter + @"::hasher;
 /* ==============================================================================

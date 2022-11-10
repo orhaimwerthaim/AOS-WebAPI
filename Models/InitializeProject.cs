@@ -41,6 +41,7 @@ namespace WebApiCSharp.Models
 
     public class SolverConfiguration
     {
+        public int PolicyGraphDepth{get;set;}
         public int limitClosedModelHorizon_stepsAfterGoalDetection{get;set;}
         public bool SolveClosedPOMDP_model { get; set; } 
         public float OfflineSolverTimeLimitInSeconds { get; set; } 

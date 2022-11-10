@@ -10,7 +10,7 @@ namespace WebApiCSharp.Services
         static ConfigurationService()
         {
             string homePath = System.Environment.GetEnvironmentVariable("HOME");
-            configuration = new Configuration() { SolverPath = homePath+"/AOS/AOS-Solver", SolverGraphPDF_DirectoryPath = homePath+"/AOS", SolverGraphPDF_Depth = 1 };
+            configuration = new Configuration() { SolverPath = homePath+"/AOS/AOS-Solver", SolverGraphPDF_DirectoryPath = homePath+"/AOS"};
         }
 
 
