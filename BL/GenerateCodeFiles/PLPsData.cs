@@ -497,14 +497,14 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
             List<string> tempErrors = new List<string>();
 
             tempErrors.Clear();
-            List<Assignment> extrinsicChangesDynamicModel = LoadAssignment(environmentPLP["ExtrinsicChangesDynamicModel"].AsBsonArray, environmentPLP_Name,
+            List<Assignment> extrinsicChangesDynamicModel = !environmentPLP.Contains("ExtrinsicChangesDynamicModel") ? new List<Assignment>() : LoadAssignment(environmentPLP["ExtrinsicChangesDynamicModel"].AsBsonArray, environmentPLP_Name,
                 PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.eAfterExtrinsicChangesState);
             errors.AddRange(tempErrors);
             ExtrinsicChangesDynamicModel.AddRange(extrinsicChangesDynamicModel);
 
 
             tempErrors.Clear();
-            List<Assignment> initialBeliefStateAssignments = LoadAssignment(environmentPLP["InitialBeliefStateAssignments"].AsBsonArray, environmentPLP_Name,
+            List<Assignment> initialBeliefStateAssignments = !environmentPLP.Contains("InitialBeliefStateAssignments") ? new List<Assignment>() : LoadAssignment(environmentPLP["InitialBeliefStateAssignments"].AsBsonArray, environmentPLP_Name,
                 PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.ePreviousState);
             errors.AddRange(tempErrors);
             InitialBeliefAssignments.AddRange(initialBeliefStateAssignments);
@@ -547,6 +547,8 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
         private void GetEnvironmentTypes(out List<string> errors)
         {
             errors = new List<string>();
+            if(environmentPLP.Contains("GlobalVariableTypes"))
+            {
             foreach (BsonValue bVal in environmentPLP["GlobalVariableTypes"].AsBsonArray)
             {
                 BsonDocument doc = bVal.AsBsonDocument;
@@ -585,6 +587,7 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                         BaseGlobalVarTypes.Add(comp);
                         break;
                 }
+            }
             }
         }
 
