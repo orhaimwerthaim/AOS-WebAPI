@@ -82,8 +82,11 @@ namespace WebApiCSharp.Services
             List<ModuleResponse> responses, List<BsonDocument> belief, List<SolverAction> solverActions)
         { 
             if(actions.Count < actionSequenceId)return null;
-            string actionJson = actions[actionSequenceId - 1].ToJson();
-            string beliefJson = (belief.Count < actionSequenceId) ? "{\"BeliefeState\":[]}" : belief[actionSequenceId - 1].ToJson();
+            //string actionJson = actions[actionSequenceId - 1].ToJson();
+            string actionJson = actions.Where<BsonDocument>(x=> x["ActionSequenceId"] == actionSequenceId).LastOrDefault().ToJson();
+            string beliefJson = belief.Where<BsonDocument>(x=> x["ActionSequnceId"] == actionSequenceId).LastOrDefault().ToJson();
+
+            //string beliefJson = (belief.Count < actionSequenceId) ? "{\"BeliefeState\":[]}" : belief[actionSequenceId - 1].ToJson();
             List<ModuleResponse> actionResponses = responses.Where(x => x.ActionSequenceId.Equals(actionSequenceId)).ToList();
             ModuleResponse actionResponse = actionResponses.FirstOrDefault();
             bool middlewareRecievedAction = actionResponse != null;
