@@ -7,8 +7,9 @@
   - [EnvironmentGeneral section](#environmentgeneral)
   - [GlobalVariableTypes section](#globalvariabletypes)
   - [GlobalVariablesDeclaration section](#globalvariablesdeclaration)
-  - [InitialBeliefStateAssignments section](#initialbeliefstateassignments)
+  - [ExtrinsicChangesDynamicModel](#extrinsicchangesdynamicmodel)
     - [Assignments blocks](#assignments-blocks) 
+  - [InitialBeliefStateAssignments section](#initialbeliefstateassignments)
   - [SpecialStates section](#specialstates)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
@@ -200,6 +201,16 @@ Example:</br>
 	    "IsOneTimeReward":true
         }
     ],
+```
+## ExtrinsicChangesDynamicModel
+This section uses to define extrinsic changes. These are changes that the robot did not invoke by its skills. For example, let's say there is a probability that it will start to rain, making the floor wet and making it harder to navigate. The agent did not invoke the rain, but it affected the robot's decisions.</br>
+Example (this section is an Assinment block [see](#assignments-blocks))
+```
+"ExtrinsicChangesDynamicModel": [
+        {
+            "AssignmentCode": "if (AOS.Bernoulli(0.05)) state_.robotLocation.discrete = -1;"
+        }
+    ]
 ```
 
 
