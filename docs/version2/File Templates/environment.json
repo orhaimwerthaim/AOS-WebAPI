@@ -1,19 +1,9 @@
 {
-    "PlpMain": { 
-    },
-    "EnvironmentGeneral": {  
-    },
-    "GlobalVariableTypes": [
-    ],
-    "GlobalVariablesDeclaration": [
-        
-    ],
-    "InitialBeliefStateAssignments": [
-         
-    ],
-    "SpecialStates": [
-         
-    ],
-    "ExtrinsicChangesDynamicModel": [
-    ]
+    "PlpMain": { },
+    "EnvironmentGeneral": { },
+    "GlobalVariableTypes": [ ],
+    "GlobalVariablesDeclaration": [ ],
+    "InitialBeliefStateAssignments": [ ],
+    "SpecialStates": [ ],
+    "ExtrinsicChangesDynamicModel": [ ]
 }
