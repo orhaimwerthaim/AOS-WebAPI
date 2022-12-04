@@ -5,6 +5,8 @@
 * [Environment File](#environment-file)
   - [PlpMain section](#plpmain)
   - [EnvironmentGeneral section](#environmentgeneral)
+  - [GlobalVariableTypes section](#globalvariabletypes)
+  - [GlobalVariablesDeclaration](#globalvariablesdeclaration)
   - [Real Panda robot tic-tac-toe](#real-panda-robot-tic-tac-toe-experiments)
     - [Basic](#basic-experiments)
     - [Probabilistic](#probabilistic-tic-tac-toe-experiments)
@@ -115,3 +117,37 @@ Example:</br>
     ],
 ```
 In the above example, we see a user that defined a 'tLocation' type to define a location. Each tLocation contains a tDiscreteLocation that can be used for decision making and an abstract description of the model and continuous x,y coordinates of the robot that can be used for either decision making as a parameter sent to a navigation skill activation. </br>
+
+## GlobalVariablesDeclaration
+The "GlobalVariablesDeclaration" defines the state variables and possible action parameters.</br>
+The field is an array of defined types and action parameters, each item contains the following fields:</br>
+* "Name" of type string that defines the variables name.
+* "Type" of type string that defines the state variable types. Supported types are the C++ primitive types (e.g., int, float, double, string, char, bool) and custom types (defined in the GlobalVariableTypes section).
+* "DefaultCode" of type string can be used to initialize the variable. This field value contains C++ code. the variable is referred to as 'state.<Name>' where <Name> is replaced by the variable "Name".
+* "IsActionParameterValue" is of type boolean (can take 'true' or 'false' values). It determines if this item is an action parameter. Action parameters are values the AOS can send as skill parameters. A Skill that takes a parameter of type int and a parameter of type string can receive any combination of action parameter values defined from type int and string. Suppose a user has two skills that take a parameter of the same type but have different possible values. In that case, the user should define a custom type that will wrap the skill parameters, and the skill will receive a parameter of that type.</br>
+Example:</br>
+```
+"GlobalVariablesDeclaration": [
+        {
+            "Name": "locationCorridor",
+            "Type": "tLocation",
+            "DefaultCode": "state.locationCorridor.discrete_location = eCorridor; state.locationCorridor.continuous_location_x = 0.45343;state.locationCorridor.continuous_location_x = 0.1;",
+            "IsActionParameterValue": true
+        },
+        {
+            "Name": "locationAuditorium_toCan1",
+            "Type": "tLocation",
+            "DefaultCode": "state.locationAuditorium_toCan1.discrete_location = eLocationAuditoriumSide1; state.locationCorridor.continuous_location_x = 0.15;state.locationCorridor.continuous_location_x = 0.2;",
+            "IsActionParameterValue": true
+        },
+        {
+            "Name": "robotGenerallocation",
+            "Type": "tDiscreteLocation"
+        },
+        {
+            "Name": "holding_can",
+            "Type": "bool",
+            "DefaultCode": "state.holding_can=false;"
+        }
+    ],
+```
