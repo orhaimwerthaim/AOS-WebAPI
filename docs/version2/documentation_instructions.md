@@ -6,7 +6,9 @@
   - [PlpMain section](#plpmain)
   - [EnvironmentGeneral section](#environmentgeneral)
   - [GlobalVariableTypes section](#globalvariabletypes)
-  - [GlobalVariablesDeclaration](#globalvariablesdeclaration)
+  - [GlobalVariablesDeclaration section](#globalvariablesdeclaration)
+  - [InitialBeliefStateAssignments section](#initialbeliefstateassignments)
+    - [Assignments blocks](#assignments-blocks) 
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -156,6 +158,36 @@ Example:</br>
         }
     ],
 ```
+
+## InitialBeliefStateAssignments
+In many robotic domains, the initial state is unknown, and the robot should reason about this uncertainty. This section allows the user to define the uncertainty about the initial state using code. He can use the AOS extensions to sample from known distributions (Bernoulli, Discrete or Normal, [see](#additional-documentation-language-functionality)). </br>
+The state variables can be referred to and changed using 'state.variable_name'. </br>
+More technically, the AOS generates a particle set to represent the distribution of the initial belief state; each particle is a fully initialized state, and its values are taken from the default state variable value and sampled from this code section.</br>
+#### Assignments blocks
+There are a few sections of Assignments blocks like "InitialBeliefStateAssignments" they all have the same syntax.</br>
+An Assignments block is an array of assignments. Each assignment item may have an "AssignmentName" for readability, and it must have an "AssignmentCode" field which is a string (a single code line) or an array of strings such that each string is a code line.</br>
+Example:</br>
+```
+"InitialBeliefStateAssignments": [
+    {
+        "AssignmentName":"set locations",
+        "AssignmentCode":
+        [
+            "if (AOSUtils::Bernoulli(0.75))",
+	    "	{",
+	    "		state.robotGenerallocation=eLocationAuditoriumSide1;",
+	    "	}",
+	    "else state.robotGenerallocation=eLocationAuditoriumSide1;
+
+        ]
+    },
+    {
+        "AssignmentName":"set holding_can",
+        "AssignmentCode": "state.holding_can = Bernoulli(0.1);"
+    }
+    ]
+```
+
 
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
