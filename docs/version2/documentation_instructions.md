@@ -77,7 +77,7 @@ Example</br>
 ```
 
 ## GlobalVariableTypes
-The supported state variable types are the primitive CPP types (e.g., string, int, float). The "GlobalVariableTypes" section enables users to define custom state variable types. More specifically, enums and complex data structures that aggregate multiple data items.</br>
+The supported state variable types are the primitive C++ types (e.g., string, int, float). The "GlobalVariableTypes" section enables users to define custom state variable types. More specifically, enums and complex data structures that aggregate multiple data items.</br>
 After a type is defined, the user may use it to define a state variable.</br>
 Example:</br>
 ```
