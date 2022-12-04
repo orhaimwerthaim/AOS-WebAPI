@@ -3,7 +3,7 @@
   - [General](#general)
 * [Environment File](#environment-file)
   - [PlpMain section](#plpmain)
-  - [videos](#videos)
+  - [EnvironmentGeneral section](#environmentgeneral)
   - [Real Panda robot tic-tac-toe](#real-panda-robot-tic-tac-toe-experiments)
     - [Basic](#basic-experiments)
     - [Probabilistic](#probabilistic-tic-tac-toe-experiments)
@@ -42,21 +42,31 @@ The environment file is used to specify documentation sections that are not skil
 ```
 See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/environment.json)</br>
 
-
-```
-"PlpMain": {
-        "Project": "projectName",
-        "Name": "environment",
-        "Type": "Environment",
-        "Version": 1.2
-    },
-```
 We now explain in detail about each section in the environment file.</br>
 
 ## PlpMain
 The "PlpMain" is the header section that each documentation file contains. </br>
 It has the following fields:</br>
-1."Project" field of type string. It describes the project name, all documentation files in the project must have the same name (e.g., "cleaning_robot1").</br>
-2."Name" field of type string. Stores the file name; environment files should always be named "environment," skill's AM and SD files are named by the skill they document, and corresponding AM and SD files must have the same name.</br>
-3."Type" field of type string. It is the file type. "Environment" for environment files, "PLP" for SD files, and "Glue" for AM files.</br>
-4."Version" should contain the current documentation version ("Version":1.2)</br>
+* "Project" field of type string. It describes the project name, all documentation files in the project must have the same name (e.g., "cleaning_robot1").</br>
+* "Name" field of type string. Stores the file name; environment files should always be named "environment," skill's AM and SD files are named by the skill they document, and corresponding AM and SD files must have the same name.</br>
+* "Type" field of type string. It is the file type. "Environment" for environment files, "PLP" for SD files, and "Glue" for AM files.</br>
+* "Version" should contain the current documentation version ("Version":1.2)</br>
+Example:</br>
+```
+"PlpMain": {
+        "Project": "cleaning_robot1",
+        "Name": "environment",
+        "Type": "Environment",
+        "Version": 1.2
+    },
+```
+
+## EnvironmentGeneral
+
+Example</br>
+```
+"EnvironmentGeneral": { 
+        "Horizon": 50,
+        "Discount": 0.9999
+    },
+```
