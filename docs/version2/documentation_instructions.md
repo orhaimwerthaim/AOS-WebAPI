@@ -125,6 +125,7 @@ The field is an array of defined types and action parameters, each item contains
 * "Type" of type string that defines the state variable types. Supported types are the C++ primitive types (e.g., int, float, double, string, char, bool) and custom types (defined in the GlobalVariableTypes section).
 * "DefaultCode" of type string can be used to initialize the variable. This field value contains C++ code. the variable is referred to as 'state.<Name>' where <Name> is replaced by the variable "Name".
 * "IsActionParameterValue" is of type boolean (can take 'true' or 'false' values). It determines if this item is an action parameter. Action parameters are values the AOS can send as skill parameters. A Skill that takes a parameter of type int and a parameter of type string can receive any combination of action parameter values defined from type int and string. Suppose a user has two skills that take a parameter of the same type but have different possible values. In that case, the user should define a custom type that will wrap the skill parameters, and the skill will receive a parameter of that type.</br>
+  
 Example:</br>
 ```
 "GlobalVariablesDeclaration": [
