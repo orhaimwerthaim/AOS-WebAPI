@@ -1,6 +1,7 @@
 # AOS Documentation (version 1.2)
 * [General](#general)
   - [General](#general)
+  - [The AOS documentation structure](#the-aos-documentation-structure)
 * [Environment File](#environment-file)
   - [PlpMain section](#plpmain)
   - [EnvironmentGeneral section](#environmentgeneral)
@@ -20,7 +21,7 @@
 ## The AOS documentation: General
 The AOS is designed to assist engineers in integrating AI capabilities within their robots. The engineers should only document their basic skills (e.g., navigation, object detection, etc.) and robot objectives, and the AOS will use this documentation to operate the robot using automated decision-making techniques (online planning algorithms or deep reinforcement learning). It will reason when and how to activate each skill and invoke the skill code.</br>
 
-## The AOS documentation: documentation structure:
+## The AOS documentation structure:
 For each robot project, the user should document a single environment file, and for each skill, a Skill Documentation (SD) file and an Abstraction Mapping (AM) file (all files are in JSON format).</br>
 
 # The AOS  
@@ -62,6 +63,10 @@ Example:</br>
 ```
 
 ## EnvironmentGeneral
+The "EnvironmentGeneral" describes the general parameters of the planning problem. </br>
+It has the following fields:</br>
+* "Horizon" field of type integer. It describes how many forward steps the AOS considers when it decides on an action. On sampling algorithms, a longer horizon means fewer trajectories sampled on the same planning period, so it is better to specify an exact number; remember that if the horizon is too small, the robot cannot simulate reaching the goal. 
+* "Discount" field of type decimal. Legal values are in the range of (1,0). It defines the discount factor on the value of future rewards. For values close to 1, we don't care so much about when we receive a reward; on the other hand, for values close to 0, we only care about rewards received in the next step, ignoring the future. In robotic domains, where each action has a cost, a value close to 1 is recommended (e.g., 0.9999).  </br>
 
 Example</br>
 ```
