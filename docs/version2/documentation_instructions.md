@@ -75,3 +75,43 @@ Example</br>
         "Discount": 0.9999
     },
 ```
+
+## GlobalVariableTypes
+The supported state variable types are the primitive CPP types (e.g., string, int, float). The "GlobalVariableTypes" section enables users to define custom state variable types. More specifically, enums and complex data structures that aggregate multiple data items.</br>
+After a type is defined, the user may use it to define a state variable.</br>
+Example:</br>
+```
+"GlobalVariableTypes": [
+        {
+            "TypeName": "tDiscreteLocation",
+            "Type": "enum",
+            "EnumValues": [
+                "eCorridor",
+                "eLocationAuditoriumSide1",
+                "eLocationAuditoriumSide2",
+                "eRobotHand",
+                "eUnknown"
+            ]
+        },
+        {
+            "TypeName": "tLocation",
+            "Type": "compound",
+            "Variables": [
+                {
+                    "Name": "discrete_location",
+                    "Type": "tDiscreteLocation",
+                    "Default": "eUnknown"
+                },
+                {
+                    "Name": "continuous_location_x",
+                    "Type": "float"
+                },
+                {
+                    "Name": "continuous_location_y",
+                    "Type": "float"
+                },
+            ]
+        }
+    ],
+```
+In the above example, we see a user that defined a 'tLocation' type to define a location. Each tLocation contains a tDiscreteLocation that can be used for decision making and an abstract description of the model and continuous x,y coordinates of the robot that can be used for either decision making as a parameter sent to a navigation skill activation. </br>
