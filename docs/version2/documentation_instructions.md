@@ -9,21 +9,12 @@
   - [GlobalVariablesDeclaration section](#globalvariablesdeclaration)
   - [InitialBeliefStateAssignments section](#initialbeliefstateassignments)
     - [Assignments blocks](#assignments-blocks) 
+  - [SpecialStates section](#specialstates)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
   - [Iterate over all state variables of a specific type](#iterate-over-all-state-variables-of-a-specific-type)
-  - [Real Panda robot tic-tac-toe](#real-panda-robot-tic-tac-toe-experiments)
-    - [Basic](#basic-experiments)
-    - [Probabilistic](#probabilistic-tic-tac-toe-experiments)
-    - [Changing the rules of the game](#changing-the-rules-of-the-game-experiments)
-    - [Unknown Initial state](#unknown-initial-state)
-
-  - [Armadillo Gazebo](#armadillo-gazebo-experiments) 
-  - [Real Armadillo Robot](#real-armadillo-robot-experiments)
-  - [TurtleBot3 Gazebo](#turtlebot3-gazebo-experiments)
-  - [RDDLSim vs. AOS Sampling rates (link to external git)](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/AdditionalExamples/compareRDDLSimToAOS)
-* [installation](#aos-installtion)  
+   
 
 # General
 ## The AOS documentation: General
@@ -186,6 +177,29 @@ Example:</br>
         "AssignmentCode": "state.holding_can = Bernoulli(0.1);"
     }
     ]
+```
+## SpecialStates
+The "SpecialStates" section uses to define desired or undesired states. The robot's goal is to maximize the expected discounted reward. This section allows the engineer to define desired or undesired states (e.g., "the drone should be balanced," "hitting a wall is terrible"). It can also define landmarks in the form of states the given a one-time reward the first time a state is reached (unlike "hitting a wall is terrible"). Moreover, the user can define goal rewards; these are termination conditions for the robot that ends its current operation (the robot will stop if its current belief distribution indicates a terminal state with a mean of more than 0.9 and a standard deviation of less than 0.1).</br>
+Each special state has the following fields:</br>
+* "StateConditionCode" field is a string code line that defines the condition indicating that we reached the state. The condition is defined over some or all state variable assignments, and it can only be defined in a single line (use lambda expressions for conditions that require iterating over multiple variables).
+* "Reward" is a decimal field indicating the reward given when the condition is met.
+* "IsGoalState" is a boolean field to define if it is a terminal state (default value is false).
+* "IsOneTimeReward"  is a boolean field to define if the reward will be given only one time or multiple times (default value is false).
+Example:</br>
+```
+ "SpecialStates": [
+        {
+            "StateConditionCode": "state.holding_can && state.robotGenerallocation == eCorridor",
+            "Reward": 100.0,
+            "IsGoalState": true
+        },
+        {
+            "StateConditionCode": "state.holding_can",
+            "Reward": 10.0,
+            "IsGoalState": false,
+	    "IsOneTimeReward":true
+        }
+    ],
 ```
 
 
