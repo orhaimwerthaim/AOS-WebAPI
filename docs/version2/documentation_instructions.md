@@ -205,7 +205,7 @@ Example:</br>
 ```
 ## ExtrinsicChangesDynamicModel
 This section uses to define extrinsic changes. These are changes that the robot did not invoke by its skills. For example, let's say there is a probability that it will start to rain, making the floor wet and making it harder to navigate. The agent did not invoke the rain, but it affected the robot's decisions.</br>
-Example (this section is an Assinment block, [see](#assignments-blocks), and [The three sets of state variables](#the-three-sets-of-state-variables)):</br>
+Example (this section is an [Assinment block](#assignments-blocks). See [The three sets of state variables](#the-three-sets-of-state-variables)):</br>
 ```
 "ExtrinsicChangesDynamicModel": [
         {
