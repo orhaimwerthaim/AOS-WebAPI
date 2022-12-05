@@ -19,6 +19,7 @@
   - [Assisting the planner](#assisting-the-planner) 
     - [GlobalVariablePreconditionAssignments section](#globalvariablepreconditionassignments) 
     - [PlannerAssistancePreconditionsAssignments section](#plannerassistancepreconditionsassignments)
+  - [DynamicModel](#dynamicmodel)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
