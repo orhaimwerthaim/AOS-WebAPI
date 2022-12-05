@@ -1,0 +1,12 @@
+{
+    "PlpMain": {},
+    "GlobalVariableModuleParameters": [ ], 
+    "Preconditions": {
+        "GlobalVariablePreconditionAssignments": [],
+        "PlannerAssistancePreconditionsAssignments": [],
+        "ViolatingPreconditionPenalty": 0
+    },
+    "DynamicModel": {
+        "NextStateAssignments": [ ]
+    }
+}
