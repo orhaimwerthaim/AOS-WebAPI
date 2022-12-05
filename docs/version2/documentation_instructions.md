@@ -301,8 +301,8 @@ Example:</br>
         ]
 ```
 
-#PlannerAssistancePreconditionsAssignments
-In this section, the user can define a default (rollout) policy. This field is an [Assinment block](#assignments-blocks) that should set the value of the reserved variable `__heuristicValue`. The code assignment can be conditioned on variable from 'state` (but cannot change their value. See [The three sets of state variables](#the-three-sets-of-state-variables)). </br>
+# PlannerAssistancePreconditionsAssignments
+In this section, the user can define a default (rollout) policy. This field is an [Assinment block](#assignments-blocks) that should set the value of the reserved variable `__heuristicValue`. The code assignment can be conditioned on variable from `state` (but cannot change their value. See [The three sets of state variables](#the-three-sets-of-state-variables)). </br>
 The default policy will draw between all available skills and parameter assignments. The weight of each skill will be its computed `__heuristicValue` </br>
 Example:</br>
 
