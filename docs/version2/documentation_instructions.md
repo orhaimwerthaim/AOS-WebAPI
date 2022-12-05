@@ -328,25 +328,19 @@ Example (taken from the [push skill SD file](https://github.com/orhaimwerthaim/A
 The DynamicModel defines the high-level behavior of a skill. More specifically, the transition reward and observation models, how a skill changes the state, what costs (or rewards) are applied and which observations are returned. The "NextStateAssignments" is an [assignments block]() that sets the next state (`state__`), reward (`__reward` reserved variable), and observation (`__moduleResponse` reserved variable) conditioned on the previose state (`state`), the state after extrinsic changes (`state_`) and if the preconditions were met (`__meetPrecondition`). 
 
 Example:</br>
-```
+```{r, attr.source='.numberLines'}
 "DynamicModel": {
         "NextStateAssignments": [
             {
                 "AssignmentCode": [" state__.robotLocation.discrete = !__meetPrecondition || AOS.Bernoulli(0.1) ? -1: oDesiredLocation.discrete;",
 		" if(state__.robotLocation.discrete == oDesiredLocation.discrete){ state__.robotLocation.x = oDesiredLocation.x; state__.robotLocation.y = oDesiredLocation.y; state__.robotLocation.z = oDesiredLocation.z;}",
-		"for(int i=0;i< state__.tVisitedLocationObjects.size();i++)",
-		"{",
-		"   if(state__.tVisitedLocationObjects[i].discrete == state__.robotLocation.discrete)",
-		"   {",
-		"        state__.tVisitedLocationObjects[i].visited=true;",
-		"        break;",
-		"    }",
 		"__moduleResponse = (state__.robotLocation.discrete == -1 && AOS.Bernoulli(0.8)) ? eFailed : eSuccess;",
 		"__reward = state_.robotLocation.discrete == -1 ? -5 : -(sqrt(pow(state.robotLocation.x-oDesiredLocation.x,2.0)+pow(state.robotLocation.y-oDesiredLocation.y,2.0)))*10;",
-                "AssignmentCode": "if (state__.robotLocation.discrete == -1) __reward =  -10;"
-        ]
-    }
+                "if (state__.robotLocation.discrete == -1) __reward =  -10;"
+                ]
+           }]}
 ```
+
 ### SD observations must correspond to the AM observations
 The observation must correspond to the observations specified in the AM file. The AOS runs simulations to decide the next best skill to apply. Next, the selected skill code is executed, and the AOS translates the execution outcome to an observation which is then used to update the distribution on the current state (current belief).
 
