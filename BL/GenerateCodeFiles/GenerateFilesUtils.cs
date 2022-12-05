@@ -14,6 +14,31 @@ namespace WebApiCSharp.GenerateCodeFiles
 {
     public class GenerateFilesUtils
     {
+        public static string RunBashCommand(string cmd, bool waitForExit = true)
+        {
+            var escapedArgs = cmd.Replace("\"", "\\\"");
+
+            var process = new Process()
+            {
+            StartInfo = new ProcessStartInfo
+            {
+            FileName = "/bin/bash",
+            Arguments = $"-c \"{escapedArgs}\"",
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            }
+            };
+            process.Start();
+            if(waitForExit)
+            {
+            string result = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            return result;
+            }
+            return "";
+        }
         public static void RunApplicationUntilEnd(string appFilePath, string workingDir = null, string arguments = null)
         {
             ProcessStartInfo sInfo = new ProcessStartInfo()
@@ -87,7 +112,8 @@ namespace WebApiCSharp.GenerateCodeFiles
             }
             if (setExecuteable)
             {
-                RunApplicationUntilEnd("chmod", null, "+x " + path);
+                GenerateFilesUtils.RunBashCommand("chmod +x " + path);
+                //RunApplicationUntilEnd("chmod", null, "+x " + path);
             }
         }
 

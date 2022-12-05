@@ -42,7 +42,7 @@ namespace WebApiCSharp.BL
 
         static InitializeProjectBL()
         {
-            configuration = ConfigurationService.Get();
+            configuration = ConfigurationService.Get(); 
         }
 
         private static string GetRunSolverBashFile(PLPsData data)
@@ -83,7 +83,10 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
         }
         private static void RunSolver(PLPsData data)
         {
-            GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/build/runSolverWrapper.sh", GetRunSolverBashFile(data), false);
+            string cmd = "cd ~/AOS/AOS-Solver/build/examples/cpp_models/" + data.ProjectName + " && ./despot_" + data.ProjectName;
+            if(true)GenerateFilesUtils.RunBashCommand(cmd, false);
+            else{GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/build/runSolverWrapper.sh", GetRunSolverBashFile(data), true);
+             
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
                 //WorkingDirectory = configuration.SolverPath + "/build",
@@ -107,7 +110,7 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
             catch(Exception e)
             {
                throw new Exception("There were build errors in the AOS-Solver! How to fix: 1)try to build manually, 2)find the errors, 3)correct your documentation accordingly. (Error:"+e.Message+")." );
-            }
+            }}
         }
         private static string BuildAosSolver(PLPsData data)
         {
@@ -115,15 +118,15 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
             {
                 Directory.Delete(configuration.SolverPath + "/build/examples",true);//delete old builds
             }
-            countdownEvent = new CountdownEvent(1);
-            GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/BuildSolverWrapper.sh", GetBuildSolverBashFile(data.ProjectName), false);
+            string output = GenerateFilesUtils.RunBashCommand("cmake --build ~/AOS/AOS-Solver/build --config Release --target all -j 10 --");
+            //countdownEvent = new CountdownEvent(1);
+            
+            /*GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/BuildSolverWrapper.sh", GetBuildSolverBashFile(data.ProjectName), true);
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
                 WorkingDirectory = configuration.SolverPath,// "/home/.../AOS-Solver",
                 FileName = "bash",
                 Arguments = "BuildSolverWrapper.sh",
-                //FileName = "/opt/cmake-3.19.8-Linux-x86_64/bin/cmake",
-                //Arguments = "--build /home/or/Projects/AOS-Solver/build --config Debug --target all -j 14 --",
                 CreateNoWindow = true
             };
             Process process = new Process();//Process.Start("echo", "asdasd"); 
@@ -134,21 +137,10 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
 
             buildOutput = new StringBuilder();
 
-            // Set our event handler to asynchronously read the sort output.
             process.OutputDataReceived += BuildOutputHandler;
-            // process.ErrorDataReceived += BuildOutputHandler;
-            // Redirect standard input as well.  This stream
-            // is used synchronously.
-            //process.StartInfo.RedirectStandardInput = true;
-
-            // Start the process.
+            
             process.Start();
-            // while (!process.StandardOutput.EndOfStream)
-            // {
-            //     string line = process.StandardOutput.ReadLine();
-            //     Console.WriteLine("AAAAAAAAAA   " + line);
-            //     // do something with line
-            // }
+            
 
 
             process.BeginOutputReadLine();
@@ -156,10 +148,9 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
             countdownEvent.Wait();
             int pid = process.Id;
             string output = buildOutput.ToString();
+            */
             output = output.Contains("[100%] Built target") ? "[100%] Built target" : output;
-            process.Close();
-            //process.OutputDataReceived -= BuildOutputHandler;
-            //return buildOutput.ToString();
+            //process.Close();
             return output;
         }
         private static bool IsValidPLP(JsonDocument plp, out List<String> errorMessages)
@@ -305,7 +296,7 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
         private static string BuildRosMiddleware(InitializeProject initProg)
         {
             countdownEvent = new CountdownEvent(1);
-            GenerateFilesUtils.WriteTextFile(initProg.RosTarget.WorkspaceDirectortyPath + "/buildRosMiddlewareWrapper.sh", GetBuildRosMiddlewareBashFile(initProg), false);
+            GenerateFilesUtils.WriteTextFile(initProg.RosTarget.WorkspaceDirectortyPath + "/buildRosMiddlewareWrapper.sh", GetBuildRosMiddlewareBashFile(initProg), true);
             ProcessStartInfo sInfo = new ProcessStartInfo()
             {
                 WorkingDirectory = initProg.RosTarget.WorkspaceDirectortyPath,

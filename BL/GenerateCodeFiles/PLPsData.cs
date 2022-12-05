@@ -519,13 +519,13 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                     SpecialState spState = new SpecialState();
                     spState.IsGoalState = !docState.Contains("IsGoalState") ? false : docState["IsGoalState"].AsBoolean;
                     spState.StateConditionCode = docState["StateConditionCode"].ToString();
-                    spState.IsOneTimeReward = !docState.Contains("IsOneTimeReward") ? true : docState["IsOneTimeReward"].AsBoolean;
+                    spState.IsOneTimeReward = !docState.Contains("IsOneTimeReward") ? false : docState["IsOneTimeReward"].AsBoolean;
                     spState.Reward = docState["Reward"].AsDouble;
                     SpecialStates.Add(spState);
                 }
                 catch (Exception e2)
                 {
-                    errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"SpecialStates.IsGoalState\" and \"IsOneTimeReward\"(default is 'true') must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
+                    errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"SpecialStates.IsGoalState\" (default is 'false') and \"IsOneTimeReward\"(default is 'false') must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
                 }
             }
             return errors;
