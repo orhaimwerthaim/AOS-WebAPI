@@ -14,6 +14,8 @@
 * [The three sets of state variables](#the-three-sets-of-state-variables)
 * [Skills Documentation](#skills-documentation)
 * [Skill Documentation (SD) file](#skill-documentation-sd-file)
+  - [PlpMain (for SD) section](#plpmain-sd)
+  - [GlobalVariableModuleParameters section](#globalvariablemoduleparameters)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -251,6 +253,28 @@ Example:</br>
         "Version": 1.2
     },
 ```
+## GlobalVariableModuleParameters
+This section uses to define the parameters sent to a skill. The skill parameters are the context under which the skill operates. Possible parameters are, for example, 1) an enum value for navigation modes like 'fast' navigation vs. 'safe' navigation or 2) the navigation destination.
+Formally the "GlobalVariableModuleParameters" is an array of parameter items, each containing the following fields:</br>
+* "Name" is the string name to refer to the parameter. 
+* "Type" is a string indicating the parameter type. </br>
+
+The AOS considers activating a skill with each of the possible combinations of state variables marked as 'ActionParameterValue.' So if we have a skill with two parameters of type 'int' and three state variables of type int marked as 'ActionParameterValue,' the AOS will run simulations to select the best combination out of the six possible combinations. </br>
+
+Example:</br>
+```
+"GlobalVariableModuleParameters": [
+        {
+            "Name": "oDestination",
+            "Type": "tLocation"
+        },
+	{
+            "Name": "oNavigationMode",
+            "Type": "int"
+        }
+    ], 
+```
+The example above shows that user-defined types such as 'tLocation' can be used as skill parameters.</br>
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
