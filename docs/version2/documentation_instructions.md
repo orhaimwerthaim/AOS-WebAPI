@@ -9,9 +9,9 @@
   - [GlobalVariablesDeclaration section](#globalvariablesdeclaration)
   - [ExtrinsicChangesDynamicModel section](#extrinsicchangesdynamicmodel)
     - [Assignments blocks](#assignments-blocks) 
-  - [The three sets of state variables](#the-three-sets-of-state-variables)
   - [InitialBeliefStateAssignments section](#initialbeliefstateassignments)
   - [SpecialStates section](#specialstates)
+* [The three sets of state variables](#the-three-sets-of-state-variables)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -213,7 +213,7 @@ Example (this section is an Assinment block, [see](#assignments-blocks), and [Th
         }
     ]
 ```
-## The three sets of state variables
+# The three sets of state variables
 The documentation describes how the state changes in each epoch conditioned on the selected skill. The state can change by either the robot's skills or extrinsic events. To assist the user in documenting complex behaviors flexibly, we introduce three sets of state variables, `state`, `state_`, and `state__`, each containing all of the defined state variables. </br>
 
 `state` stores the previous state values and cannot be changed, `state_` is a copy of `state`, yet it can change by extrinsic events. Finally, `state__` is a copy of `state_` after the extrinsic events occur, and it can change by skill effects. 'ExtrinsicChangesDynamicModel' can only change variables in `state_` (can be conditioned on `state`), and skill's 'DynamicModel' can only change `state__` (can be conditioned on `state` and `state_`).
