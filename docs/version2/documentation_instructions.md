@@ -16,6 +16,9 @@
 * [Skill Documentation (SD) file](#skill-documentation-sd-file)
   - [PlpMain (for SD) section](#plpmain-sd)
   - [GlobalVariableModuleParameters section](#globalvariablemoduleparameters)
+  - [Assisting the planner](#assisting-the-planner) 
+    - [GlobalVariablePreconditionAssignments section](#globalvariablepreconditionassignments) 
+    - [PlannerAssistancePreconditionsAssignments section](#plannerassistancepreconditionsassignments)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -243,7 +246,7 @@ The environment file structure is:</br>
 See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/SD.json)
 
 ## PlpMain-SD
-See [PlpMain](#plpmain) for detailed explanation.</br>
+See6 [PlpMain](#plpmain) for detailed explanation.</br>
 Example:</br>
 ```
 "PlpMain": {
@@ -275,6 +278,35 @@ Example:</br>
     ], 
 ```
 The example above shows that user-defined types such as 'tLocation' can be used as skill parameters.</br>
+
+
+## Assisting the planner
+The engineer can guide the AOS to the direction of desired solutions.</br>
+
+One way is to define preconditions to activate a skill. Since the robot is not always fully aware of its current state, it cannot entirely revoke illegal actions (e.g., try driving when there is no fuel). Nevertheless, the user can define when a skill is illegal and penalize activating it by its relative weight in the current belief state distribution.</br> 
+
+Moreover, MCTS algorithms (supported by the AOS) build a search tree where each node is a distribution over states (belief state), and the leaf nodes are evaluated using a default (rollout) policy. The rollout policy is performed using a single state and is crucial to find a good solution. We can use the preconditions to revoke illegal skills.</br> 
+
+Furthermore, the user can define preferred action to define the rollout policy.</br>
+
+### GlobalVariablePreconditionAssignments
+This section is used to define when a skill with given parameters met the preconditions (default is true). This field is an [Assinment block](#assignments-blocks), the should assign a value to the reserved variable `__meetPrecondition` and it can use (not change) any state variable from `state` (see [The three sets of state variables](#the-three-sets-of-state-variables)).</br>
+
+Example:</br>
+```
+"GlobalVariablePreconditionAssignments": [
+            {
+                "AssignmentCode": "__meetPrecondition = oDestination != state.robotLocation;"
+            }
+        ]
+```
+
+#PlannerAssistancePreconditionsAssignments
+In this section, the user can define a default (rollout) policy. This field is an [Assinment block](#assignments-blocks) that should set the value of the reserved variable `__heuristicValue`. The code assignment can be conditioned on variable from 'state` (but cannot change their value. See [The three sets of state variables](#the-three-sets-of-state-variables)). </br>
+The default policy will draw between all available skills and parameter assignments. The weight of each skill will be its computed `__heuristicValue` </br>
+Example:</br>
+
+
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
