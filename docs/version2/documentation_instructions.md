@@ -294,28 +294,34 @@ This section is used to define when a skill with given parameters met the precon
 
 Example:</br>
 ```
-"GlobalVariablePreconditionAssignments": [
+"Preconditions": {
+	"GlobalVariablePreconditionAssignments": [
             {
                 "AssignmentCode": "__meetPrecondition = oDestination != state.robotLocation;"
             }
-        ]
+          ],
+	"ViolatingPreconditionPenalty":-1.5
+}
 ```
+The "ViolatingPreconditionPenalty" is a decimal field that allows engineers to tune how undesirable it is to activate a particular skill when its preconditions are not met.</br>
 
 ### PlannerAssistancePreconditionsAssignments
 In this section, the user can define a default (rollout) policy. This field is an [Assinment block](#assignments-blocks) that should set the value of the reserved variable `__heuristicValue`. The code assignment can be conditioned on variable from `state` (but cannot change their value. See [The three sets of state variables](#the-three-sets-of-state-variables)). </br>
 The default policy will draw between all available skills and parameter assignments. The weight of each skill will be its computed `__heuristicValue` </br>
 Example (taken from the [push skill SD file](https://github.com/orhaimwerthaim/AOS-mini-project/blob/main/collectValuableToys_base/navigate.json) of the box-pushing domain found in the [AOS experiments GitHub](https://github.com/orhaimwerthaim/AOS-experiments)):</br>
 ```
-"PlannerAssistancePreconditionsAssignments": [
+"Preconditions":{
+	"PlannerAssistancePreconditionsAssignments": [
             {
                 "AssignmentName": "__heuristicValue for second agent joint push with first agent",
-                "AssignmentCode": "if(oIsJointPush == JointPush && !state.isAgentOneTurn && oDirection == state.JointPushDirection) __heuristicValue=100;"
+                "AssignmentCode": "if(oIsJointPush == JointPush && !state.isAgentOneTurn && oDirection == state.JointPushDirection)__heuristicValue=100;"
             },
             {
                 "AssignmentName": "__heuristicValue push box when possible (don't ovverride first rule)",
                 "AssignmentCode": "if(__heuristicValue == 0) __heuristicValue=1;"
             }
-        ],
+        ]
+}
 ```
 
 ## Additional documentation language functionality
