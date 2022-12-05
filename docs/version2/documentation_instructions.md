@@ -12,6 +12,8 @@
   - [InitialBeliefStateAssignments section](#initialbeliefstateassignments)
   - [SpecialStates section](#specialstates)
 * [The three sets of state variables](#the-three-sets-of-state-variables)
+* [Skills Documentation](#skills-documentation)
+* [Skill Documentation (SD) file](#skill-documentation-sd-file)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -24,8 +26,7 @@ The AOS is designed to assist engineers in integrating AI capabilities within th
 
 ## The AOS documentation structure:
 For each robot project, the user should document a single environment file, and for each skill, a Skill Documentation (SD) file and an Abstraction Mapping (AM) file (all files are in JSON format).</br>
-
-# The AOS  
+ 
 # Environment File
 The environment file is used to specify documentation sections that are not skill-specific. The user can define the state variables, initial belief state of the robot, extrinsic events, and general robot objectives (special states: desired, undesired, or goals).</br>
 
@@ -218,6 +219,11 @@ The documentation describes how the state changes in each epoch conditioned on t
 
 `state` stores the previous state values and cannot be changed, `state_` is a copy of `state`, yet it can change by extrinsic events. Finally, `state__` is a copy of `state_` after the extrinsic events occur, and it can change by skill effects. 'ExtrinsicChangesDynamicModel' can only change variables in `state_` (can be conditioned on `state`), and skill's 'DynamicModel' can only change `state__` (can be conditioned on `state` and `state_`).
 If we defined a state variable named `robotLocation`, it has three copies that can be referred to by either `state.robotLocation`, `state_.robotLocation`, or `state__.robotLocation`.
+
+# Skills documentation
+Each skill is documented using two files. First, a Skill Documentation (SD) file to describe the high level of the skill. Second, an Abstraction Mapping (AM) file to describe how to activate the skill code and how to translate the outcome of the skill execution to something the AOS can reason with for decision-making. 
+
+# Skill Documentation (SD) file
 
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
