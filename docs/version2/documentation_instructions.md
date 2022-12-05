@@ -30,7 +30,7 @@ For each robot project, the user should document a single environment file, and 
 # Environment File
 The environment file is used to specify documentation sections that are not skill-specific. The user can define the state variables, initial belief state of the robot, extrinsic events, and general robot objectives (special states: desired, undesired, or goals).</br>
 
-
+The environment file structure is:</br>
 ```
 {
     "PlpMain": { },
@@ -44,7 +44,6 @@ The environment file is used to specify documentation sections that are not skil
 
 ```
 See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/environment.json)</br>
-
 We now explain in detail about each section in the environment file.</br>
 
 ## PlpMain
@@ -224,7 +223,34 @@ If we defined a state variable named `robotLocation`, it has three copies that c
 Each skill is documented using two files. First, a Skill Documentation (SD) file to describe the high level of the skill. Second, an Abstraction Mapping (AM) file to describe how to activate the skill code and how to translate the outcome of the skill execution to something the AOS can reason with for decision-making. 
 
 # Skill Documentation (SD) file
+The environment file structure is:</br>
+```
+{
+    "PlpMain": {},
+    "GlobalVariableModuleParameters": [ ], 
+    "Preconditions": {
+        "GlobalVariablePreconditionAssignments": [],
+        "PlannerAssistancePreconditionsAssignments": [],
+        "ViolatingPreconditionPenalty": 0
+    },
+    "DynamicModel": {
+        "NextStateAssignments": [ ]
+    }
+}
+```
+See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/SD.json)
 
+## PlpMain-SD
+See [PlpMain](#plpmain) for detailed explanation.</br>
+Example:</br>
+```
+"PlpMain": {
+        "Project": "cleaning_robot1",
+        "Name": "navigate",
+        "Type": "PLP",
+        "Version": 1.2
+    },
+```
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
