@@ -7,8 +7,9 @@
   - [EnvironmentGeneral section](#environmentgeneral)
   - [GlobalVariableTypes section](#globalvariabletypes)
   - [GlobalVariablesDeclaration section](#globalvariablesdeclaration)
-  - [ExtrinsicChangesDynamicModel](#extrinsicchangesdynamicmodel)
+  - [ExtrinsicChangesDynamicModel section](#extrinsicchangesdynamicmodel)
     - [Assignments blocks](#assignments-blocks) 
+  - [The three sets of state variables](#the-three-sets-of-state-variables)
   - [InitialBeliefStateAssignments section](#initialbeliefstateassignments)
   - [SpecialStates section](#specialstates)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
@@ -204,7 +205,7 @@ Example:</br>
 ```
 ## ExtrinsicChangesDynamicModel
 This section uses to define extrinsic changes. These are changes that the robot did not invoke by its skills. For example, let's say there is a probability that it will start to rain, making the floor wet and making it harder to navigate. The agent did not invoke the rain, but it affected the robot's decisions.</br>
-Example (this section is an Assinment block [see](#assignments-blocks))
+Example (this section is an Assinment block, [see](#assignments-blocks), and [The three sets of state variables](#the-three-sets-of-state-variables)):</br>
 ```
 "ExtrinsicChangesDynamicModel": [
         {
@@ -212,7 +213,11 @@ Example (this section is an Assinment block [see](#assignments-blocks))
         }
     ]
 ```
+## The three sets of state variables
+The documentation describes how the state changes in each epoch conditioned on the selected skill. The state can change by either the robot's skills or extrinsic events. To assist the user in documenting complex behaviors flexibly, we introduce three sets of state variables, 'state,' 'state_,' and 'state__', each containing all of the defined state variables. </br>
 
+'state' stores the previous state values and cannot be changed, 'state_' is a copy of 'state,' yet it can change by extrinsic events. Finally, 'state__' is a copy of 'state_' after the extrinsic events occur, and it can change by skill effects. 'ExtrinsicChangesDynamicModel' can only change variables in 'state_' (can be conditioned on 'state'), and skill's 'DynamicModel' can only change 'state__' (can be conditioned on 'state' and 'state_').
+If we defined a state variable named 'robotLocation,' it has three copies that can be referred to by either 'state.robotLocation', 'state_.robotLocation,' or 'state__.robotLocation.'
 
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
