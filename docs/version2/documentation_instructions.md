@@ -324,6 +324,7 @@ Example (taken from the [push skill SD file](https://github.com/orhaimwerthaim/A
         ]
 }
 ```
+The default heuristic value for a skill is zero. This feature is ignored if no heuristic value is defined for any skill.</br>
 
 ## DynamicModel
 The DynamicModel defines the high-level behavior of a skill. More specifically, the transition reward and observation models, how a skill changes the state, what costs (or rewards) are applied and which observations are returned. The "NextStateAssignments" is an [assignments block]() that sets the next state (`state__`), reward (`__reward` reserved variable), and observation (`__moduleResponse` reserved variable) conditioned on the previose state (`state`), the state after extrinsic changes (`state_`) and if the preconditions were met (`__meetPrecondition`). 
