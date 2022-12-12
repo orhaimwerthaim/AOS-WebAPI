@@ -449,6 +449,47 @@ Example:</br>
     },
 ```
 
+## LocalVariablesInitialization
+The "LocalVariablesInitialization" section is used to define local variables.</br>
+Local variables can take their value from three possible sources:</br>
+* SD file skill parameters (see [GlobalVariableModuleParameters section](#globalvariablemoduleparameters)). Only this type of local variable can be used to activate the skill since the other local variables' value is calculated when the skill execution ends.
+  -  "InputLocalVariable" is the name of the local variable.
+  -  "FromGlobalVariable" is the name of the skill parameter defined in the SD "GlobalVariableModuleParameters" section.
+  
+Example:</br>
+```
+{
+	"InputLocalVariable": "nav_to_x",
+	"FromGlobalVariable": "oDesiredLocation.x"
+}
+```
+* Skill-code returned value. Using the value returned from the skill code. The user can define a Python function to manipulate the returned value to something more meaningful or convenient. </br>
+This local variable definition has the following fields:
+  -  "LocalVariableName" is the local variable name.
+  -  "VariableType" this optional field is the type of the variable when converted to C++ (used for the "state given observation" feature).
+  -  "FromROSServiceResponse" should be `true` when the value is taken from the service response.
+  -  "AssignmentCode" is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. 
+  -  "ImportCode" is an array of imports needed when receiving the service response.
+  
+Example:</br>
+```
+{
+    "LocalVariableName": "skillSuccess",
+    "VariableType":"bool",
+    "FromROSServiceResponse": true,
+    "AssignmentCode": "skillSuccess=__input.success",
+    "ImportCode": [
+	{
+	    "From": "std_msgs.msg",
+	    "Import": [
+		"Bool"
+	    ]
+	}
+    ]
+}
+```
+* Public data published in the robot framework (e.g., ROS topics).
+
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
