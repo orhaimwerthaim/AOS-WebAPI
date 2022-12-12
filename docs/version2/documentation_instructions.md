@@ -21,6 +21,13 @@
     - [PlannerAssistancePreconditionsAssignments section](#plannerassistancepreconditionsassignments)
   - [DynamicModel](#dynamicmodel)
 * [Abstraction Mapping (AM) file](#abstraction-mapping-am-file)
+  -  [PlpMain (for AM) section](#plpmain-am)
+  -  [Robot framework (GlueFramework)](#glueframework)
+  -  [ModuleResponse section](#moduleresponse)
+    - [ResponseRules](#responserules)
+  - [ModuleActivation](#moduleactivation)
+    - [RosService section](#rosservice)
+  - [LocalVariablesInitialization section](#localvariablesinitialization)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -405,7 +412,7 @@ The returned observation is the first "Response" that its condition is met (they
 
 ## ModuleActivation
 The ModuleActivation section describes how to activate the skill code.</br>
-The activation can use  SD's "GlobalVariableModuleParameters" modified to local variables (see [Local Variables](#)).
+The activation can use  SD's "GlobalVariableModuleParameters" modified to local variables (see [Local Variables](#localvariablesinitialization)).
 
 ### RosService
 This section defines how to activate a ROS1 service.</br>
@@ -416,7 +423,7 @@ It has the following sections:</br>
 * "ServiceParameters" is the array of parameters sent in the service request. </br> 
 	Each parameter has a: </br>
   - "ServiceFieldName" which is the name of the parameter as defined in the `<ServiceName>.srv` file. 
-  - "AssignServiceFieldCode" is the value of the parameter. The user can define a Python code with local variables (see [Local Variables](#)). 
+  - "AssignServiceFieldCode" is the value of the parameter. The user can define a Python code with local variables (see [Local Variables](#localvariablesinitialization)). 
 
 Example:</br>
 ```
