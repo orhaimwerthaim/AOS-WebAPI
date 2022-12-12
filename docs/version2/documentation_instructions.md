@@ -20,6 +20,7 @@
     - [GlobalVariablePreconditionAssignments section](#globalvariablepreconditionassignments) 
     - [PlannerAssistancePreconditionsAssignments section](#plannerassistancepreconditionsassignments)
   - [DynamicModel](#dynamicmodel)
+* [Abstraction Mapping (AM) file](#abstraction-mapping-am-file)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -229,7 +230,7 @@ If we defined a state variable named `robotLocation`, it has three copies that c
 Each skill is documented using two files. First, a Skill Documentation (SD) file to describe the high level of the skill. Second, an Abstraction Mapping (AM) file to describe how to activate the skill code and how to translate the outcome of the skill execution to something the AOS can reason with for decision-making. 
 
 # Skill Documentation (SD) file
-The environment file structure is:</br>
+The SD file structure is:</br>
 ```
 {
     "PlpMain": {},
@@ -346,7 +347,46 @@ Example:</br>
 ### SD observations must correspond to the AM observations
 The observation must correspond to the observations specified in the AM file. The AOS runs simulations to decide the next best skill to apply. Next, the selected skill code is executed, and the AOS translates the execution outcome to an observation which is then used to update the distribution on the current state (current belief).
 
+## Abstraction Mapping (AM) file
+The AM file structure is:</br>
+```
+{
+    "PlpMain": { },
+    "GlueFramework": "",
+    "ModuleResponse": { },
+    "ModuleActivation": { },
+    "LocalVariablesInitialization": []
+}
+```
 
+See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/SD.json)
+
+## PlpMain-AM
+See [PlpMain](#plpmain) for detailed explanation.</br>
+Example:</br>
+```
+"PlpMain": {
+        "Project": "cleaning_robot1",
+        "Name": "navigate",
+        "Type": "Glue",
+        "Version": 1.2
+    },
+```
+
+## GlueFramework
+GlueFramework is a string field to specify the type of robot framework (e.g., "ROS" for ROS1).</br>
+
+## ModuleResponse
+ModuleResponse section defines the translation between an actual execution outcome of a skill, to observations the AOS planning engine can reason about. The planning engine uses the SD documentation to simulate what might happen. The AM ModuleResponse section is used to translate what really happened to the language used in the SD documentation (see [DynamicModel](#dynamicmodel)). The planning engine uses this information to update the robot's belief. 
+### ResponseRules
+The ResponseRules is the array of possible observations a skill can return.</br>
+Each observation in the array has the following fields:</br>
+* "Response" is a string field that defines the observation name. The SD `__moduleResponse` variable can only receive values defined as "Response."
+* "ConditionCodeWithLocalVariables" is a string field that uses the user to define when the skill returns the current response (code is in Python for ROS). The condition may depend on "Local Variable" values (see [Local Variables](#)).
+
+The returned observation is the first "Response" that its condition is met (they are ordered the same as defined).
+
+## ModuleActivation
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
