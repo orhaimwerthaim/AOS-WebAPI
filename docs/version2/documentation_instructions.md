@@ -468,7 +468,7 @@ This local variable definition has the following fields:
   -  "LocalVariableName" is the local variable name.
   -  "VariableType" this optional field is the type of the variable when converted to C++ (used for the "state given observation" feature).
   -  "FromROSServiceResponse" should be `true` when the value is taken from the service response.
-  -  "AssignmentCode" is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. 
+  -  "AssignmentCode" is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is the string code. Nevertheless, users can define it as an array of strings representing complex Python code (the indentations are preserved).
   -  "ImportCode" is an array of imports needed when receiving the service response.
   
 Example:</br>
@@ -488,8 +488,39 @@ Example:</br>
     ]
 }
 ```
-* Public data published in the robot framework (e.g., ROS topics).
+* Public data published in the robot framework (e.g., ROS topics). 
+This type of local variable is constantly updated when certain public information is published in the robot framework(e.g., when a ROS topic message is published). It can capture events that occur during the skill execution. It's last value will be used when the skill observation is calculated. </br>This type of local variable is defined using the following fields:
+  -  "LocalVariableName" is the local variable name.
+  -  "RosTopicPath" is the topic path.\
+  -  "InitialValue" defines the value used to initialize the variable.
+  -  "TopicMessageType" is the type of the topic message ([see](http://wiki.ros.org/Topics)).
+  -  "VariableType" this optional field is the type of the variable when converted to C++ (used for the "state given observation" feature). 
+  -  "AssignmentCode" is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is the string code. Nevertheless, users can define it as an array of strings representing complex Python code (the indentations are preserved).
+  -  "ImportCode" is an array of imports needed when receiving the service response.
 
+Example:</br>
+```
+{
+            "LocalVariableName": "goal_reached",
+            "RosTopicPath": "/rosout",
+            "VariableType": "bool",
+            "InitialValue": "False",
+            "TopicMessageType": "Log",
+            "ImportCode": [
+                {
+                    "From": "rosgraph_msgs.msg",
+                    "Import": [
+                        "Log"
+                    ]
+                }
+            ], 
+            "AssignmentCode":[ 
+            "if goal_reached == True:",
+            "    return True",
+            "else:",
+            "    return __input.msg.find('Goal reached') > -1"]
+        },
+```
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
