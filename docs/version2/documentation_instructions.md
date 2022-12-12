@@ -375,7 +375,10 @@ Example:</br>
 
 ## GlueFramework
 GlueFramework is a string field to specify the type of robot framework (e.g., "ROS" for ROS1).</br>
-
+Example:</br>
+```
+"GlueFramework": "ROS"
+```
 ## ModuleResponse
 ModuleResponse section defines the translation between an actual execution outcome of a skill, to observations the AOS planning engine can reason about. The planning engine uses the SD documentation to simulate what might happen. The AM ModuleResponse section is used to translate what really happened to the language used in the SD documentation (see [DynamicModel](#dynamicmodel)). The planning engine uses this information to update the robot's belief. 
 ### ResponseRules
@@ -383,10 +386,64 @@ The ResponseRules is the array of possible observations a skill can return.</br>
 Each observation in the array has the following fields:</br>
 * "Response" is a string field that defines the observation name. The SD `__moduleResponse` variable can only receive values defined as "Response."
 * "ConditionCodeWithLocalVariables" is a string field that uses the user to define when the skill returns the current response (code is in Python for ROS). The condition may depend on "Local Variable" values (see [Local Variables](#)).
-
+Example:</br>
+```
+ModuleResponse": {
+        "ResponseRules": [
+            {
+                "Response": "eSuccess",
+                "ConditionCodeWithLocalVariables": "skillSuccess and goal_reached"
+            },
+            {
+                "Response": "eFailed",
+                "ConditionCodeWithLocalVariables": "True"
+            }
+        ]
+    },
+```
 The returned observation is the first "Response" that its condition is met (they are ordered the same as defined).
 
 ## ModuleActivation
+The ModuleActivation section describes how to activate the skill code.</br>
+The activation can use  SD's "GlobalVariableModuleParameters" modified to local variables (see [Local Variables](#)).
+
+### RosService
+This section defines how to activate a ROS1 service.</br>
+It has the following sections:</br>
+* "ImportCode" defines imported modules used when calling the service. 
+* "ServicePath" is the service path (called <service name> in the [service ROS Wiki](http://wiki.ros.org/rosservice)   
+* "ServiceName" is the name of the service "srv" file (`<ServiceName>.srv`).
+* "ServiceParameters" is the array of parameters sent in the service request. Each parameter has a: 1) "ServiceFieldName" which is the name of the parameter as defined in the `<ServiceName>.srv` file. 2) "AssignServiceFieldCode" is the value of the parameter. The user can define a Python code with local variables (see [Local Variables](#)). 
+```
+"ModuleActivation": {
+        "RosService": {
+            "ImportCode": [
+                {
+                    "From": "geometry_msgs.msg",
+                    "Import": [
+                        "Point"
+                    ]
+                },
+                {
+                    "From": "simple_navigation_goals.srv",
+                    "Import": [
+                        "navigate",
+                        "navigateResponse"
+                    ]
+                }
+            ],
+            "ServicePath": "/navigate_to_point",
+            "ServiceName": "navigate",
+            "ServiceParameters": [
+                {
+                    "ServiceFieldName": "goal",
+                    "AssignServiceFieldCode": "Point(x= nav_to_x, y= nav_to_y, z= nav_to_z)"
+                }
+            ]
+        }
+    },
+```
+
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
