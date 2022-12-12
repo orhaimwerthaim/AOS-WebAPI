@@ -413,7 +413,12 @@ It has the following sections:</br>
 * "ImportCode" defines imported modules used when calling the service. 
 * "ServicePath" is the service path (called <service name> in the [service ROS Wiki](http://wiki.ros.org/rosservice)   
 * "ServiceName" is the name of the service "srv" file (`<ServiceName>.srv`).
-* "ServiceParameters" is the array of parameters sent in the service request. Each parameter has a: 1) "ServiceFieldName" which is the name of the parameter as defined in the `<ServiceName>.srv` file. 2) "AssignServiceFieldCode" is the value of the parameter. The user can define a Python code with local variables (see [Local Variables](#)). 
+* "ServiceParameters" is the array of parameters sent in the service request. </br> 
+	Each parameter has a: </br>
+  - "ServiceFieldName" which is the name of the parameter as defined in the `<ServiceName>.srv` file. 
+  - "AssignServiceFieldCode" is the value of the parameter. The user can define a Python code with local variables (see [Local Variables](#)). 
+
+Example:</br>
 ```
 "ModuleActivation": {
         "RosService": {
