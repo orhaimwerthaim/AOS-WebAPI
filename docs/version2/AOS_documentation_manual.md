@@ -16,6 +16,18 @@
 * [Skill Documentation (SD) file](#skill-documentation-sd-file)
   - [PlpMain (for SD) section](#plpmain-sd)
   - [GlobalVariableModuleParameters section](#globalvariablemoduleparameters)
+  - [Assisting the planner](#assisting-the-planner) 
+    - [GlobalVariablePreconditionAssignments section](#globalvariablepreconditionassignments) 
+    - [PlannerAssistancePreconditionsAssignments section](#plannerassistancepreconditionsassignments)
+  - [DynamicModel](#dynamicmodel)
+* [Abstraction Mapping (AM) file](#abstraction-mapping-am-file)
+  -  [PlpMain (for AM) section](#plpmain-am)
+  -  [Robot framework (GlueFramework)](#glueframework)
+  -  [ModuleResponse section](#moduleresponse)
+    - [ResponseRules](#responserules)
+  - [ModuleActivation](#moduleactivation)
+    - [RosService section](#rosservice)
+  - [LocalVariablesInitialization section](#localvariablesinitialization)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
   - [Sample from Discrete distributions](#sample-from-discrete-distribution)
   - [Sample from Bernoulli distributions](#sample-from-bernoulli-distribution)
@@ -225,7 +237,7 @@ If we defined a state variable named `robotLocation`, it has three copies that c
 Each skill is documented using two files. First, a Skill Documentation (SD) file to describe the high level of the skill. Second, an Abstraction Mapping (AM) file to describe how to activate the skill code and how to translate the outcome of the skill execution to something the AOS can reason with for decision-making. 
 
 # Skill Documentation (SD) file
-The environment file structure is:</br>
+The SD file structure is:</br>
 ```
 {
     "PlpMain": {},
@@ -243,7 +255,7 @@ The environment file structure is:</br>
 See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/SD.json)
 
 ## PlpMain-SD
-See [PlpMain](#plpmain) for detailed explanation.</br>
+See6 [PlpMain](#plpmain) for detailed explanation.</br>
 Example:</br>
 ```
 "PlpMain": {
@@ -275,6 +287,247 @@ Example:</br>
     ], 
 ```
 The example above shows that user-defined types such as 'tLocation' can be used as skill parameters.</br>
+
+
+## Assisting the planner
+The engineer can guide the AOS to the direction of desired solutions.</br>
+
+One way is to define preconditions to activate a skill. Since the robot is not always fully aware of its current state, it cannot entirely revoke illegal actions (e.g., try driving when there is no fuel). Nevertheless, the user can define when a skill is illegal and penalize activating it by its relative weight in the current belief state distribution.</br> 
+
+Moreover, MCTS algorithms (supported by the AOS) build a search tree where each node is a distribution over states (belief state), and the leaf nodes are evaluated using a default (rollout) policy. The rollout policy is performed using a single state and is crucial to find a good solution. We can use the preconditions to revoke illegal skills.</br> 
+
+Furthermore, the user can define preferred action to define the rollout policy.</br>
+
+### GlobalVariablePreconditionAssignments
+This section is used to define when a skill with given parameters met the preconditions (default is true). This field is an [Assinment block](#assignments-blocks), the should assign a value to the reserved variable `__meetPrecondition` and it can use (not change) any state variable from `state` (see [The three sets of state variables](#the-three-sets-of-state-variables)).</br>
+
+Example:</br>
+```
+"Preconditions": {
+	"GlobalVariablePreconditionAssignments": [
+            {
+                "AssignmentCode": "__meetPrecondition = oDestination != state.robotLocation;"
+            }
+          ],
+	"ViolatingPreconditionPenalty":-1.5
+}
+```
+The "ViolatingPreconditionPenalty" is a decimal field that allows engineers to tune how undesirable it is to activate a particular skill when its preconditions are not met.</br>
+
+### PlannerAssistancePreconditionsAssignments
+In this section, the user can define a default (rollout) policy. This field is an [Assinment block](#assignments-blocks) that should set the value of the reserved variable `__heuristicValue`. The code assignment can be conditioned on variable from `state` (but cannot change their value. See [The three sets of state variables](#the-three-sets-of-state-variables)). </br>
+The default policy will draw between all available skills and parameter assignments. The weight of each skill will be its computed `__heuristicValue` </br>
+Example (taken from the [push skill SD file](https://github.com/orhaimwerthaim/AOS-mini-project/blob/main/collectValuableToys_base/navigate.json) of the box-pushing domain found in the [AOS experiments GitHub](https://github.com/orhaimwerthaim/AOS-experiments)):</br>
+```
+"Preconditions":{
+	"PlannerAssistancePreconditionsAssignments": [
+            {
+                "AssignmentName": "__heuristicValue for second agent joint push with first agent",
+                "AssignmentCode": "if(oIsJointPush == JointPush && !state.isAgentOneTurn && oDirection == state.JointPushDirection)__heuristicValue=100;"
+            },
+            {
+                "AssignmentName": "__heuristicValue push box when possible (don't ovverride first rule)",
+                "AssignmentCode": "if(__heuristicValue == 0) __heuristicValue=1;"
+            }
+        ]
+}
+```
+The default heuristic value for a skill is zero. This feature is ignored if no heuristic value is defined for any skill.</br>
+
+## DynamicModel
+The DynamicModel defines the high-level behavior of a skill. More specifically, the transition reward and observation models, how a skill changes the state, what costs (or rewards) are applied and which observations are returned. The "NextStateAssignments" is an [assignments block]() that sets the next state (`state__`), reward (`__reward` reserved variable), and observation (`__moduleResponse` reserved variable) conditioned on the previose state (`state`), the state after extrinsic changes (`state_`) and if the preconditions were met (`__meetPrecondition`). 
+
+Example:</br>
+```{r, attr.source='.numberLines'}
+"DynamicModel": {
+        "NextStateAssignments": [
+            {
+                "AssignmentCode": [" state__.robotLocation.discrete = !__meetPrecondition || AOS.Bernoulli(0.1) ? -1: oDesiredLocation.discrete;",
+		" if(state__.robotLocation.discrete == oDesiredLocation.discrete){ state__.robotLocation.x = oDesiredLocation.x; state__.robotLocation.y = oDesiredLocation.y; state__.robotLocation.z = oDesiredLocation.z;}",
+		"__moduleResponse = (state__.robotLocation.discrete == -1 && AOS.Bernoulli(0.8)) ? eFailed : eSuccess;",
+		"__reward = state_.robotLocation.discrete == -1 ? -5 : -(sqrt(pow(state.robotLocation.x-oDesiredLocation.x,2.0)+pow(state.robotLocation.y-oDesiredLocation.y,2.0)))*10;",
+                "if (state__.robotLocation.discrete == -1) __reward =  -10;"
+                ]
+           }]}
+```
+
+### SD observations must correspond to the AM observations
+The observation must correspond to the observations specified in the AM file. The AOS runs simulations to decide the next best skill to apply. Next, the selected skill code is executed, and the AOS translates the execution outcome to an observation which is then used to update the distribution on the current state (current belief).
+
+## Abstraction Mapping (AM) file
+The AM file structure is:</br>
+```
+{
+    "PlpMain": { },
+    "GlueFramework": "",
+    "ModuleResponse": { },
+    "ModuleActivation": { },
+    "LocalVariablesInitialization": []
+}
+```
+
+See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/SD.json)
+
+## PlpMain-AM
+See [PlpMain](#plpmain) for detailed explanation.</br>
+Example:</br>
+```
+"PlpMain": {
+        "Project": "cleaning_robot1",
+        "Name": "navigate",
+        "Type": "Glue",
+        "Version": 1.2
+    },
+```
+
+## GlueFramework
+GlueFramework is a string field to specify the type of robot framework (e.g., "ROS" for ROS1).</br>
+Example:</br>
+```
+"GlueFramework": "ROS"
+```
+## ModuleResponse
+ModuleResponse section defines the translation between an actual execution outcome of a skill, to observations the AOS planning engine can reason about. The planning engine uses the SD documentation to simulate what might happen. The AM ModuleResponse section is used to translate what really happened to the language used in the SD documentation (see [DynamicModel](#dynamicmodel)). The planning engine uses this information to update the robot's belief. 
+### ResponseRules
+The ResponseRules is the array of possible observations a skill can return.</br>
+Each observation in the array has the following fields:</br>
+* "Response" is a string field that defines the observation name. The SD `__moduleResponse` variable can only receive values defined as "Response."
+* "ConditionCodeWithLocalVariables" is a string field that uses the user to define when the skill returns the current response (code is in Python for ROS). The condition may depend on "Local Variable" values (see [Local Variables](#)).
+Example:</br>
+```
+ModuleResponse": {
+        "ResponseRules": [
+            {
+                "Response": "eSuccess",
+                "ConditionCodeWithLocalVariables": "skillSuccess and goal_reached"
+            },
+            {
+                "Response": "eFailed",
+                "ConditionCodeWithLocalVariables": "True"
+            }
+        ]
+    },
+```
+The returned observation is the first "Response" that its condition is met (they are ordered the same as defined).
+
+## ModuleActivation
+The ModuleActivation section describes how to activate the skill code.</br>
+The activation can use  SD's "GlobalVariableModuleParameters" modified to local variables (see [Local Variables](#localvariablesinitialization)).
+
+### RosService
+This section defines how to activate a ROS1 service.</br>
+It has the following sections:</br>
+* "ImportCode" defines imported modules used when calling the service. 
+* "ServicePath" is the service path (called <service name> in the [service ROS Wiki](http://wiki.ros.org/rosservice)   
+* "ServiceName" is the name of the service "srv" file (`<ServiceName>.srv`).
+* "ServiceParameters" is the array of parameters sent in the service request. </br> 
+	Each parameter has a: </br>
+  - "ServiceFieldName" which is the name of the parameter as defined in the `<ServiceName>.srv` file. 
+  - "AssignServiceFieldCode" is the value of the parameter. The user can define a Python code with local variables (see [Local Variables](#localvariablesinitialization)). 
+
+Example:</br>
+```
+"ModuleActivation": {
+        "RosService": {
+            "ImportCode": [
+                {
+                    "From": "geometry_msgs.msg",
+                    "Import": [
+                        "Point"
+                    ]
+                },
+                {
+                    "From": "simple_navigation_goals.srv",
+                    "Import": [
+                        "navigate",
+                        "navigateResponse"
+                    ]
+                }
+            ],
+            "ServicePath": "/navigate_to_point",
+            "ServiceName": "navigate",
+            "ServiceParameters": [
+                {
+                    "ServiceFieldName": "goal",
+                    "AssignServiceFieldCode": "Point(x= nav_to_x, y= nav_to_y, z= nav_to_z)"
+                }
+            ]
+        }
+    },
+```
+
+## LocalVariablesInitialization
+The "LocalVariablesInitialization" section is used to define local variables.</br>
+Local variables can take their value from three possible sources:</br>
+* SD file skill parameters (see [GlobalVariableModuleParameters section](#globalvariablemoduleparameters)). Only this type of local variable can be used to activate the skill since the other local variables' value is calculated when the skill execution ends.
+  -  "InputLocalVariable" is the name of the local variable.
+  -  "FromGlobalVariable" is the name of the skill parameter defined in the SD "GlobalVariableModuleParameters" section.
+  
+Example:</br>
+```
+{
+	"InputLocalVariable": "nav_to_x",
+	"FromGlobalVariable": "oDesiredLocation.x"
+}
+```
+* Skill-code returned value. Using the value returned from the skill code. The user can define a Python function to manipulate the returned value to something more meaningful or convenient. </br>
+This local variable definition has the following fields:
+  -  "LocalVariableName" is the local variable name.
+  -  "VariableType" this optional field is the type of the variable when converted to C++ (used for the "state given observation" feature).
+  -  "FromROSServiceResponse" should be `true` when the value is taken from the service response.
+  -  "AssignmentCode" is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is the string code. Nevertheless, users can define it as an array of strings representing complex Python code (the indentations are preserved).
+  -  "ImportCode" is an array of imports needed when receiving the service response.
+  
+Example:</br>
+```
+{
+    "LocalVariableName": "skillSuccess",
+    "VariableType":"bool",
+    "FromROSServiceResponse": true,
+    "AssignmentCode": "skillSuccess=__input.success",
+    "ImportCode": [
+	{
+	    "From": "std_msgs.msg",
+	    "Import": [
+		"Bool"
+	    ]
+	}
+    ]
+}
+```
+* Public data published in the robot framework (e.g., ROS topics). 
+This type of local variable is constantly updated when certain public information is published in the robot framework(e.g., when a ROS topic message is published). It can capture events that occur during the skill execution. It's last value will be used when the skill observation is calculated. </br>This type of local variable is defined using the following fields:
+  -  "LocalVariableName" is the local variable name.
+  -  "RosTopicPath" is the topic path.\
+  -  "InitialValue" defines the value used to initialize the variable.
+  -  "TopicMessageType" is the type of the topic message ([see](http://wiki.ros.org/Topics)).
+  -  "VariableType" this optional field is the type of the variable when converted to C++ (used for the "state given observation" feature). 
+  -  "AssignmentCode" is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is the string code. Nevertheless, users can define it as an array of strings representing complex Python code (the indentations are preserved).
+  -  "ImportCode" is an array of imports needed when receiving the service response.
+
+Example:</br>
+```
+{
+            "LocalVariableName": "goal_reached",
+            "RosTopicPath": "/rosout",
+            "VariableType": "bool",
+            "InitialValue": "False",
+            "TopicMessageType": "Log",
+            "ImportCode": [
+                {
+                    "From": "rosgraph_msgs.msg",
+                    "Import": [
+                        "Log"
+                    ]
+                }
+            ], 
+            "AssignmentCode":[ 
+            "if goal_reached == True:",
+            "    return True",
+            "else:",
+            "    return __input.msg.find('Goal reached') > -1"]
+        },
+```
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>

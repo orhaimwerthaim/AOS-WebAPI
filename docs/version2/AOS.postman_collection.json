@@ -1,0 +1,105 @@
+{
+	"info": {
+		"_postman_id": "87c43689-dbc3-450e-a893-744c50cdfa7b",
+		"name": "Postman AOS",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Execution Outcom",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/ExecutionOutcome?belief_size=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"ExecutionOutcome"
+					],
+					"query": [
+						{
+							"key": "belief_size",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Possible Actions",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Dropbox/AOS/PLP examples/working examples/ICAPS_Toy\",\n    \"RunWithoutRebuild\":false,\n    \"OnlyGenerateCode\":true,\n    \"RosTarget\":\n    {\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/aos_ros_target_project/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"aos_ros_target_project\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{ \n        \"NumOfParticles\":5234,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":2\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/SolverAction",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"SolverAction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Run project",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n    \"PLPsDirectoryPath\":\"/home/or/Downloads/AOS-mini-project-main/printHelloWorld\",\n    \"OnlyGenerateCode\":false,\n    \"RunWithoutRebuild\":false,\n    \"RosTarget\":\n    {\n        \"RosDistribution\":\"noetic\",\n        \"WorkspaceDirectortyPath\":\"/home/or/catkin_ws\",\n        \"TargetProjectLaunchFile\":\"/home/or/catkin_ws/src/letter_printer/launch/servers.launch\",\n        \"RosTargetProjectPackages\":[\"letter_printer\"],\n        \"TargetProjectInitializationTimeInSeconds\":10\n    },\n    \"SolverConfiguration\":{  \n        \"PolicyGraphDepth\":1,\n        \"DebugOn\":true,\n        \"NumOfParticles\":3,\n        \"Verbosity\":true,\n        \"ActionsToSimulate\":[],\n        \"IsInternalSimulation\":false,\n        \"PlanningTimePerMoveInSeconds\":0.5\n        },\n    \"MiddlewareConfiguration\":{\n        \"DebugOn\":true\n         \n    }\n}\n\n\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/InitializeProject",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"InitializeProject"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
