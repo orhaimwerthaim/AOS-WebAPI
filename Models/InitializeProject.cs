@@ -69,6 +69,7 @@ namespace WebApiCSharp.Models
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();
             IsInternalSimulation = false;
+            PolicyGraphDepth=0;
         }
     }
 }

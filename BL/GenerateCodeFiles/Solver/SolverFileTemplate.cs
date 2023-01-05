@@ -300,7 +300,7 @@ struct Config {
 	int limitClosedModelHorizon_stepsAfterGoalDetection;
     bool closedModelPolicyByGraph;
 	Config() : 
-        handsOnDebug(false),
+        handsOnDebug("+(initProj.SolverConfiguration.IsInternalSimulation && initProj.OnlyGenerateCode.HasValue && initProj.OnlyGenerateCode.Value ? "true" : "false")+@"),
         closedModelPolicyByGraph(false),
         limitClosedModelHorizon_stepsAfterGoalDetection(" + initProj.SolverConfiguration.limitClosedModelHorizon_stepsAfterGoalDetection + @"),
         sarsopTimeLimitInSeconds(" + initProj.SolverConfiguration.OfflineSolverTimeLimitInSeconds + @"),
