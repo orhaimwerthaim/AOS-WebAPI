@@ -556,9 +556,9 @@ For example if we have a custom compound
  Example:
 ```
 bool hasLocationInRange=false;
-for(int i=0; i < tLocationObjects.size();i++)
+for(int i=0; i < state.tLocationObjects.size();i++)
 {
-	if(tLocationObjects[i]->continuous_location_x > 1 && tLocationObjects[i]->continuous_location_x < 2)
+	if(state.tLocationObjects[i]->continuous_location_x > 1 && state.tLocationObjects[i]->continuous_location_x < 2)
     {
       hasLocationInRange = true;
     }
