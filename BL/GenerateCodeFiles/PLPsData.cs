@@ -517,15 +517,32 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                 {
                     BsonDocument docState = bState.AsBsonDocument;
                     SpecialState spState = new SpecialState();
-                    spState.IsGoalState = !docState.Contains("IsGoalState") ? false : docState["IsGoalState"].AsBoolean;
-                    spState.StateConditionCode = docState["StateConditionCode"].ToString();
-                    spState.IsOneTimeReward = !docState.Contains("IsOneTimeReward") ? false : docState["IsOneTimeReward"].AsBoolean;
-                    spState.Reward = docState["Reward"].AsDouble;
+                    
+                    if(docState.Contains("StateFunctionCode"))
+                    {
+                        if(docState.Contains("IsGoalState") || docState.Contains("IsGoalState") || docState.Contains("IsGoalState"))
+                        {
+                            throw new Exception("SpecialState.StateFunctionCode cannot be defined alongside IsGoalState, StateConditionCode, or IsOneTimeReward");
+                        }
+                    tempErrors.Clear();
+                    spState.StateFunctionCode = LoadAssignment(docState["StateFunctionCode"].AsBsonArray, environmentPLP_Name,
+                                    PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.ePreviousState);
+                    errors.AddRange(tempErrors);
+                    }
+                    else
+                    {
+                        spState.IsGoalState = !docState.Contains("IsGoalState") ? false : docState["IsGoalState"].AsBoolean;
+                        spState.StateConditionCode = docState["StateConditionCode"].ToString();
+                        spState.IsOneTimeReward = !docState.Contains("IsOneTimeReward") ? false : docState["IsOneTimeReward"].AsBoolean;
+                        spState.Reward = docState["Reward"].AsDouble;
+                    }
+
                     SpecialStates.Add(spState);
                 }
+
                 catch (Exception e2)
                 {
-                    errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", \"SpecialStates.IsGoalState\" (default is 'false') and \"IsOneTimeReward\"(default is 'false') must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
+                    errors.Add(GetPLPDescriptionForError(environmentPLP_Name, PLP_TYPE_NAME_ENVIRONMENT) + ", if \"SpecialStates.StateFunctionCode\" is defined, no other fields are allowed o.w \"SpecialStates.IsGoalState\" (default is 'false') and \"IsOneTimeReward\"(default is 'false') must be boolean,  \"SpecialStates.Reward\" must be decimal, \"SpecialStates.StateConditionCode\" must be defined!");
                 }
             }
             return errors;
@@ -1049,6 +1066,14 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                 }
             }
 
+            if(plp.GlobalVariableModuleParameters.Count() > 0 && bPlp.Contains("PossibleParametersValue"))
+            {
+ 
+            tempErrors.Clear();
+            plp.PossibleParametersValue = LoadAssignment(bPlp["PossibleParametersValue"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.ePreviousState);
+            errors.AddRange(tempErrors);               
+            }
+
             tempErrors.Clear();
             plp.Preconditions_GlobalVariablePreconditionAssignments = !bPlp.Contains("Preconditions") || !bPlp["Preconditions"].AsBsonDocument.Contains("GlobalVariablePreconditionAssignments") ? new List<Assignment>() : LoadAssignment(bPlp["Preconditions"]["GlobalVariablePreconditionAssignments"].AsBsonArray, plp.Name, plp.Type, out tempErrors, EStateType.ePreviousState, true);
             errors.AddRange(tempErrors);
@@ -1105,7 +1130,7 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
             errors.AddRange(tempErrors);
             plp.DynamicModel_VariableAssignments.AddRange(nextStateAssignments);
 
-
+            
             if (bPlp.Contains("StateGivenObservationModel") && bPlp["StateGivenObservationModel"].AsBsonDocument.Contains("Assignments"))
             {
                 tempErrors.Clear();
@@ -1420,6 +1445,7 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
 
     public class SpecialState
     {
+        public List<Assignment> StateFunctionCode = new List<Assignment>();
         public string StateConditionCode;
         public double Reward;
         public bool IsGoalState;

@@ -3584,7 +3584,11 @@ private:
                     }
                     result += parameters + ");" + Environment.NewLine;
 
-                    result += @"        virtual void SetActionParametersByState(State *state, std::vector<std::string> indexes);";
+                    result += @"        virtual void SetActionParametersByState(State *state, std::vector<std::string> indexes);"+Environment.NewLine;
+                    if(plp.PossibleParametersValue.Count() > 0)
+                    {
+                        result += "        virtual void SetActionParametersByState(std::tuple<"+string.Join(",",plp.GlobalVariableModuleParameters.Select(x=>x.Type).ToList())+"> parameters);"+Environment.NewLine;
+                    }
                     if(!onlyClasses)
                     {
                         result+= @"
@@ -4559,18 +4563,36 @@ namespace despot
             foreach (string plpName in data.PLPs.Keys)
             {
                 PLP plp = data.PLPs[plpName];
+                if(plp.PossibleParametersValue.Count()>0)
+                {
+                    result += GenerateFilesUtils.GetIndentationStr(1,4,"void " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription::SetActionParametersByState(std::tuple<"+string.Join(",",plp.GlobalVariableModuleParameters.Select(x=>x.Type).ToList())+"> parameters)");
+                    result += GenerateFilesUtils.GetIndentationStr(1,4,"{");
+                    for(int i=0;i<plp.GlobalVariableModuleParameters.Count();i++)
+                    {
+                        /* strLink_oCellP = "not applicable in this AOS version";
+    oCellP = std::get<0>(parameters);*/
+                    GlobalVariableModuleParameter p = plp.GlobalVariableModuleParameters[i];
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"strLink_"+p.Name+" = \"not applicable in this AOS version\";");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,p.Name+" = std::get<"+i+">(parameters);");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"");
+                    }
+                    result += GenerateFilesUtils.GetIndentationStr(1,4,"}");
+                }
                 if (plp.GlobalVariableModuleParameters.Count > 0)
                 {
                     //PLPActionDescription::SetActionParametersByState()
                     result += @"void " + GenerateFilesUtils.ToUpperFirstLetter(plpName) + @"ActionDescription::SetActionParametersByState(" + data.ProjectNameWithCapitalLetter + @"State *state, std::vector<std::string> indexes)
 {
 ";
+if(plp.PossibleParametersValue.Count() == 0)
+{
                     for (int i = 0; plp.GlobalVariableModuleParameters.Count > i; i++)
                     {
                         GlobalVariableModuleParameter param = plp.GlobalVariableModuleParameters[i];
                         result += "    strLink_" + param.Name + " = indexes[" + i + "];" + Environment.NewLine;
                         result += "    " + param.Name + " = (state->" + param.Type + "ObjectsForActions[indexes[" + i + "]]);" + Environment.NewLine;
                     }
+}
                     result += "}" + Environment.NewLine;
                     //------------------------------------------------------------------------------------------------------------------------------------
 
@@ -5148,6 +5170,31 @@ std::string Prints::GetStateJson(State& _state)
                     result += "    " + plp.Name + "->actionId = id++;" + Environment.NewLine;
 
                     result += "    ActionManager::actions.push_back(" + plp.Name + ");" + Environment.NewLine + Environment.NewLine;
+                }
+                else if(plp.PossibleParametersValue.Count() > 0)
+                {
+                    string paramTupleType = "vector<tuple<" + string.Join(",", plp.GlobalVariableModuleParameters.Select(x=> x.Type).ToList()) + ">> ";
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4,paramTupleType + plp.Name+"Parameters{};");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"auto "+plp.Name+"GetParameters = [&]()");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"{");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,paramTupleType + "__possibleParameters{};");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,"");
+                    result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, plp.PossibleParametersValue, 3, 4);
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,"return __possibleParameters;");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,"");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"};");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,plp.Name+"Parameters = "+plp.Name+"GetParameters();");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,  GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription* " + plp.Name + "Actions = new " + GenerateFilesUtils.ToUpperFirstLetter(plp.Name) + "ActionDescription["+plp.Name+"Parameters.size()];");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"for(int i=0;i< "+plp.Name+"Parameters.size();i++)");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"{");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,GenerateFilesUtils.ToUpperFirstLetter(plp.Name)+"ActionDescription &o"+GenerateFilesUtils.ToUpperFirstLetter(plp.Name)+"Action = "+plp.Name+"Actions[i];");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,"o"+GenerateFilesUtils.ToUpperFirstLetter(plp.Name)+"Action.SetActionParametersByState("+plp.Name+"Parameters[i]);");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,"o"+GenerateFilesUtils.ToUpperFirstLetter(plp.Name)+"Action.actionId = id++;");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,"o"+GenerateFilesUtils.ToUpperFirstLetter(plp.Name)+"Action.actionType = "+plp.Name+"Action;");
+                    result += GenerateFilesUtils.GetIndentationStr(3,4,"ActionManager::actions.push_back(&o"+GenerateFilesUtils.ToUpperFirstLetter(plp.Name)+"Action);");
+                    result += GenerateFilesUtils.GetIndentationStr(2,4,"}");
+                    
+                    
                 }
                 else
                 {
@@ -5854,25 +5901,60 @@ namespace despot {
             result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "bool ProcessSpecialStates(State &state, double &reward)") : 
                 GenerateFilesUtils.GetIndentationStr(0, 4, "bool " + data.ProjectNameWithCapitalLetter + "::ProcessSpecialStates(" + data.ProjectNameWithCapitalLetter + "State &state, double &reward) const");
             result += GenerateFilesUtils.GetIndentationStr(0, 4, "{");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "float temp_reward = 0;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "bool temp_IsGoalState = false;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "bool temp_StopEvaluatingState = false;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "bool isFinalState = false;");
             for (int i = 0; i < data.SpecialStates.Count; i++)
             {
                 SpecialState spState = data.SpecialStates[i];
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(state.OneTimeRewardUsed[" + i + "])");
+
+// auto stateFunction = [&]()
+//         {
+//             float __reward = 0;
+//             bool __isGoalState = false;
+//             bool __stopEvaluatingState = false;
+
+//             return std::make_tuple(__reward, __isGoalState, __stopEvaluatingState);
+//         };
+
+
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
-                result += GenerateFilesUtils.GetIndentationStr(2, 4, "if (" + HandleCodeLine(data, spState.StateConditionCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ")");
-                result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
-                if (spState.IsOneTimeReward && !spState.IsGoalState)
+                if(spState.StateFunctionCode.Count() > 0)
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "state.OneTimeRewardUsed[" + i + "] = false;");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "auto stateFunction = [&]()");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "float __reward = 0;");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "bool __isGoalState = false;");
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "bool __stopEvaluatingState = false;");
+                    result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, spState.StateFunctionCode, 3, 4);
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "return std::make_tuple(__reward, __isGoalState, __stopEvaluatingState);");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "};");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "std::tie(temp_reward, temp_IsGoalState, temp_StopEvaluatingState) = stateFunction();");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "state.OneTimeRewardUsed[0] = !temp_StopEvaluatingState;");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "reward += temp_reward;");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "isFinalState = temp_IsGoalState ? true : isFinalState;");
+                    
                 }
-                result += GenerateFilesUtils.GetIndentationStr(3, 4, "reward += " + spState.Reward + ";");
-                if (spState.IsGoalState)
+                else
                 {
-                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "isFinalState = true;");
-                }
-                result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
-                result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "if (" + HandleCodeLine(data, spState.StateConditionCode, PLPsData.PLP_TYPE_NAME_ENVIRONMENT) + ")");
+                
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "{");
+                    if (spState.IsOneTimeReward && !spState.IsGoalState)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "state.OneTimeRewardUsed[" + i + "] = false;");
+                    }
+                    result += GenerateFilesUtils.GetIndentationStr(3, 4, "reward += " + spState.Reward + ";");
+                    if (spState.IsGoalState)
+                    {
+                        result += GenerateFilesUtils.GetIndentationStr(3, 4, "isFinalState = true;");
+                    }
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "}");
+                    }
+                    
+                    result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
             }
 
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "return isFinalState;");
@@ -5990,6 +6072,7 @@ namespace despot {
             {
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(actType == " + plp.Name + "Action)");
                 result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
+ 
 
                 result += GetAssignmentsCode(data, plp.Name, plp.DynamicModel_VariableAssignments, 2, 4);
                 /*foreach (Assignment assign in plp.DynamicModel_VariableAssignments)

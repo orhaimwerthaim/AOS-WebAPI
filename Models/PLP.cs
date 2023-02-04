@@ -9,6 +9,8 @@ namespace WebApiCSharp.Models
     {  
           public List<GlobalVariableModuleParameter> GlobalVariableModuleParameters { get; set; } 
         public List<Assignment> Preconditions_GlobalVariablePreconditionAssignments{ get; set; }
+
+        public List<Assignment> PossibleParametersValue{ get; set; }
           public List<Assignment> Preconditions_PlannerAssistancePreconditionsAssignments{ get; set; }
 
           public int Preconditions_ViolatingPreconditionPenalty{ get; set; }
@@ -18,6 +20,7 @@ namespace WebApiCSharp.Models
           public List<Assignment> StateGivenObservationModel_VariableAssignments { get; set; }
         public PLP()
         { 
+            PossibleParametersValue = new List<Assignment>();
             GlobalVariableModuleParameters = new List<GlobalVariableModuleParameter>(); 
             ModuleExecutionTimeDynamicModel = new List<Assignment>();
             DynamicModel_VariableAssignments = new List<Assignment>();
@@ -51,7 +54,7 @@ namespace WebApiCSharp.Models
         {
             ResponseAssignmentsToGlobalVar = new List<ResponseAssignmentToGlobalVar>();
         }
-    }
+    } 
 
     public class ResponseAssignmentToGlobalVar
     {
