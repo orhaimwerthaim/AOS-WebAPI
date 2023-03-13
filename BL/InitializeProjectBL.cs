@@ -213,7 +213,10 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
                     Solver solver = new Solver() { ProjectName = plpData.ProjectName, SolverId = nextSolverId, ServerGeneratedSolverDateTime = DateTime.UtcNow };
                     solver = SolversService.Add(solver);
                     GenerateSolver generateSolver = new GenerateSolver(plpData, initProj, solver);
-                    new GenerateRosMiddleware(plpData, initProj);
+                    if (!initProj.SolverConfiguration.IsInternalSimulation)
+                    {
+                        new GenerateRosMiddleware(plpData, initProj);
+                    }
 
                     if (!initProj.OnlyGenerateCode.Value)
                     {
