@@ -11,8 +11,10 @@ using System.Collections.Generic;
 using System.Linq;
 namespace WebApiCSharp.GenerateCodeFiles
 {
+    
     public class BlackBoxTemplate
     {
+       
         public static string GetSingleFileModel(PLPsData data, bool forCppToPython = false)
         {
             Dictionary<string, Dictionary<string, string>>temp1;
@@ -76,7 +78,7 @@ bool SampleBernoulli(double p)
     SolverFileTemplate.GetEnumMapCppFile(data,true) + Environment.NewLine 
   + SolverFileTemplate.GetGetStateVarTypesHeaderEnumTypes(data) + @"
 
-" + SolverFileTemplate.GetGetStateVarTypesHeaderCompoundTypes(data) + @"
+" + SolverFileTemplate.GetGetStateVarTypesHeaderCompoundTypes(data, true) + @"
 class State {
 public:
 	int state_id;
@@ -96,7 +98,7 @@ public:
 	}
 
     bool __isTermianl = false;
-" + SolverFileTemplate.GetVariableDeclarationsForStateHeaderFile(data) + @"
+" + SolverFileTemplate.GetVariableDeclarationsForStateHeaderFile(data, true) + @"
 
 	public:
 		static void SetAnyValueLinks(State *state);
@@ -160,9 +162,10 @@ SolverFileTemplate.GetCheckPreconditionsForModelCpp(data, true) + Environment.Ne
 }
 
 PYBIND11_MODULE(aos_domain, m) {
-    
+    "+ GetPyBindForTypes(data)+@"
     py::class_<State>(m, ""State"")
 //    .def(py::init()) 
+"+GetStateVariableBindings(data)+@"
     .def(""__repr__"", &Prints::PrintState);
     
     m.def(""copy"", &CopyToNewState);
@@ -178,6 +181,70 @@ file +=Environment.NewLine + "}";
 
             return file;
         }
+public static string GetStateVariableBindings(PLPsData data)
+{
+    string result = "" + Environment.NewLine;
+    for(int i=0;i< data.GlobalVariableDeclarations.Count() ; i++)
+    {
+        GlobalVariableDeclaration d = data.GlobalVariableDeclarations[i];
+        if(d.IsActionParameterValue)
+        {
+            continue;
+        }
+        if(data.GlobalEnumTypes.Where(x=> x.TypeName == d.Type).Count()>0)
+        {
+            result += "    .def_property(\""+d.Name+"\", &State::get_"+d.Name+", &State::set_"+d.Name+")";
+        }
+        else
+        {
+            result += "    .def_readwrite(\""+d.Name+"\", &State::"+d.Name+")";    
+        }
+        result += Environment.NewLine;
     }
+    return result;
+}
+ public static string GetEnumTypeGetSetFunction(PLPsData data, string enumType, string fieldName)
+    {
+        string result="";
+        for(int i=0; i < data.GlobalEnumTypes.Count();i++)
+        {
+          if(data.GlobalEnumTypes[i].TypeName == enumType)
+          {
+            result += "        void set_"+fieldName+"( int c_) { "+fieldName+" = ("+enumType+")c_; }" + Environment.NewLine;
+            result += "        int get_"+fieldName+"()  { return (int)"+fieldName+"; }" + Environment.NewLine;
+            break;
+          }  
+        } 
+        return result;
+    }
+
+         private static string GetPyBindForTypes(PLPsData data)
+    {
+        string result = "";
+        for(int i=0;i< data.GlobalCompoundTypes.Count();i++)
+        {
+            CompoundVarTypePLP t = data.GlobalCompoundTypes[i];
+            result += "    py::class_<"+t.TypeName+">(m, \""+t.TypeName+"\")" + Environment.NewLine;
+            for(int j=0;j< t.Variables.Count();j++)
+            {
+                if(data.GlobalEnumTypes.Where(x=> x.TypeName == t.Variables[j].Type).Count()>0)
+                {
+                    result += "    .def_property(\""+t.Variables[j].Name+"\", &"+t.TypeName+"::get_"+t.Variables[j].Name+", &"+t.TypeName+"::set_"+t.Variables[j].Name+")";
+                }
+                else
+                {
+                    result += "    .def_readwrite(\""+t.Variables[j].Name+"\", &"+t.TypeName+"::"+t.Variables[j].Name+")";
+                }
+                result += j == t.Variables.Count()-1 ? ";" : "";
+                result += Environment.NewLine;
+            }
+        }
+        return result;
+    }
+
+    }
+
+   
         
 }
+
