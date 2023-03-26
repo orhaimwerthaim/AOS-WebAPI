@@ -7,6 +7,7 @@ using WebApiCSharp.Models;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 
 namespace WebApiCSharp.GenerateCodeFiles
 {
@@ -31,6 +32,8 @@ namespace WebApiCSharp.GenerateCodeFiles
         public bool HasExtrinsicChanges {
             get{return !(ExtrinsicChangesDynamicModel.Count() == 0);}
         }
+
+        public bool HasPrintStateFunc{get{return !(PrintStateFunc.Count() == 0);}}
         public bool HasDynamicModelChanges {
             get
         {
@@ -47,9 +50,11 @@ namespace WebApiCSharp.GenerateCodeFiles
         public List<LocalVariableConstant> LocalVariableConstants = new List<LocalVariableConstant>();
         public List<LocalVariableTypePLP> LocalVariableTypes = new List<LocalVariableTypePLP>();
         public string ProjectName { get; set; }
+      
         public string ProjectNameWithCapitalLetter { get; set; }
         public List<Assignment> InitialBeliefAssignments = new List<Assignment>();
         public List<Assignment> ExtrinsicChangesDynamicModel = new List<Assignment>();
+        public List<Assignment> PrintStateFunc = new List<Assignment>();
         public List<EnumVarTypePLP> GlobalEnumTypes = new List<EnumVarTypePLP>();
         public List<BaseGlobalVarType> BaseGlobalVarTypes = new List<BaseGlobalVarType>();
         public List<CompoundVarTypePLP> GlobalCompoundTypes = new List<CompoundVarTypePLP>();
@@ -145,8 +150,33 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
     } 
     return "";
 }
+
+public string GetModelHash()
+{
+    string res = "";
+    res = environmentPLP.ToString();
+    foreach (KeyValuePair<string, BsonDocument> plp in bsonPlps)
+                {
+                    res+=plp.ToString();
+                }
+                using (var sha = new System.Security.Cryptography.SHA256Managed())
+    {
+        // Convert the string to a byte array first, to be processed
+        byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(res);
+        byte[] hashBytes = sha.ComputeHash(textBytes);
+        
+        // Convert back to a string, removing the '-' that BitConverter adds
+        string hash = BitConverter
+            .ToString(hashBytes)
+            .Replace("-", String.Empty);
+
+        return hash;
+    } 
+
+}
+
         public PLPsData(out List<string> errors)
-        {
+        { 
             errors = new List<string>();
             try
             {
@@ -297,6 +327,12 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
             {
                 codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
             }
+
+            foreach (Assignment assign in PrintStateFunc)
+            {
+                codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
+            }
+            
 
             foreach (GlobalVariableDeclaration globalVarDec in GlobalVariableDeclarations)
             {
@@ -508,6 +544,13 @@ private string GetLocalVariableTypeByGlobalVarName(string globalVarName, string 
                 PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.ePreviousState);
             errors.AddRange(tempErrors);
             InitialBeliefAssignments.AddRange(initialBeliefStateAssignments);
+
+            
+            tempErrors.Clear();
+            List<Assignment> printStateFunc = !environmentPLP.Contains("PrintStateFunc") ? new List<Assignment>() : LoadAssignment(environmentPLP["PrintStateFunc"].AsBsonArray, environmentPLP_Name,
+                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.ePreviousState);
+            errors.AddRange(tempErrors);
+            PrintStateFunc.AddRange(printStateFunc);
 
 
 

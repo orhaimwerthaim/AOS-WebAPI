@@ -118,7 +118,7 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
             {
                 Directory.Delete(configuration.SolverPath + "/build/examples",true);//delete old builds
             }
-            string output = GenerateFilesUtils.RunBashCommand("cmake --build ~/AOS/AOS-Solver/build --config Release --target all -j 10 --");
+            string output = GenerateFilesUtils.RunBashCommand("cmake --build ~/AOS/AOS-Solver/build --config Release --target all -j 14 --");
             //countdownEvent = new CountdownEvent(1);
             
             /*GenerateFilesUtils.WriteTextFile(configuration.SolverPath + "/BuildSolverWrapper.sh", GetBuildSolverBashFile(data.ProjectName), true);

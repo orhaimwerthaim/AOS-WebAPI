@@ -111,7 +111,7 @@ State::~State() {}
 State* CopyToNewState(State* state)
 {
     State* s= new State();
-    *s=*state;
+"+SolverFileTemplate.GetDeepCopyState(data)+@"
     return s;
 }
 
@@ -139,6 +139,7 @@ SolverFileTemplate.GetCheckPreconditionsForModelCpp(data, true) + Environment.Ne
  @"
     State* InitEnv()
     {
+        generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
         InitMapEnumToString();
         State* state = CreateStartState();
         return state;
@@ -147,6 +148,21 @@ SolverFileTemplate.GetCheckPreconditionsForModelCpp(data, true) + Environment.Ne
  if(forCppToPython)
  {
  file +=@"
+
+std::string EnvName()
+{
+    return """+data.ProjectName+@""";
+}
+
+std::string DocHash()
+{
+    return """+data.GetModelHash()+@""";
+}
+
+std::string Horizon()
+{
+    return """+data.Horizon+@""";
+}
 
  vector<std::string> PrintActionsDescription()
 {
@@ -168,6 +184,10 @@ PYBIND11_MODULE(aos_domain, m) {
 "+GetStateVariableBindings(data)+@"
     .def(""__repr__"", &Prints::PrintState);
     
+    
+    m.def(""horizon"", &Horizon);
+    m.def(""hash"", &DocHash);
+    m.def(""name"", &EnvName);
     m.def(""copy"", &CopyToNewState);
     m.doc() = ""pybind11 aos_domain_for_python plugin""; // optional module docstring
     m.def(""init_env"", &InitEnv, ""A function that adds two numbers"");
@@ -179,6 +199,10 @@ PYBIND11_MODULE(aos_domain, m) {
  }
 file +=Environment.NewLine + "}";
 
+if(forCppToPython)
+{
+    file=file.Replace("AOSUtils::","");
+}
             return file;
         }
 public static string GetStateVariableBindings(PLPsData data)

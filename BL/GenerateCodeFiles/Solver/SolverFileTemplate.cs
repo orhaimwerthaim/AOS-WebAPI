@@ -204,7 +204,7 @@ include_directories(""/usr/local/include/mongocxx/v_noabi"")
 include_directories(""/usr/local/include/bsoncxx/v_noabi"")
 include_directories(""/usr/local/include/libmongoc-1.0"")
 include_directories(""/usr/local/include/libbson-1.0"")
-include_directories(""/usr/local/lib"")
+#include_directories(""/usr/local/lib"")
  
 
 target_link_libraries(""${PROJECT_NAME}"" ${LIBMONGOCXX_LIBRARIES})
@@ -4437,7 +4437,7 @@ file +=@"
         }
 
 
-        public static string GetGetStateVarTypesHeaderCompoundTypes(PLPsData data)
+        public static string GetGetStateVarTypesHeaderCompoundTypes(PLPsData data, bool forCppToPython = false)
         {
             string result = "";
             foreach (CompoundVarTypePLP complType in data.GlobalCompoundTypes)
@@ -4451,16 +4451,45 @@ file +=@"
                 {
                     CompoundVarTypePLP_Variable oComVar = complType.Variables[i];
                     result += "		" + oComVar.Type + " " + oComVar.Name + ";" + Environment.NewLine;
+                    if(forCppToPython)
+                    {
+                        result += BlackBoxTemplate.GetEnumTypeGetSetFunction(data, oComVar.Type, oComVar.Name);
+                    }
                 }
                 result += @"		inline bool operator==(const " + complType.TypeName + "& other)const{return " +
                     String.Join(" && ", complType.Variables.Select(x => "(*this)." + x.Name + " == other." + x.Name)) + ";};" + Environment.NewLine;
                 result += @"		inline bool operator!=(const " + complType.TypeName + "& other)const{return !(*this == other);};" + Environment.NewLine;
                 //inline bool operator==(const tLocation& other)const{return (*this).x == other.x && (*this).y == other.y;};
                 //inline bool operator!=(const tLocation& other)const{return !(*this == other);};
+                if(forCppToPython)
+                {
+                    result += "		void copy("+complType.TypeName+"* obj);"+Environment.NewLine;
+                }
                 result += @"		" + complType.TypeName + @"(); 
 	};
 
 ";
+                if(forCppToPython)
+                {
+                    result += " void "+complType.TypeName+"::copy("+complType.TypeName+@"* obj)
+    {
+";
+                        for (int i = 0; i < complType.Variables.Count; i++)
+                        {
+                            CompoundVarTypePLP_Variable oComVar = complType.Variables[i];
+                            if(data.GlobalCompoundTypes.Where(x=> x.TypeName == oComVar.Type).Count()>0)
+                            {
+                                result += "        "+oComVar.Name+"Cell1.copy(&(obj->"+oComVar.Name+"));"+Environment.NewLine;
+                            }
+                            else
+                            {
+                                result += "        "+oComVar.Name+" = obj->"+oComVar.Name+";"+Environment.NewLine;
+                            }
+                        }
+            result +=@"    }
+            
+            ";
+                }
             }
             return result;
         }
@@ -4505,7 +4534,36 @@ namespace despot
             return file;
         }
 
-        public static string GetVariableDeclarationsForStateHeaderFile(PLPsData data)
+
+public static string GetDeepCopyState(PLPsData data)
+{
+    string res = "";
+    res += "    s->__isTermianl = state->__isTermianl;"+Environment.NewLine;
+    res +=@"for(int i=0;i< (sizeof(s->OneTimeRewardUsed) / sizeof(bool));i++)
+    {
+        s->OneTimeRewardUsed[i]=state->OneTimeRewardUsed[i];
+    }" + Environment.NewLine;
+    foreach(GlobalVariableDeclaration gVar in data.GlobalVariableDeclarations)
+    {
+        if(data.GlobalCompoundTypes.Where(x=>x.TypeName == gVar.Type).Count()>0)
+        {
+            res += "    s->"+gVar.Name+".copy(&(state->"+gVar.Name+"));"+Environment.NewLine;
+        }
+        else
+        {
+            res += "    s->"+gVar.Name+"=state->"+gVar.Name+";"+Environment.NewLine;
+        }
+    }
+    foreach(CompoundVarTypePLP typ in data.GlobalCompoundTypes)
+    {
+        foreach(GlobalVariableDeclaration gVar in data.GlobalVariableDeclarations.Where(x=>x.Type==typ.TypeName))
+        {
+            res += "    s->"+typ.TypeName+"Objects.push_back(&(s->"+gVar.Name+"));"+Environment.NewLine;
+        }
+    };
+    return res;
+}
+        public static string GetVariableDeclarationsForStateHeaderFile(PLPsData data, bool forCppToPython=false)
         {
             string result = "";
 
@@ -4548,6 +4606,19 @@ namespace despot
                 //HasAnyValue = oVarDec.Type == PLPsData.ANY_VALUE_TYPE_NAME ? true : HasAnyValue; 
                 result += "    " + oVarDec.GetVariableDefinition() + Environment.NewLine;
               
+            }
+
+            if(forCppToPython)
+            {
+                foreach (GlobalVariableDeclaration oVarDec in data.GlobalVariableDeclarations)
+                {
+                    string res = BlackBoxTemplate.GetEnumTypeGetSetFunction(data, oVarDec.Type, oVarDec.Name);
+                    if(res.Length > 0)
+                    {
+                        result += "    " + res + Environment.NewLine;
+                    }
+                }
+                
             }
             result += "    std::map<std::string, anyValue*> anyValueUpdateDic;" + Environment.NewLine;
             return result;
@@ -5412,13 +5483,20 @@ namespace despot {
             string result = GenerateFilesUtils.GetIndentationStr(1, 4, "std::string Prints::PrintState(" + data.ProjectNameWithCapitalLetter + @"State state)");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "stringstream ss;");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"STATE: \";");
-            foreach (GlobalVariableDeclaration oStateVar in data.GlobalVariableDeclarations)
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "ss << \"STATE: \" << endl;");
+            if(data.HasPrintStateFunc)
             {
-                if(!oStateVar.IsActionParameterValue)
+                result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, data.PrintStateFunc, 1, 4);
+            }
+            else
+            {
+                foreach (GlobalVariableDeclaration oStateVar in data.GlobalVariableDeclarations)
                 {
-                    result += AddStateJsonTransformVarLine(oStateVar, false, true);
-                } 
+                    if(!oStateVar.IsActionParameterValue)
+                    {
+                        result += AddStateJsonTransformVarLine(oStateVar, false, true);
+                    } 
+                }
             }
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "return ss.str();");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}" + Environment.NewLine);
