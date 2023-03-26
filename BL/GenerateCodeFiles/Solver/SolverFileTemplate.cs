@@ -5800,7 +5800,7 @@ namespace despot {
                 }
             }
 
-            if (initProj != null && !initProj.SolverConfiguration.LoadBeliefFromDB)
+            if (initProj == null || !initProj.SolverConfiguration.LoadBeliefFromDB)
             {
                 result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, data.InitialBeliefAssignments, 1, 4);
                 /*foreach (Assignment assign in data.InitialBeliefAssignments)
