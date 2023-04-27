@@ -234,5 +234,5 @@ The AOS is automatically integrating the user code. The user only needs to send 
 #### Requirements
 * Ubuntu 20.04
 #### Installtion Steps
-* run bash script ["AOS_ubuntu20_install_v5.bash"](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/AOS_ubuntu20_install_v5.bash) 
+* run bash script ["AOS_ubuntu20_install_v6.bash"](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/AOS_ubuntu20_install_v5.bash) 
 * (optional) run bash script ["ROS1_noetic_install.bash"](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/ROS1_noetic_install.bash)
