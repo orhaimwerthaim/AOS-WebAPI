@@ -2680,7 +2680,7 @@ void POMDPEvaluator::InitRound() {
 }
 
 double POMDPEvaluator::EndRound() {
-	if (!Globals::config.verbosity >= eLogLevel::INFO && out_) {
+	if (Globals::config.verbosity >= eLogLevel::INFO && out_) {
 		std::string logMsg(""Total undiscounted simulated reward:"" + to_string(total_undiscounted_reward_));
 		MongoDB_Bridge::AddLog(logMsg, eLogLevel::INFO);
 		*out_ << ""Total discounted reward = "" << total_discounted_reward_ << endl
