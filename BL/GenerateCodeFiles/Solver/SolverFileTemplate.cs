@@ -274,6 +274,11 @@ install(FILES ""${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake""
 
 namespace despot {
 
+enum eLogLevel
+{
+	Off=0,FATAL=1,ERROR=2,WARN=3,INFO=4,DEBUG=5,TRACE=6
+};
+
 struct Config {
     int solverId;
 	bool internalSimulation; 
@@ -288,7 +293,8 @@ struct Config {
   std::string default_action;
 	int max_policy_sim_len; // Maximum number of steps for simulating the default policy
 	double noise;
-	bool silence;
+	bool manualControl;\
+    int verbosity;
     bool saveBeliefToDB;
     bool handsOnDebug;
 	bool solveProblemWithClosedPomdpModel;
@@ -301,6 +307,7 @@ struct Config {
     bool closedModelPolicyByGraph;
 	Config() : 
         handsOnDebug("+(initProj.SolverConfiguration.IsInternalSimulation && initProj.OnlyGenerateCode.HasValue && initProj.OnlyGenerateCode.Value ? "true" : "false")+@"),
+        manualControl("+(initProj.SolverConfiguration.ManualControl ? "true" : "false") +@"),
         closedModelPolicyByGraph(false),
         limitClosedModelHorizon_stepsAfterGoalDetection(" + initProj.SolverConfiguration.limitClosedModelHorizon_stepsAfterGoalDetection + @"),
         sarsopTimeLimitInSeconds(" + initProj.SolverConfiguration.OfflineSolverTimeLimitInSeconds + @"),
@@ -321,7 +328,8 @@ struct Config {
 		default_action(""""),
 		max_policy_sim_len(10),
 		noise(0.1),
-		silence(" + (initProj.SolverConfiguration.DebugOn ? "false" : "true") + @"),
+        //Off=0,FATAL=1,ERROR=2,WARN=3,INFO=4,DEBUG=5,TRACE=6 
+		verbosity(" + initProj.SolverConfiguration.Verbosity.ToString() + @"),
 		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
         saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @")
 		{
@@ -379,9 +387,9 @@ namespace despot {
   mongocxx::collection MongoDB_Bridge::actionsCollection;
   mongocxx::collection MongoDB_Bridge::globalVariablesAssignmentsColllection;
   mongocxx::collection MongoDB_Bridge::SolversCollection;
-  mongocxx::collection MongoDB_Bridge::logsCollection;
-  mongocxx::collection MongoDB_Bridge::errorsCollection;
-
+  mongocxx::collection MongoDB_Bridge::logsCollection; 
+  mongocxx::collection MongoDB_Bridge::manualActionsForSolverCollection;
+  mongocxx::collection MongoDB_Bridge::SimulatedStatesColllection;
   mongocxx::collection MongoDB_Bridge::beliefStatesColllection;
   mongocxx::collection MongoDB_Bridge::closedModelBeliefStatesColllection;
   int MongoDB_Bridge::currentActionSequenceId = 0;
@@ -405,9 +413,16 @@ namespace despot {
       MongoDB_Bridge::actionsCollection = MongoDB_Bridge::db[""Actions""];
       MongoDB_Bridge::SolversCollection = MongoDB_Bridge::db[""Solvers""];
       MongoDB_Bridge::beliefStatesColllection = MongoDB_Bridge::db[""BeliefStates""];
-      MongoDB_Bridge::closedModelBeliefStatesColllection = MongoDB_Bridge::db[""ClosedModelBeliefState""];
-      MongoDB_Bridge::errorsCollection = MongoDB_Bridge::db[""Errors""];
+      MongoDB_Bridge::closedModelBeliefStatesColllection = MongoDB_Bridge::db[""ClosedModelBeliefState""]; 
       MongoDB_Bridge::logsCollection = MongoDB_Bridge::db[""Logs""];
+      MongoDB_Bridge::SimulatedStatesColllection = MongoDB_Bridge::db[""SimulatedStates""];
+      MongoDB_Bridge::manualActionsForSolverCollection = MongoDB_Bridge::db[""ManualActionsForSolver""];
+      
+      auto filter = document{} << finalize;
+      MongoDB_Bridge::SimulatedStatesColllection.delete_many(filter.view());
+      MongoDB_Bridge::beliefStatesColllection.delete_many(filter.view());
+      MongoDB_Bridge::actionToExecuteCollection.delete_many(filter.view());
+      MongoDB_Bridge::logsCollection.delete_many(filter.view());
     }
 }
 
@@ -539,6 +554,31 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
   return localVariables;
 }
 
+ int MongoDB_Bridge::WaitForManualAction()
+{
+
+  std::map<std::string, std::string> localVariables;
+  std::vector<bsoncxx::document::view> moduleLocalVars;
+  MongoDB_Bridge::Init();
+  auto filter = document{} << finalize;
+  bool actionFinished = false;
+
+    
+    while (true)
+    {
+      mongocxx::cursor cursor = MongoDB_Bridge::manualActionsForSolverCollection.find({filter});
+      for(auto doc : cursor) 
+    {
+      actionFinished = true; 
+      int actionId = doc[""ActionID""].get_int32().value; 
+
+      MongoDB_Bridge::manualActionsForSolverCollection.delete_one(filter.view());
+      return actionId;
+    }
+    }
+  return -1;
+}
+
 bsoncxx::oid MongoDB_Bridge::SendActionToExecution(int actionId, std::string actionName, std::string actionParameters)
 {
   MongoDB_Bridge::Init(); 
@@ -565,30 +605,48 @@ bsoncxx::oid MongoDB_Bridge::SendActionToExecution(int actionId, std::string act
   return oid;
 }
 
-void MongoDB_Bridge::AddLog(std::string logMsg)
+void MongoDB_Bridge::AddLog(std::string logMsg, int logLevel)
 {
+  std::string logLevelDesc;
+  switch (logLevel)
+  {
+  case 1:
+    logLevelDesc = ""Fatal"";
+    break;
+  case 2:
+    logLevelDesc = ""Error"";
+    break;
+  case 3:
+    logLevelDesc = ""Warn"";
+    break;
+  case 4:
+    logLevelDesc = ""Info"";
+    break;
+  case 5:
+    logLevelDesc = ""Debug"";
+    break;
+  case 6:
+    logLevelDesc = ""Trace"";
+    break;
+    
+  
+  default:
+  logLevelDesc = """";
+    break;
+  }
+
   auto now = std::chrono::system_clock::now();
   auto builder = bsoncxx::builder::stream::document{};
   bsoncxx::document::value doc_value = (builder << ""Component"" << ""aosSolver""
                                                 << ""Event"" << logMsg 
                                                 << ""Time"" << bsoncxx::types::b_date(now) 
+                                                << ""LogLevel"" << logLevel
+                                                << ""LogLevelDesc"" << logLevelDesc
                                                 << finalize);
 
   MongoDB_Bridge::logsCollection.insert_one(doc_value.view());
 }
-
-void MongoDB_Bridge::AddError(std::string errorMsg, std::string trace)
-{
-  auto now = std::chrono::system_clock::now();
-  auto builder = bsoncxx::builder::stream::document{};
-  bsoncxx::document::value doc_value = (builder << ""Time"" << bsoncxx::types::b_date(now)
-                                                << ""Component"" << ""aosSolver""
-                                                << ""Trace"" << trace 
-                                                << ""Error"" << errorMsg 
-                                                << finalize);
-
-  MongoDB_Bridge::errorsCollection.insert_one(doc_value.view());
-}
+ 
 
 std::string MongoDB_Bridge::SampleFromBeliefState(int skipStates, int takeStates)
 {
@@ -600,6 +658,16 @@ std::string MongoDB_Bridge::SampleFromBeliefState(int skipStates, int takeStates
   auto doc = MongoDB_Bridge::beliefStatesColllection.find_one(make_document(kvp(""ActionSequnceId"", -1)), opts);
   return bsoncxx::to_json(doc.value());
 
+}
+
+
+void MongoDB_Bridge::SaveSimulatedState(std::string currentSimulatedState)
+{
+  MongoDB_Bridge::Init(); 
+  auto builder = bsoncxx::builder::stream::document{};
+  bsoncxx::document::value doc_value = bsoncxx::from_json(currentSimulatedState); 
+                                                    
+  MongoDB_Bridge::SimulatedStatesColllection.insert_one(doc_value.view());
 }
 
 void MongoDB_Bridge::SaveBeliefState(std::string currentActionBelief, std::string currentBelief)
@@ -1623,7 +1691,7 @@ void SimpleTUI::OptionParse(option::Option *options, int &num_runs,
                             int &time_limit, string &solver_type,
                             bool &search_solver) {
   if (options[E_SILENCE])
-    Globals::config.silence = true;
+    Globals::config.verbosity = (int)eLogLevel::Off;
 
   if (options[E_DEPTH])
     Globals::config.search_depth = atoi(options[E_DEPTH].arg);
@@ -1683,7 +1751,7 @@ void SimpleTUI::OptionParse(option::Option *options, int &num_runs,
     solver_type = options[E_SOLVER].arg;
 
 //  int verbosity = 0;
-  int verbosity = " + (initProj.SolverConfiguration.DebugOn ? "3" : "0") + @";
+  int verbosity = " + (initProj.SolverConfiguration.Verbosity > 3 ? "3" : initProj.SolverConfiguration.Verbosity.ToString()) + @";
   if (options[E_VERBOSITY])
     verbosity = atoi(options[E_VERBOSITY].arg);
   logging::level(verbosity);
@@ -2338,6 +2406,7 @@ void Evaluator::SaveBeliefToDB()
 		vector<State*> temp = solver_->belief()->Sample(" + initProj.SolverConfiguration.NumOfBeliefStateParticlesToSaveInDB + @");
 		Prints::SaveBeliefParticles(temp);
 	}
+	Prints::SaveSimulatedState(state_);
 }
 
 bool Evaluator::RunStep(int step, int round) {
@@ -2370,7 +2439,7 @@ bool Evaluator::RunStep(int step, int round) {
 	}
 
 	if (target_finish_time_ != -1 && get_time_second() > target_finish_time_) {
-		if (!Globals::config.silence && out_)
+		if (Globals::config.verbosity >= eLogLevel::TRACE && out_)
 			*out_ << ""Exit. (Total time ""
 				<< (get_time_second() - EvalLog::curr_inst_start_time)
 				<< ""s exceeded time limit of ""
@@ -2395,7 +2464,7 @@ bool Evaluator::RunStep(int step, int round) {
 	{
         action = solver_->Search().action;
 	}
-	else
+	if(action_sequence_to_sim.size() > 0)
 	{
 		action = action_sequence_to_sim[0];
 		action_sequence_to_sim.erase(action_sequence_to_sim.begin());
@@ -2403,6 +2472,19 @@ bool Evaluator::RunStep(int step, int round) {
 		{
 			action_sequence_to_sim.push_back(-1);
 		}
+	}
+	if(Globals::config.manualControl)
+	{
+		action = MongoDB_Bridge::WaitForManualAction();
+		if (action == -1)
+		return false;
+	}
+
+	if(Globals::config.verbosity >= eLogLevel::INFO)
+	{
+		std::string actionDesc = Prints::PrintActionDescription(action);
+		std::string logMsg(""Solver Selected Action: "" + actionDesc);
+		MongoDB_Bridge::AddLog(logMsg, eLogLevel::INFO);
 	}
 
 	double end_t = get_time_second();
@@ -2418,7 +2500,7 @@ bool Evaluator::RunStep(int step, int round) {
 				<< "" Step "" << step << ""-----------------------------------""
 				<< endl;
 	logi << ""--------------------------------------EXECUTION---------------------------------------------------------------------------"" << endl;
-	if (!Globals::config.silence && out_) {
+	if (Globals::config.verbosity >= eLogLevel::INFO && out_) {
 		*out_ << endl << ""Action = "";
 		model_->PrintAction(action, *out_);
 	}
@@ -2427,12 +2509,18 @@ bool Evaluator::RunStep(int step, int round) {
     model_->PrintState(*state_);
 	std::map<std::string, std::string> localVariablesFromAction;
 
-	if(MongoDB_Bridge::currentActionSequenceId == 0)
+	if(!byExternalPolicy && MongoDB_Bridge::currentActionSequenceId == 0)
 	{
 		Evaluator::SaveBeliefToDB();
 	}
     std::string obsStr;
 	bool terminal = ExecuteAction(action, reward, obs, localVariablesFromAction, obsStr);
+    
+	if(Globals::config.verbosity >= eLogLevel::INFO)
+	{
+		std::string logMsg(""Received observation:""+ Prints::PrintObs(obs));
+		MongoDB_Bridge::AddLog(logMsg, eLogLevel::INFO);
+	}
     logi << endl
 		 << ""After:"" << endl;
 	model_->PrintState(*state_);
@@ -2451,19 +2539,6 @@ bool Evaluator::RunStep(int step, int round) {
 
 	end_t = get_time_second();
 
-	// double step_end_t;
-	// if (terminal) {
-	// 	step_end_t = get_time_second();
-	// 	logi << ""[RunStep] Time for step: actual / allocated = ""
-	// 		<< (step_end_t - step_start_t) << "" / "" << EvalLog::allocated_time
-	// 		<< endl;
-	// 	if (!Globals::config.silence && out_)
-	// 		*out_ << endl;
-	// 	step_++; 
-
-	// 	return true;
-	// }
-
 	*out_<<endl;
 
 	start_t = get_time_second();
@@ -2479,7 +2554,7 @@ bool Evaluator::RunStep(int step, int round) {
 			ClosedModelPolicy::updateBelief(obsStr, action);
 		}
 	}
-	else if(action_sequence_to_sim.size() == 0)
+	else 
 	{
 		solver_->Update(action, obs, localVariablesFromAction);
 		Evaluator::SaveBeliefToDB();
@@ -2539,7 +2614,7 @@ double Evaluator::StderrDiscountedRoundReward() const {
 }
 
 void Evaluator::ReportStepReward() {
-	if (!Globals::config.silence && out_)
+	if (Globals::config.verbosity >= eLogLevel::INFO && out_)
 		*out_ << ""- Reward = "" << reward_ << endl
 			<< ""- Current rewards:"" << endl
 			<< ""  discounted / undiscounted = "" << total_discounted_reward_
@@ -2579,7 +2654,7 @@ void POMDPEvaluator::InitRound() {
 	// Initial state
 	state_ = model_->CreateStartState();
 	logi << ""[POMDPEvaluator::InitRound] Created start state."" << endl;
-	if (!Globals::config.silence && out_) {
+	if (Globals::config.verbosity >= eLogLevel::INFO && out_) {
 		*out_ << ""Initial state: "" << endl;
 		model_->PrintState(*state_, *out_);
 		*out_ << endl;
@@ -2605,7 +2680,9 @@ void POMDPEvaluator::InitRound() {
 }
 
 double POMDPEvaluator::EndRound() {
-	if (!Globals::config.silence && out_) {
+	if (!Globals::config.verbosity >= eLogLevel::INFO && out_) {
+		std::string logMsg(""Total undiscounted simulated reward:"" + to_string(total_undiscounted_reward_));
+		MongoDB_Bridge::AddLog(logMsg, eLogLevel::INFO);
 		*out_ << ""Total discounted reward = "" << total_discounted_reward_ << endl
 			<< ""Total undiscounted reward = "" << total_undiscounted_reward_ << endl;
 	}
@@ -2628,10 +2705,10 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 
 	double random_num = random_.NextDouble();
     bool terminal = false;
+
+    terminal = model_->Step(*state_, random_num, action, reward, obs);//it is outside the 'if' below since we save the simulated state anyway
 	if(Globals::IsInternalSimulation())
 	{
-		
-		terminal = model_->Step(*state_, random_num, action, reward, obs);
 		obsStr = enum_map_" + data.ProjectName + @"::vecResponseEnumToString[(" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs];
 		MongoDB_Bridge::SaveInternalActionResponse(actionName, actionId, obsStr);
 		reward_ = reward;
@@ -2641,7 +2718,8 @@ bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, st
 		return terminal;
 	}
 	else
-	{ 
+	{
+        terminal = false; 
 		obsStr = """";
 		localVariablesFromAction = MongoDB_Bridge::WaitForActionResponse(actionId, obsStr);
 
@@ -3075,7 +3153,7 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         for (int  obs : observations)
         {
             //std::string s = ""o"" + std::to_string(count++) + ""_"" + Prints::PrintObs(0, obs);
-            std::string s = Prints::PrintObs(0, obs); 
+            std::string s = Prints::PrintObs(obs); 
                             observationsToDesc.insert({obs, s});
             fs << s << "" "";
         }
@@ -4217,10 +4295,12 @@ class Prints
 	public:
 " + GetPrintEnvironmentEnumPrintFunctionDeclarations(data) + @"
 	static std::string PrintActionDescription(ActionDescription*);
+    static std::string PrintActionDescription(int actionId);
 	static std::string PrintActionType(ActionType);
 	static std::string PrintState(State state);
-	static std::string PrintObs(int action, int obs);
+	static std::string PrintObs(int obs);
     static void SaveBeliefParticles(vector<State *> particles);
+    static void SaveSimulatedState(State* state);
     static std::string GetStateJson(State &state);
     static void GetStateFromJson(State &state, std::string jsonStr, int stateIndex);
 };
@@ -5074,6 +5154,10 @@ if(!forSingleFileModel)
 }
 file +=@"
 }
+std::string Prints::PrintActionDescription(int actionId)
+{
+    return Prints::PrintActionDescription(ActionManager::actions[actionId]);
+}
 
 
  
@@ -5087,7 +5171,7 @@ if(forSingleFileModel)return file;
 
 file += GetStateJsonFunctionForActionManagerCPP(data) + GetStateFromJsonFunctionForActionManagerCPP(data) + @"
 
-std::string Prints::PrintObs(int action, int obs)
+std::string Prints::PrintObs(int obs)
 {
 	" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums eObs = (" + data.ProjectNameWithCapitalLetter + @"ResponseModuleAndTempEnums)obs;
 	return enum_map_" + data.ProjectName + @"::vecResponseEnumToString[eObs]; 
@@ -5110,7 +5194,22 @@ void Prints::SaveBeliefParticles(vector<State*> particles)
     std::string currentBeliefStr(j.dump().c_str());
     MongoDB_Bridge::SaveBeliefState(str, currentBeliefStr);
 }
-}";
+
+
+
+void Prints::SaveSimulatedState(State* state)
+{
+    json j;
+    j[""ActionSequnceId""] =  MongoDB_Bridge::currentActionSequenceId;
+
+    j[""SimulatedState""] = json::parse(Prints::GetStateJson(*state)); 
+    
+    
+    std::string str(j.dump().c_str());
+    MongoDB_Bridge::SaveSimulatedState(str);
+}
+        }
+";
             return file;
         }
 
@@ -6357,7 +6456,7 @@ private static string AssignLocalVariablesValue(PLPsData data)
     catch(const std::exception& e)
     {
         std::string s =""Error: problem loading LocalVariables data for belief state update. "";
-        MongoDB_Bridge::AddError(s + e.what());
+        MongoDB_Bridge::AddLog(s + e.what(), eLogLevel::ERROR);
     }";
 
     return result;
@@ -6498,17 +6597,6 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
                 " + data.ProjectNameWithCapitalLetter + @"State &state___ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particle);
 "+AddStateGivenObservationModel(data)+@"
 
-
-				//if(!Globals::IsInternalSimulation() && updates.size() > 0)
-				//{
-				//	" + data.ProjectNameWithCapitalLetter + @"State::SetAnyValueLinks(&" + data.ProjectName + @"_particle);
-				//	map<std::string, bool>::iterator it;
-				//	for (it = updates.begin(); it != updates.end(); it++)
-				//	{
-				//		*(" + data.ProjectName + @"_particle.anyValueUpdateDic[it->first]) = it->second; 
-				//	} 
-				//}
-
                 }
 				updated.push_back(particle);
 		} else {
@@ -6527,7 +6615,12 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 
 	for (int i = 0; i < particles_.size(); i++)
 		particles_[i]->weight = 1.0 / particles_.size();
- 
+    
+     if(Globals::config.verbosity >= eLogLevel::FATAL && particles_.size() == 0)
+ {
+    std::string logMsg(""Could not update belief after action: "" + Prints::PrintActionDescription(actionId) +"". Received observation:"" + Prints::PrintObs(obs));
+    MongoDB_Bridge::AddLog(logMsg, eLogLevel::FATAL);
+ }
 }
 
 /* ==============================================================================
@@ -6709,7 +6802,7 @@ void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int 
 
 std::string " + data.ProjectNameWithCapitalLetter + @"::PrintObs(int action, OBS_TYPE obs) const 
 {
-	return Prints::PrintObs(action, obs);
+	return Prints::PrintObs(obs);
 }
 
 std::string " + data.ProjectNameWithCapitalLetter + @"::PrintStateStr(const State &state) const { return """"; };

@@ -54,16 +54,18 @@ namespace WebApiCSharp.Models
         public int NumOfBeliefStateParticlesToSaveInDB { get; set; }
         public List<int> ActionsToSimulate { get; set; } 
         public bool IsInternalSimulation { get; set; }
+        public bool ManualControl { get; set; }
+        
         public float PlanningTimePerMoveInSeconds{ get; set; }
 
-        public bool DebugOn{ get; set; }
+        public int Verbosity{ get; set; }
         public SolverConfiguration()
         {
             limitClosedModelHorizon_stepsAfterGoalDetection=-1;
             NumOfSamplesPerStateActionToLearnModel = 200;
             OfflineSolverTimeLimitInSeconds = 0;
             SolveClosedPOMDP_model = false;
-            DebugOn = false;
+            Verbosity = 4;
             LoadBeliefFromDB = false; 
             UseML=false;
             NumOfBeliefStateParticlesToSaveInDB = 1;
@@ -71,6 +73,7 @@ namespace WebApiCSharp.Models
             PlanningTimePerMoveInSeconds = 2;
             ActionsToSimulate = new List<int>();
             IsInternalSimulation = false;
+            ManualControl = false;
             PolicyGraphDepth=0;
         }
     }
