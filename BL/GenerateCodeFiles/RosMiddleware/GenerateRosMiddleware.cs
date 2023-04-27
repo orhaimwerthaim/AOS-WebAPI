@@ -28,7 +28,7 @@ namespace WebApiCSharp.GenerateCodeFiles
             string rosWorkspaceSrcDirPath = GenerateFilesUtils.AppendPath(initProj.RosTarget.WorkspaceDirectortyPath, "src");
             string rosMiddlewareDirectory = GenerateFilesUtils.AppendPath(rosWorkspaceSrcDirPath, ROS_MIDDLEWARE_PACKAGE_NAME);
 
-            GenerateFilesUtils.DeleteAndCreateDirectory(rosMiddlewareDirectory, false);
+            GenerateFilesUtils.DeleteAndCreateDirectory(rosMiddlewareDirectory, true);
 
             try
             {

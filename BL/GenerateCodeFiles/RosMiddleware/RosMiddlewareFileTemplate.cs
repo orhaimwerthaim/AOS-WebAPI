@@ -658,24 +658,25 @@ aos_local_var_collection = aosDB[""LocalVariables""]
 aosStats_local_var_collection = aos_statisticsDB[""LocalVariables""]
 aos_GlobalVariablesAssignments_collection = aosDB[""GlobalVariablesAssignments""]
 aos_ModuleResponses_collection = aosDB[""ModuleResponses""]
-collActionForExecution = aosDB[""ActionsForExecution""]
-collErros = aosDB[""Errors""]
+collActionForExecution = aosDB[""ActionsForExecution""] 
 collLogs = aosDB[""Logs""]
 collActions = aosDB[""Actions""]
 
+ 
+
+
 def registerError(errorStr,trace, comments=None):
-    error = {""Component"": ""aosRosMiddleware"", ""Error"": errorStr,""Trace"":trace,
+    error = {""Component"": ""RosMiddleware"", ""Event"": errorStr,""Advanced"":trace,""LogLevel"":2,""LogLevelDesc"":""Error""
              ""Time"": datetime.datetime.utcnow()}
     if comments is not None:
-        error = {""Component"": ""aosRosMiddleware"", ""Error"": errorStr, ""Trace"": trace,
-                 ""Time"": datetime.datetime.utcnow(), ""Comments"":comments}
-    collErros.insert_one(error)
+        error = {""Component"": ""RosMiddleware"", ""Error"": errorStr, ""Advanced"": str(comments) + "". ""+str(trace), ""Time"": datetime.datetime.utcnow()}
+    collLogs.insert_one(error)
 
 
 def registerLog(str):
-    error = {""Component"": ""aosRosMiddleware"", ""Event"": str,
+    log = {""Component"": ""RosMiddleware"", ""Event"": str, ""LogLevel"":5,""LogLevelDesc"":""Debug"",""Advanced"":"""",
              ""Time"": datetime.datetime.utcnow()}
-    collLogs.insert_one(error)
+    collLogs.insert_one(log)
 
 def getHeavyLocalVarList(moduleName):
     if moduleName in HEAVY_LOCAL_VARS:

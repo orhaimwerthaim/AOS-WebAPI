@@ -362,8 +362,11 @@ public static string GetMongoBridgeCppFile(PLPsData data)
 #include <bsoncxx/builder/stream/array.hpp>
 #include <sstream>
 #include <unistd.h>
-
+#include <ctime> 
 #include <nlohmann/json.hpp> 
+#include <thread>
+#include <chrono>
+using namespace std::chrono_literals;
 using json = nlohmann::json; 
 
 using bsoncxx::builder::stream::close_array;
@@ -501,7 +504,7 @@ void MongoDB_Bridge::SaveInternalActionResponse(std::string actionName, bsoncxx:
 
 std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx::oid actionForExecuteId, std::string& actionTextObservation)
 {
-
+  auto start = std::chrono::high_resolution_clock::now();
   std::map<std::string, std::string> localVariables;
   std::vector<bsoncxx::document::view> moduleLocalVars;
   MongoDB_Bridge::Init();
@@ -510,6 +513,13 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
 
   while (!actionFinished)
   {
+    double time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
+      if(time_elapsed > 60*30)//stop waiting after 15 minutes 
+      {
+        std::string msg(""Solver stopped waiting for response after 30 minutes"");
+        MongoDB_Bridge::AddLog(msg, 1);//FATAL logLevel Error
+        break;
+      }
     mongocxx::cursor cursor = MongoDB_Bridge::moduleResponseColllection.find({filter});
     for(auto doc : cursor) 
     {
@@ -530,24 +540,7 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
         }
       }
     }
-    // if(actionFinished)
-    // {
-    //   usleep(500000);
-    //   cursor = MongoDB_Bridge::moduleResponseColllection.find({filter});
-    //   for(auto doc : cursor) 
-    //   {
-    //     //doc[""GlobalVariableName""]
-    //   }
-    //     auto filter2 = document{} << ""UpdatingActionSequenceId"" << MongoDB_Bridge::currentActionSequenceId << finalize;
-    //     mongocxx::cursor cursor2 = MongoDB_Bridge::globalVariablesAssignmentsColllection.find({filter2});
-    //     for(auto doc : cursor2) 
-    //     {
-    //       std::string globalVariableName = doc[""GlobalVariableName""].get_utf8().value.to_string();
-    //       bool isInit = doc[""IsInitialized""].get_bool();
-    //       localVariables[globalVariableName] = """";
-    //     }
-    //     break;
-    //  }
+    std::this_thread::sleep_for(200ms);
   }
 
   
@@ -556,7 +549,7 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
 
  int MongoDB_Bridge::WaitForManualAction()
 {
-
+  auto start = std::chrono::high_resolution_clock::now();
   std::map<std::string, std::string> localVariables;
   std::vector<bsoncxx::document::view> moduleLocalVars;
   MongoDB_Bridge::Init();
@@ -566,6 +559,13 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
     
     while (true)
     {
+      double time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
+      if(time_elapsed > 60*5)//stop waiting after 15 minutes 
+      {
+        std::string msg(""Solver terminated. It stopped waiting for manual action after 5 minutes"");
+        MongoDB_Bridge::AddLog(msg, 4);//FATAL logLevel Info
+        break;
+      }
       mongocxx::cursor cursor = MongoDB_Bridge::manualActionsForSolverCollection.find({filter});
       for(auto doc : cursor) 
     {
@@ -575,6 +575,7 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
       MongoDB_Bridge::manualActionsForSolverCollection.delete_one(filter.view());
       return actionId;
     }
+    std::this_thread::sleep_for(200ms);
     }
   return -1;
 }
@@ -2476,7 +2477,7 @@ bool Evaluator::RunStep(int step, int round) {
 	if(Globals::config.manualControl)
 	{
 		action = MongoDB_Bridge::WaitForManualAction();
-		if (action == -1)
+		if (action < 0)
 		return false;
 	}
 

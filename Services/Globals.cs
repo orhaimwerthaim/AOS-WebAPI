@@ -19,9 +19,8 @@ namespace WebApiCSharp.Services
         public const string MODULE_RESPONSES_COLLECTION_NAME = "ModuleResponses";
 
         public const string BELIEF_STATES_COLLECTION_NAME = "BeliefStates";
-
-        public const string ERRORS_COLLECTION_NAME = "Errors";
-
+        public const string SIMULATED_STATES_COLLECTION_NAME = "SimulatedStates";
         public const string LOGS_COLLECTION_NAME = "Logs";
+        public const string MANUAL_ACTIONS_COLLECTION_NAME = "ManualActionsForSolver";
     }
 }

@@ -26,14 +26,14 @@ namespace WebApiCSharp.GenerateCodeFiles
         private string ProjectHeaderModelPrimitivesBasePath;
 
         private string ProjectModelPrimitivesBasePath;
-
-
+        
 
         public GenerateSolver(PLPsData data, InitializeProject initProj, Solver solverData)
         {
             int totalNumberOfActionsInProject;
             plpsData = data;
             projectNameWithCapitalFirstLetter = char.ToUpper(plpsData.ProjectName[0]) + plpsData.ProjectName.Substring(1);
+            
             
             ProjectHeaderModelPrimitivesBasePath = conf.SolverPath + "/include/despot/model_primitives";
             ProjectHeaderModelPrimitivesPath = ProjectHeaderModelPrimitivesBasePath + "/" + plpsData.ProjectName;
@@ -96,9 +96,9 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
         //    GenerateFilesUtils.WriteTextFile(CppCorePath  + "/aos_domain.cpp", BlackBoxTemplate.GetSingleFileModel(data, false));
         if(initProj.SolverConfiguration.UseML)
         {
-            GenerateFilesUtils.WriteTextFile("/home/or/Dropbox/AOS-ML-Server/myTestPybind/autoGenerate/aos_domain_for_python.cpp", BlackBoxTemplate.GetSingleFileModel(data, true));
+            GenerateFilesUtils.WriteTextFile(conf.OpenAiGymEnvPath +"/aos_domain_for_python.cpp", BlackBoxTemplate.GetSingleFileModel(data, true));
         }
-     //       GenerateFilesUtils.WriteTextFile("/home/or/Dropbox/AOS-ML-Server/myTestPybind/autoGenerate/aos_gym_env.py", GenerateOpenAIGymEnv.GenererateEnvFile(data));
+     //GenerateFilesUtils.WriteTextFile("/home/or/Dropbox/AOS-ML-Server/myTestPybind/autoGenerate/aos_gym_env.py", GenerateOpenAIGymEnv.GenererateEnvFile(data));
 
             
 
