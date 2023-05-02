@@ -14,6 +14,8 @@ namespace WebApiCSharp.Services
         public static IMongoCollection<BsonDocument> LogsCollection = dbAOS.GetCollection<BsonDocument>(Globals.LOGS_COLLECTION_NAME);
         public static IMongoCollection<LogMessage> LogsCollectionObj = dbAOS.GetCollection<LogMessage>(Globals.LOGS_COLLECTION_NAME);
 
+        
+
         public static List<LogMessage> Get()
         {
             try
@@ -25,12 +27,13 @@ namespace WebApiCSharp.Services
                 {
                     LogMessage item = new LogMessage();
 
-                    item.ID = doc["_id"].AsObjectId.ToString();
-                    item.LogLevel = doc["LogLevel"].AsInt32;
-                    item.LogLevelDesc = doc["LogLevelDesc"].ToString();
-                    item.Event = doc["Event"].ToString();
-                    item.Component = doc["Component"].ToString();
-                    item.Time = doc["Time"].ToUniversalTime();//.ToLocalTime();
+                    item.ID =  GetElemenetObjectIDStr(doc);
+                    item.LogLevel = GetElemenetInt(doc,"LogLevel");
+                    item.LogLevelDesc = GetElemenetStr(doc,"LogLevelDesc");
+                    item.Event = GetElemenetStr(doc,"Event");
+                    item.Component = GetElemenetStr(doc,"Componegnt");
+                    item.Time = GetElemenetDateTime(doc,"Time");//.ToLocalTime();
+                    item.Advanced = GetElemenetStr(doc,"Advanced");//.ToLocalTime();
                     olResult.Add(item);
                 }
                 return olResult;

@@ -643,6 +643,7 @@ void MongoDB_Bridge::AddLog(std::string logMsg, int logLevel)
                                                 << ""Time"" << bsoncxx::types::b_date(now) 
                                                 << ""LogLevel"" << logLevel
                                                 << ""LogLevelDesc"" << logLevelDesc
+                                                << ""Advanced"" << """"
                                                 << finalize);
 
   MongoDB_Bridge::logsCollection.insert_one(doc_value.view());

@@ -17,5 +17,35 @@ namespace WebApiCSharp.Services
             MongoClient client = new MongoClient(connString);
             dbAOS = client.GetDatabase("AOS");
         }
+
+        public static string GetElemenetStr(BsonDocument doc, string field)
+        {
+            if(doc.Contains(field)) 
+                    return doc[field].ToString();
+            else return "";
+        }
+
+        public static string GetElemenetObjectIDStr(BsonDocument doc, string field="_id")
+        {
+            if(doc.Contains(field)) 
+                    return doc[field].AsObjectId.ToString();
+            else return "";
+        }
+
+        
+
+        public static DateTime GetElemenetDateTime(BsonDocument doc, string field)
+        {
+            if(doc.Contains(field)) 
+                    return doc[field].ToLocalTime();
+            else return new DateTime();
+        }
+
+        public static int GetElemenetInt(BsonDocument doc, string field)
+        {
+            if(doc.Contains(field)) 
+                    return doc[field].AsInt32;
+            else return -1;
+        }
     }
 }
