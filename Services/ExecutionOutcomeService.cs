@@ -78,6 +78,7 @@ namespace WebApiCSharp.Services
                 return json.Substring(0, endIndex);
             }
         }
+
         private static string GetJsonForActionSequnceId(int actionSequenceId, List<BsonDocument> actions, 
             List<ModuleResponse> responses, List<BsonDocument> belief, List<SolverAction> solverActions)
         { 
@@ -98,13 +99,13 @@ namespace WebApiCSharp.Services
             jsonRes += ", \"ActionDetails\":" + solverAction.ToJson();
 
              
-            jsonRes += ", \"SolverSentActionTime\" : \""+GetJsonFirstFieldValue("RequestCreateTime",actionJson)+"\"";
+            jsonRes += ", \"SolverSentActionTime\" : \""+ DateTimeToString(ISO_ToDateTime(GetJsonFirstFieldValue("RequestCreateTime",actionJson)).Value)+"\"";
  
             jsonRes += ", \"ModuleExecutionStartTime\" : \""+
-                (middlewareRecievedAction ? actionResponse.StartTime.Value.ToString() : "null")+"\"";
+                (middlewareRecievedAction ? DateTimeToString(actionResponse.StartTime.Value) : "null")+"\"";
 
             jsonRes += ", \"ModuleExecutionEndTime\" : \""+
-                (middlewareRecievedAction ? actionResponse.EndTime.Value.ToString() : "null")+"\"";
+                (middlewareRecievedAction ? DateTimeToString(actionResponse.EndTime.Value) : "null")+"\"";
 
             jsonRes += ", \"ModuleResponseText\" : \""+
                 (middlewareRecievedAction ? 

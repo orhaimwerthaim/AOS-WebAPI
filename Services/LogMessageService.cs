@@ -32,7 +32,7 @@ namespace WebApiCSharp.Services
                     item.LogLevelDesc = GetElemenetStr(doc,"LogLevelDesc");
                     item.Event = GetElemenetStr(doc,"Event");
                     item.Component = GetElemenetStr(doc,"Componegnt");
-                    item.Time = GetElemenetDateTime(doc,"Time");//.ToLocalTime();
+                    item.Time = DateTimeToString(GetElemenetDateTime(doc,"Time"));//.ToLocalTime();
                     item.Advanced = GetElemenetStr(doc,"Advanced");//.ToLocalTime();
                     olResult.Add(item);
                 }
