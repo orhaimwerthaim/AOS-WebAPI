@@ -83,6 +83,7 @@ namespace WebApiCSharp.Services
             List<ModuleResponse> responses, List<BsonDocument> belief, List<SolverAction> solverActions)
         { 
             if(actions.Count < actionSequenceId)return null;
+            if(actions.Where<BsonDocument>(x=> x["ActionSequenceId"] == actionSequenceId).LastOrDefault()==null)return null;
             //string actionJson = actions[actionSequenceId - 1].ToJson();
             string actionJson = actions.Where<BsonDocument>(x=> x["ActionSequenceId"] == actionSequenceId).LastOrDefault().ToJson();
             string beliefJson = belief.Where<BsonDocument>(x=> x["ActionSequnceId"] == actionSequenceId).LastOrDefault().ToJson();
