@@ -6478,7 +6478,7 @@ private static string RegisterLocalVariablesForBeliefUpdate(PLPsData data)
         {
             if(localVar.VariableType == null)
             {
-                throw new Exception("Local Variable '"+localVar.VariableName + "' has no 'VariableType' defined!");
+                throw new Exception("Local Variable '"+localVar.VariableName + "' (in skill '"+localVar.SkillName+"') has no 'VariableType' defined!");
             }
             if(localVar.VariableType.EndsWith(PLPsData.ARRAY_VARIABLE_TYPE_NAME))
             {
