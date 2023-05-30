@@ -60,7 +60,11 @@ namespace WebApiCSharp.Controllers
                 return StatusCode(501, new { Errors = errors, Remarks = remarks });
             }
             InitializeProjectBL.InitializeProject(initProj, out errors, out remarks, out buildSolverOutput, out buildRosMiddlewareOutput);
-            
+            foreach(string error in errors) 
+            {
+                LogMessageService.Add(new LogMessagePost()
+                    {Component="WebAPI", Event= error, LogLevelDesc="Error", LogLevel=2});
+            }
             if(errors.Count > 0)
             {
                 return BadRequest(new {Errors = errors, Remarks = remarks});

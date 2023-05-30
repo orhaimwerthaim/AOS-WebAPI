@@ -387,7 +387,8 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
                 }
                 catch (Exception e)
                 {
-                    errorMessages.Add("PLP file '" + filePath + "' is not in a valid JSON!");
+                    errorMessages.Add("PLP file '" + filePath + "' is not in a valid JSON (or SDL error)!");
+                    errorMessages.Add(e.Message);
                     errorMessages.Add(e.ToString());
                     return errorMessages;
                 }

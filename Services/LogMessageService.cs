@@ -13,6 +13,7 @@ namespace WebApiCSharp.Services
     { 
         public static IMongoCollection<BsonDocument> LogsCollection = dbAOS.GetCollection<BsonDocument>(Globals.LOGS_COLLECTION_NAME);
         public static IMongoCollection<LogMessage> LogsCollectionObj = dbAOS.GetCollection<LogMessage>(Globals.LOGS_COLLECTION_NAME);
+        public static IMongoCollection<LogMessagePost> LogsCollectionPostObj = dbAOS.GetCollection<LogMessagePost>(Globals.LOGS_COLLECTION_NAME);
 
         
 
@@ -31,7 +32,7 @@ namespace WebApiCSharp.Services
                     item.LogLevel = GetElemenetInt(doc,"LogLevel");
                     item.LogLevelDesc = GetElemenetStr(doc,"LogLevelDesc");
                     item.Event = GetElemenetStr(doc,"Event");
-                    item.Component = GetElemenetStr(doc,"Componegnt");
+                    item.Component = GetElemenetStr(doc,"Component");
                     item.Time = DateTimeToString(GetElemenetDateTime(doc,"Time"));//.ToLocalTime();
                     item.Advanced = GetElemenetStr(doc,"Advanced");//.ToLocalTime();
                     olResult.Add(item);
@@ -46,12 +47,16 @@ namespace WebApiCSharp.Services
             }
         }
   
-        public static LogMessage Add(LogMessage item)
+        public static void Add(LogMessagePost item)
         {
             try
             {  
-                LogsCollectionObj.InsertOneAsync(item).GetAwaiter().GetResult();
-                return item;
+                item._id = new ObjectId();
+                item.Time = DateTime.Now;
+                item.Advanced = item.Advanced == null ? "" : item.Advanced;
+                item.Component = "Web-API";
+                item.Event = item.Event == null ? "" : item.Event;
+                LogsCollectionPostObj.InsertOneAsync(item).GetAwaiter().GetResult();
             }
             catch (MongoWriteException mwx)
             {
@@ -59,7 +64,6 @@ namespace WebApiCSharp.Services
                 {
                     // mwx.WriteError.Message contains the duplicate key error message
                 }
-                return null;
             }
         }
 
