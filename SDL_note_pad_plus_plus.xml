@@ -24,7 +24,7 @@
             <Keywords name="Folders in comment, open"></Keywords>
             <Keywords name="Folders in comment, middle"></Keywords>
             <Keywords name="Folders in comment, close"></Keywords>
-            <Keywords name="Keywords1">response: module_activation: local_variable: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: available_parameters_code: rollout_policy:</Keywords>
+            <Keywords name="Keywords1">response: module_activation: local_variable: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: available_parameters_code: rollout_policy: project:</Keywords>
             <Keywords name="Keywords2">import: path: srv: response_rule: parameter: code: type: from_ros_reservice_response: topic: action_parameter: variable: from_ros_reservice_response: message_type:</Keywords>
             <Keywords name="Keywords3">ros_service from: import:</Keywords>
             <Keywords name="Keywords4"></Keywords>
