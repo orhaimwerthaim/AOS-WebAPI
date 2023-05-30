@@ -9,7 +9,8 @@ using MongoDB.Bson;
 using WebApiCSharp.GenerateCodeFiles;
 using WebApiCSharp.Models;
 using System.Threading;
-
+using System.Linq;
+using WebApiCSharp.JsonTextModel;
 namespace WebApiCSharp.BL
 {
 
@@ -345,14 +346,27 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
                 return errorMessages;
             }
 
+
+            
             foreach (string filePath in fileEntries)
             {
                 try
                 {
                     FileInfo fi = new FileInfo(filePath);
-                    if (filePath.ToLower().EndsWith(".json"))
+                    string[] endings = {".am", ".sd", ".ef", ".json"};
+                    bool validFileType = endings.Any(x=> filePath.ToLower().EndsWith(x));
+                    if (validFileType)
                     {
                         string fileContent = System.IO.File.ReadAllText(filePath);
+                        if(!filePath.ToLower().EndsWith(".json"))
+                        {
+                            fileContent = TranslateSdlToJson.Translate(Path.GetFileName(filePath), fileContent); 
+                            string translatedSdlPathDir = Path.Combine(pLPsDirectoryPath, "translatedSDL");
+                            if (!Directory.Exists(translatedSdlPathDir)) Directory.CreateDirectory(translatedSdlPathDir);
+                            string trFilePath = Path.Combine(translatedSdlPathDir, "translated_"+Path.GetFileName(filePath).Replace(".","_") + ".json");
+                            GenerateFilesUtils.WriteTextFile(trFilePath, fileContent);
+                        }
+                        
                         using (JsonDocument plp = JsonDocument.Parse(fileContent))
                         {
                             List<String> plpParseErrors;
@@ -363,7 +377,7 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
                                 return errorMessages;
                             }
                             BsonDocument bPLP = PLPsService.Add(plp);
-                        }
+                        } 
                         remarks.Add("File '" + filePath + "' was successfully loaded");
                     }
                     else
