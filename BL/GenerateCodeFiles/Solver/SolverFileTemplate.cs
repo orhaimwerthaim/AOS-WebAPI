@@ -2567,7 +2567,7 @@ bool Evaluator::RunStep(int step, int round) {
 	step_++;
 
     BeliefStateVariables bv = BeliefStateVariables(solver_->belief()->Sample(1000));
-	if(bv.__isTermianl_mean > 0.9 && bv.__isTermianl_std < 0.10)
+	if(bv.__isTermianl_mean > 0.9 && bv.__isTermianl_std < 0.25)
 	{
 		return true;
 	}

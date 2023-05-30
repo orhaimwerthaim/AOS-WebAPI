@@ -16,7 +16,7 @@ namespace WebApiCSharp.JsonTextModel
 {
     public static class TranslateSdlToJson
     {
-        private static string[] FirstLevelSavedWords = "response: module_activation: local_variable: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: response_local_variable: project: ".Split(" ");
+        private static string[] FirstLevelSavedWords = "response: module_activation: rollout_policy: local_variable: available_parameters_code: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: response_local_variable: project: ".Split(" ");
         public static string Translate(string fileName, string fileContent)
         {
             string fileType = fileName.ToLower().Substring(fileName.LastIndexOf('.')+1);
@@ -34,12 +34,115 @@ namespace WebApiCSharp.JsonTextModel
         }
         public static string TranslateSD(string skillName, string fileContent)
         {
-            PlpMain main= new PlpMain{Name="nnn",Project="ddd"};
-            string jsonString = JsonSerializer.Serialize<PlpMain>(main);
-            return "";
+            string errorStart = "SD file of skill '"+skillName+"': ";
+            SdFile sdFile = new SdFile();
+            List<GlobalVariableModuleParameter> GlobalVariableModuleParameters= new List<GlobalVariableModuleParameter>(); 
+            
+            string[] lineContent = fileContent.Split('\n');
+            int i=0;
+            int prevI = -1;
+            while(i<lineContent.Length)
+            { 
+                if(i == prevI) i++;
+                if(i >= lineContent.Length)break;
+                prevI=i;
+                if(i==0)
+                {
+                    if(lineContent[i].StartsWith("project:"))
+                    {
+                        string project = lineContent[i].Substring("project:".Length).Replace(" ","");
+                        PlpMain main= new PlpMain{Name=skillName,Project=project, Type="PLP"};
+                        sdFile.PlpMain=main;  
+                        i++; 
+                    }
+                    else throw new Exception(errorStart + "does not start with 'project: <project_name>'");
+                }
+                else if(lineContent[i].StartsWith("available_parameters_code:"))
+                {
+                    List<string> codeLines = new List<string>();
+                    i++;
+                    while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i]))codeLines.Add(lineContent[i++]);
+                    for(int j=codeLines.Count-1; j>-1;j--)
+                    {
+                        if(codeLines[j].Replace(" ","").Length == 0)codeLines.RemoveAt(j);
+                        else break;
+                    }
+                    if(codeLines.Count == 0)throw new Exception(errorStart + "code is expected in the lines below 'available_parameters_code' ");
+                    sdFile.PossibleParametersValue = new CodeAssignment[]{new CodeAssignment(){AssignmentCode = codeLines.ToArray()}};
+                }
+                else if(lineContent[i].StartsWith("parameter:"))
+                {  
+                    GlobalVariableModuleParameter p = new GlobalVariableModuleParameter();
+                    string[] delimiters = {" ",":"};
+                    List<string> bits = lineContent[i].Split(delimiters,StringSplitOptions.None).ToList();
+                    bits = bits.Select(x=>x.Replace(" ","")).Where(x=> x.Length > 0 && x != "parameter").ToList();
+                    if(bits.Count != 2)throw new Exception(errorStart + "a '<type> <name>' must be defined aftter 'parameter:' you wrote '"+lineContent[i]+"'");
+                    p.Type = bits[0];
+                    p.Name = bits[1];
+                    GlobalVariableModuleParameters.Add(p);
+                    sdFile.GlobalVariableModuleParameters = GlobalVariableModuleParameters.ToArray();
+                }
+                else if(lineContent[i].StartsWith("precondition:"))
+                {
+                    sdFile.Preconditions = sdFile.Preconditions == null ? new Preconditions() : sdFile.Preconditions; 
+                    List<string> codeLines = new List<string>();
+                    i++;
+                    while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i]))codeLines.Add(lineContent[i++]);
+                    for(int j=codeLines.Count-1; j>-1;j--)
+                    {
+                        if(codeLines[j].Replace(" ","").Length == 0)codeLines.RemoveAt(j);
+                        else break;
+                    }
+                    if(codeLines.Count == 0)throw new Exception(errorStart + "code is expected in the lines below 'precondition' ");
+                    sdFile.Preconditions.GlobalVariablePreconditionAssignments = new CodeAssignment[]{new CodeAssignment(){AssignmentCode = codeLines.ToArray()}};
+                }
+                else if(lineContent[i].StartsWith("rollout_policy:"))
+                {
+                    sdFile.Preconditions = sdFile.Preconditions == null ? new Preconditions() : sdFile.Preconditions; 
+                    List<string> codeLines = new List<string>();
+                    i++;
+                    while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i]))codeLines.Add(lineContent[i++]);
+                    for(int j=codeLines.Count-1; j>-1;j--)
+                    {
+                        if(codeLines[j].Replace(" ","").Length == 0)codeLines.RemoveAt(j);
+                        else break;
+                    }
+                    if(codeLines.Count == 0)throw new Exception(errorStart + "code is expected in the lines below 'rollout_policy' ");
+                    sdFile.Preconditions.PlannerAssistancePreconditionsAssignments = new CodeAssignment[]{new CodeAssignment(){AssignmentCode = codeLines.ToArray()}};
+                }
+                else if(lineContent[i].StartsWith("violate_penalty:"))
+                {
+                    string typeFirstLine = lineContent[i];
+                    int penalty;
+                    if(int.TryParse(lineContent[i++].Substring("violate_penalty:".Length).Replace(" ",""), out penalty))
+                    {
+                        sdFile.Preconditions = sdFile.Preconditions == null ? new Preconditions() : sdFile.Preconditions;
+                        sdFile.Preconditions.ViolatingPreconditionPenalty = penalty;
+                    }
+                    else throw new Exception(errorStart + "<int> is expected after 'violate_penalty:', you wrote'"+lineContent[i-1]+"'");
+                }
+                else if(lineContent[i].StartsWith("dynamic_model:"))
+                {
+                     
+                    List<string> codeLines = new List<string>();
+                    i++;
+                    while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i]))codeLines.Add(lineContent[i++]);
+                    for(int j=codeLines.Count-1; j>-1;j--)
+                    {
+                        if(codeLines[j].Replace(" ","").Length == 0)codeLines.RemoveAt(j);
+                        else break;
+                    }
+                    if(codeLines.Count == 0)throw new Exception(errorStart + "code is expected in the lines below 'available_parameters_code' ");
+                    CodeAssignment code = new CodeAssignment(){AssignmentCode = codeLines.ToArray()};
+                    sdFile.DynamicModel = new DynamicModel(){NextStateAssignments =  new CodeAssignment[]{code}};
+                }   
+            }           
+            string jsonString = JsonSerializer.Serialize<SdFile>(sdFile);
+            jsonString=RemoveNullsElements(jsonString);
+            jsonString = PrettyJson(jsonString);
+            return jsonString;
         }
-
-        public static string TranslateAM(string skillName, string fileContent)
+         public static string TranslateAM(string skillName, string fileContent)
         {
             string errorStart = "AM file of skill '"+skillName+"': ";
             AmFile amFile = new AmFile();
@@ -235,7 +338,9 @@ namespace WebApiCSharp.JsonTextModel
 
             var jsonElement = JsonSerializer.Deserialize<JsonElement>(unPrettyJson);
 
-            return JsonSerializer.Serialize(jsonElement, options);
+            string output = JsonSerializer.Serialize(jsonElement, options);
+            output = output.Replace("\\t", "    ");
+            return output;
         }
 
         private static string RemoveNullsElements(string json)

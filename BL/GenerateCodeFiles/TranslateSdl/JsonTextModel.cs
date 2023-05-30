@@ -150,4 +150,37 @@ public class EnvironmentGeneral
             EnvironmentGeneral.Discount = 0.9999F;
         }
     }
+
+public class GlobalVariableModuleParameter
+{
+    public string Name{get;set;}
+    public string Type{get;set;}
+}
+
+public class Preconditions
+{
+    public CodeAssignment[] GlobalVariablePreconditionAssignments{get;set;}
+    public CodeAssignment[] PlannerAssistancePreconditionsAssignments {get;set;}
+
+    public int? ViolatingPreconditionPenalty{get;set;}
+}
+
+public class DynamicModel
+{
+    public CodeAssignment[] NextStateAssignments{get;set;}
+}
+    public class SdFile
+    {
+        public PlpMain PlpMain {get;set;}
+        public CodeAssignment[] PossibleParametersValue{get;set;}
+        public GlobalVariableModuleParameter[] GlobalVariableModuleParameters{get;set;}
+        public Preconditions Preconditions{get;set;}
+        public DynamicModel DynamicModel{get;set;}
+
+        
+        public SdFile()
+        {
+            this.PlpMain = new PlpMain();
+        }
+    }
 }
