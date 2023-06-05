@@ -209,6 +209,6 @@ echo '"CMake Tools"'
 echo 'Open VSCode click ctl+shift+p and write "cmake:configure", click it and select debuger'
 echo '    2)POSTMAN from https://www.postman.com/downloads/ '
 echo '    3)optional (300MB): download and install "Download Studio 3T" (to see DB content) from https://studio3t.com/download-thank-you/?OS=x64   '
-echo 'to run the AOS use the command "cd ~/AOS/AOS-WebAPI/bin/Debug/net5.0 && ./WebApiCSharp"'
+echo 'to run the AOS use the command "cd ~/AOS/AOS-WebAPI/bin/Debug/net6.0 && ./WebApiCSharp"'
 
 
