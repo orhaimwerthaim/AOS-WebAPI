@@ -32,6 +32,10 @@ namespace WebApiCSharp.JsonTextModel
                 throw new Exception("file format not supported for SDL to JSON (file name:'"+fileName+"')");
             }
         }
+        private static string RemoveHiddenChar(string str)
+        {
+            return str.Replace("\t","");
+        }
         public static string TranslateSD(string skillName, string fileContent)
         {
             string errorStart = "SD file of skill '"+skillName+"': ";
@@ -51,6 +55,7 @@ namespace WebApiCSharp.JsonTextModel
                     if(lineContent[i].StartsWith("project:"))
                     {
                         string project = lineContent[i].Substring("project:".Length).Replace(" ","");
+                        project = RemoveHiddenChar(project);
                         PlpMain main= new PlpMain{Name=skillName,Project=project, Type="PLP"};
                         sdFile.PlpMain=main;  
                         i++; 
@@ -161,6 +166,7 @@ namespace WebApiCSharp.JsonTextModel
                     if(lineContent[i].StartsWith("project:"))
                     {
                         string project = lineContent[i].Substring("project:".Length).Replace(" ","");
+                        project = RemoveHiddenChar(project);
                         PlpMain main= new PlpMain{Name=skillName,Project=project, Type="Glue"};
                         amFile.PlpMain=main;   
                         i++; 
@@ -191,16 +197,17 @@ namespace WebApiCSharp.JsonTextModel
                                 
                                 ResponseRule res = new ResponseRule(){Response=response, ConditionCodeWithLocalVariables=responseCondition};
                                 responseRules.Add(res);
+                                responses.ResponseRules = responseRules.ToArray(); 
                             }
                             else if(lineContent[i].StartsWith("response_local_variable:")) 
                                 responses.FromStringLocalVariable = lineContent[i++].Substring("response_local_variable:".Length).Replace(" ","");
                             else if(lineContent[i].Replace(" ","").Length == 0) i++;
                             else if(IsFirstLevelSavedWord(lineContent[i])) 
                             {
-                                if(responseRules.Count > 0)
-                                {
-                                    responses.ResponseRules = responseRules.ToArray(); 
-                                }
+                                // if(responseRules.Count > 0)
+                                // {
+                                //     responses.ResponseRules = responseRules.ToArray(); 
+                                // }
                                 break;
                             }
                         } 
@@ -400,6 +407,7 @@ namespace WebApiCSharp.JsonTextModel
                     if(lineContent[i].StartsWith("project:"))
                     {
                         string project = lineContent[i].Substring("project:".Length).Replace(" ","");
+                        project = RemoveHiddenChar(project);
                         PlpMain main= new PlpMain{Name="environment",Project=project, Type="Environment"};
                         efFile.PlpMain=main;  
                         i++; 
@@ -474,9 +482,10 @@ namespace WebApiCSharp.JsonTextModel
                     string[] delimiters = {" ",":"};
                     List<string> bits = lineContent[i].Split(delimiters,StringSplitOptions.None).ToList();
                     bits = bits.Select(x=>x.Replace(" ","")).Where(x=> x.Length > 0 && x != "action_parameter" && x != "state_variable").ToList();
-                    if(bits.Count != 2)throw new Exception(errorStart + "a '<type> <name>' must be defined aftter 'action_parameter:' or 'state_variable:' you wrote '"+lineContent[i]+"'");
+                    if(bits.Count != 2 && bits.Count != 3)throw new Exception(errorStart + "a '<type> <name> [<is_array>]' must be defined aftter 'action_parameter:' or 'state_variable:' you wrote '"+lineContent[i]+"'");
                     var.Type = bits[0];
                     var.Name = bits[1];
+                    var.IsArray = bits.Count == 3 && (bits[2] == "[]" || bits[2].ToLower()=="true"); 
                     i++;
                     // var.Name = isActionParam ? lineContent[i++].Substring("action_parameter:".Length).Replace(" ","") :
                     //     lineContent[i++].Substring("state_variable:".Length).Replace(" ",""); 

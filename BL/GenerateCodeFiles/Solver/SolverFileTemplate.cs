@@ -4817,7 +4817,7 @@ namespace despot
 #endif //VAR_TYPES_H";
             return file;
         }
-
+ 
 
 public static string GetDeepCopyState(PLPsData data)
 {
@@ -6235,7 +6235,7 @@ namespace despot {
                     result += GenerateFilesUtils.GetIndentationStr(3, 4, "return std::make_tuple(__reward, __isGoalState, __stopEvaluatingState);");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "};");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "std::tie(temp_reward, temp_IsGoalState, temp_StopEvaluatingState) = stateFunction();");
-                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "state.OneTimeRewardUsed[0] = !temp_StopEvaluatingState;");
+                    result += GenerateFilesUtils.GetIndentationStr(2, 4, "state.OneTimeRewardUsed["+i+"] = !temp_StopEvaluatingState;");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "reward += temp_reward;");
                     result += GenerateFilesUtils.GetIndentationStr(2, 4, "isFinalState = temp_IsGoalState ? true : isFinalState;");
                     
