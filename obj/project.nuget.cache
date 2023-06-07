@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "/3Cquy0Gk6XqsV/9ZBWAq4OpJYcbMMsznT5f674r01fyvcD6YXPHGJ9Xsj7zBeyzlWTU5M9Vm4p04wr2ekk4bg==",
+  "dgSpecHash": "PROmcfk6E8zm+Zy820dJQBAY5CDU4+D1UYGMsLoR328rGQUpjoMOBsxmJ9n2wF+zyoLPxDuxMLA3Jcvhhmw8WQ==",
   "success": true,
-  "projectFilePath": "/home/or/Projects/WebApiCSharp/WebApiCSharp.csproj",
+  "projectFilePath": "/home/or/AOS/AOS-WebAPI/WebApiCSharp.csproj",
   "expectedPackageFiles": [
     "/home/or/.nuget/packages/dnsclient/1.4.0/dnsclient.1.4.0.nupkg.sha512",
     "/home/or/.nuget/packages/microsoft.extensions.apidescription.server/3.0.0/microsoft.extensions.apidescription.server.3.0.0.nupkg.sha512",
     "/home/or/.nuget/packages/microsoft.netcore.platforms/2.1.2/microsoft.netcore.platforms.2.1.2.nupkg.sha512",
-    "/home/or/.nuget/packages/microsoft.openapi/1.2.3/microsoft.openapi.1.2.3.nupkg.sha512",
+    "/home/or/.nuget/packages/microsoft.openapi/1.6.3/microsoft.openapi.1.6.3.nupkg.sha512",
     "/home/or/.nuget/packages/mongodb.bson/2.12.2/mongodb.bson.2.12.2.nupkg.sha512",
     "/home/or/.nuget/packages/mongodb.driver/2.12.0/mongodb.driver.2.12.0.nupkg.sha512",
     "/home/or/.nuget/packages/mongodb.driver.core/2.12.0/mongodb.driver.core.2.12.0.nupkg.sha512",

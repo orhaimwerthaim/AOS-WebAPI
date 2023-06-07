@@ -1,14 +1,18 @@
 {
   "version": 3,
   "targets": {
-    "net5.0": {
+    "net6.0": {
       "DnsClient/1.4.0": {
         "type": "package",
         "compile": {
-          "lib/netstandard2.1/DnsClient.dll": {}
+          "lib/netstandard2.1/DnsClient.dll": {
+            "related": ".xml"
+          }
         },
         "runtime": {
-          "lib/netstandard2.1/DnsClient.dll": {}
+          "lib/netstandard2.1/DnsClient.dll": {
+            "related": ".xml"
+          }
         }
       },
       "Microsoft.Extensions.ApiDescription.Server/3.0.0": {
@@ -31,13 +35,17 @@
           "lib/netstandard1.0/_._": {}
         }
       },
-      "Microsoft.OpenApi/1.2.3": {
+      "Microsoft.OpenApi/1.6.3": {
         "type": "package",
         "compile": {
-          "lib/netstandard2.0/Microsoft.OpenApi.dll": {}
+          "lib/netstandard2.0/Microsoft.OpenApi.dll": {
+            "related": ".pdb;.xml"
+          }
         },
         "runtime": {
-          "lib/netstandard2.0/Microsoft.OpenApi.dll": {}
+          "lib/netstandard2.0/Microsoft.OpenApi.dll": {
+            "related": ".pdb;.xml"
+          }
         }
       },
       "MongoDB.Bson/2.12.2": {
@@ -46,10 +54,14 @@
           "System.Runtime.CompilerServices.Unsafe": "5.0.0"
         },
         "compile": {
-          "lib/netstandard2.1/MongoDB.Bson.dll": {}
+          "lib/netstandard2.1/MongoDB.Bson.dll": {
+            "related": ".xml"
+          }
         },
         "runtime": {
-          "lib/netstandard2.1/MongoDB.Bson.dll": {}
+          "lib/netstandard2.1/MongoDB.Bson.dll": {
+            "related": ".xml"
+          }
         }
       },
       "MongoDB.Driver/2.12.0": {
@@ -60,10 +72,14 @@
           "MongoDB.Libmongocrypt": "1.2.0"
         },
         "compile": {
-          "lib/netstandard2.1/MongoDB.Driver.dll": {}
+          "lib/netstandard2.1/MongoDB.Driver.dll": {
+            "related": ".xml"
+          }
         },
         "runtime": {
-          "lib/netstandard2.1/MongoDB.Driver.dll": {}
+          "lib/netstandard2.1/MongoDB.Driver.dll": {
+            "related": ".xml"
+          }
         }
       },
       "MongoDB.Driver.Core/2.12.0": {
@@ -76,10 +92,14 @@
           "System.Buffers": "4.5.1"
         },
         "compile": {
-          "lib/netstandard2.1/MongoDB.Driver.Core.dll": {}
+          "lib/netstandard2.1/MongoDB.Driver.Core.dll": {
+            "related": ".xml"
+          }
         },
         "runtime": {
-          "lib/netstandard2.1/MongoDB.Driver.Core.dll": {}
+          "lib/netstandard2.1/MongoDB.Driver.Core.dll": {
+            "related": ".xml"
+          }
         },
         "contentFiles": {
           "contentFiles/any/any/_._": {
@@ -169,10 +189,14 @@
           "Microsoft.OpenApi": "1.2.3"
         },
         "compile": {
-          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.Swagger.dll": {}
+          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.Swagger.dll": {
+            "related": ".pdb;.xml"
+          }
         },
         "runtime": {
-          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.Swagger.dll": {}
+          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.Swagger.dll": {
+            "related": ".pdb;.xml"
+          }
         },
         "frameworkReferences": [
           "Microsoft.AspNetCore.App"
@@ -184,10 +208,14 @@
           "Swashbuckle.AspNetCore.Swagger": "5.6.3"
         },
         "compile": {
-          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerGen.dll": {}
+          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerGen.dll": {
+            "related": ".pdb;.xml"
+          }
         },
         "runtime": {
-          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerGen.dll": {}
+          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerGen.dll": {
+            "related": ".pdb;.xml"
+          }
         },
         "frameworkReferences": [
           "Microsoft.AspNetCore.App"
@@ -196,10 +224,14 @@
       "Swashbuckle.AspNetCore.SwaggerUI/5.6.3": {
         "type": "package",
         "compile": {
-          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerUI.dll": {}
+          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerUI.dll": {
+            "related": ".pdb;.xml"
+          }
         },
         "runtime": {
-          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerUI.dll": {}
+          "lib/netcoreapp3.0/Swashbuckle.AspNetCore.SwaggerUI.dll": {
+            "related": ".pdb;.xml"
+          }
         },
         "frameworkReferences": [
           "Microsoft.AspNetCore.App"
@@ -217,10 +249,14 @@
       "System.Runtime.CompilerServices.Unsafe/5.0.0": {
         "type": "package",
         "compile": {
-          "ref/netstandard2.1/System.Runtime.CompilerServices.Unsafe.dll": {}
+          "ref/netstandard2.1/System.Runtime.CompilerServices.Unsafe.dll": {
+            "related": ".xml"
+          }
         },
         "runtime": {
-          "lib/netcoreapp2.0/System.Runtime.CompilerServices.Unsafe.dll": {}
+          "lib/netcoreapp2.0/System.Runtime.CompilerServices.Unsafe.dll": {
+            "related": ".xml"
+          }
         }
       },
       "System.Text.Encoding.CodePages/4.5.1": {
@@ -311,20 +347,17 @@
         "version.txt"
       ]
     },
-    "Microsoft.OpenApi/1.2.3": {
-      "sha512": "Nug3rO+7Kl5/SBAadzSMAVgqDlfGjJZ0GenQrLywJ84XGKO0uRqkunz5Wyl0SDwcR71bAATXvSdbdzPrYRYKGw==",
+    "Microsoft.OpenApi/1.6.3": {
+      "sha512": "HQLJnNMXbt7D+VuJFBFaHMlkxKH1z3vLRrR3wiVrSOnwAXRQxHBLzgH5FjNSMKMWeyj3nY0AnM3OSACyGZUMZw==",
       "type": "package",
-      "path": "microsoft.openapi/1.2.3",
+      "path": "microsoft.openapi/1.6.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "lib/net46/Microsoft.OpenApi.dll",
-        "lib/net46/Microsoft.OpenApi.pdb",
-        "lib/net46/Microsoft.OpenApi.xml",
         "lib/netstandard2.0/Microsoft.OpenApi.dll",
         "lib/netstandard2.0/Microsoft.OpenApi.pdb",
         "lib/netstandard2.0/Microsoft.OpenApi.xml",
-        "microsoft.openapi.1.2.3.nupkg.sha512",
+        "microsoft.openapi.1.6.3.nupkg.sha512",
         "microsoft.openapi.nuspec"
       ]
     },
@@ -625,7 +658,8 @@
     }
   },
   "projectFileDependencyGroups": {
-    "net5.0": [
+    "net6.0": [
+      "Microsoft.OpenApi >= 1.6.3",
       "MongoDB.Bson >= 2.12.2",
       "MongoDB.Driver >= 2.12.0",
       "Swashbuckle.AspNetCore >= 5.6.3"
@@ -637,24 +671,24 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/or/Projects/WebApiCSharp/WebApiCSharp.csproj",
+      "projectUniqueName": "/home/or/AOS/AOS-WebAPI/WebApiCSharp.csproj",
       "projectName": "WebApiCSharp",
-      "projectPath": "/home/or/Projects/WebApiCSharp/WebApiCSharp.csproj",
+      "projectPath": "/home/or/AOS/AOS-WebAPI/WebApiCSharp.csproj",
       "packagesPath": "/home/or/.nuget/packages/",
-      "outputPath": "/home/or/Projects/WebApiCSharp/obj/",
+      "outputPath": "/home/or/AOS/AOS-WebAPI/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/or/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
-        "net5.0"
+        "net6.0"
       ],
       "sources": {
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net5.0": {
-          "targetAlias": "net5.0",
+        "net6.0": {
+          "targetAlias": "net6.0",
           "projectReferences": {}
         }
       },
@@ -665,9 +699,13 @@
       }
     },
     "frameworks": {
-      "net5.0": {
-        "targetAlias": "net5.0",
+      "net6.0": {
+        "targetAlias": "net6.0",
         "dependencies": {
+          "Microsoft.OpenApi": {
+            "target": "Package",
+            "version": "[1.6.3, )"
+          },
           "MongoDB.Bson": {
             "target": "Package",
             "version": "[2.12.2, )"
@@ -687,7 +725,8 @@
           "net47",
           "net471",
           "net472",
-          "net48"
+          "net48",
+          "net481"
         ],
         "assetTargetFallback": true,
         "warn": true,
@@ -699,7 +738,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/5.0.404/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/6.0.408/RuntimeIdentifierGraph.json"
       }
     }
   }

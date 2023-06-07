@@ -43,9 +43,9 @@ namespace WebApiCSharp.Models
     {
         public int PolicyGraphDepth{get;set;}
         public int limitClosedModelHorizon_stepsAfterGoalDetection{get;set;}
-        public bool SolveClosedPOMDP_model { get; set; }
+        public bool UseSarsop { get; set; }
         public bool UseML { get; set; } 
-        public float OfflineSolverTimeLimitInSeconds { get; set; } 
+        public bool UseSavedSarsopPolicy { get; set; } 
         public int NumOfSamplesPerStateActionToLearnModel { get; set; } 
 
         public bool LoadBeliefFromDB { get; set; } 
@@ -62,9 +62,9 @@ namespace WebApiCSharp.Models
         public SolverConfiguration()
         {
             limitClosedModelHorizon_stepsAfterGoalDetection=-1;
-            NumOfSamplesPerStateActionToLearnModel = 200;
-            OfflineSolverTimeLimitInSeconds = 0;
-            SolveClosedPOMDP_model = false;
+            NumOfSamplesPerStateActionToLearnModel = 20;
+            UseSavedSarsopPolicy = false;
+            UseSarsop = false;
             Verbosity = 4;
             LoadBeliefFromDB = false; 
             UseML=false;

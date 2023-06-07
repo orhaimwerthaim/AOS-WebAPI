@@ -302,24 +302,26 @@ struct Config {
     std::string fixedPolicyFilePath;
 	std::string pomdpFilePath;
 	int numOfSamplesPerActionStateWhenLearningTheModel;
-	double sarsopTimeLimitInSeconds;// if sarsopTimeLimitInSeconds <= 0 there is no time limit.
+	//double sarsopTimeLimitInSeconds;// if sarsopTimeLimitInSeconds <= 0 there is no time limit.
 	int limitClosedModelHorizon_stepsAfterGoalDetection;
-    bool closedModelPolicyByGraph;
+    bool useSavedSarsopPolicy;
+    std::string domainHash;
 	Config() : 
         handsOnDebug("+(initProj.SolverConfiguration.IsInternalSimulation && initProj.OnlyGenerateCode.HasValue && initProj.OnlyGenerateCode.Value ? "true" : "false")+@"),
         manualControl("+(initProj.SolverConfiguration.ManualControl ? "true" : "false") +@"),
-        closedModelPolicyByGraph(false),
+        useSavedSarsopPolicy("+(initProj.SolverConfiguration.UseSavedSarsopPolicy ? "true" : "false")+@"),
         limitClosedModelHorizon_stepsAfterGoalDetection(" + initProj.SolverConfiguration.limitClosedModelHorizon_stepsAfterGoalDetection + @"),
-        sarsopTimeLimitInSeconds(" + initProj.SolverConfiguration.OfflineSolverTimeLimitInSeconds + @"),
+        //sarsopTimeLimitInSeconds(60),//not working well in sarsop
         numOfSamplesPerActionStateWhenLearningTheModel(" + initProj.SolverConfiguration.NumOfSamplesPerStateActionToLearnModel + @"),
         fixedGraphPolicyDotFilePath(""sarsop/src/autoGen.dot""), //the path ../sarsop/src/autoGen.dot because working dir is /build/ so we need go one directory backwards.
         fixedPolicyFilePath(""sarsop/src/out.policy""),
 		pomdpFilePath(""sarsop/examples/POMDP/auto_generate.pomdp""),
-        solveProblemWithClosedPomdpModel(" + initProj.SolverConfiguration.SolveClosedPOMDP_model.ToString().ToLower() + @"),
+        solveProblemWithClosedPomdpModel(" + initProj.SolverConfiguration.UseSarsop.ToString().ToLower() + @"),
         solverId(" + solverData.SolverId + @"),
 		search_depth(" + (data.Horizon+1) + @"),
 		discount(" + data.Discount + @"),
-		root_seed(42),
+		domainHash("""+data.GetModelHash()+@"""),
+        root_seed(42),
 		time_per_move(" + initProj.SolverConfiguration.PlanningTimePerMoveInSeconds + @"),
 		num_scenarios(500),
 		pruning_constant(0),
@@ -2005,6 +2007,11 @@ int SimpleTUI::run(int argc, char *argv[]) {
 #include <despot/util/util.h>
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>
 #include <unistd.h>
+#include <algorithm>
+#include <cctype> 
+#include <filesystem>
+namespace fs = std::filesystem;
+using namespace std;
 namespace despot {
 
 /* =============================================================================
@@ -2044,11 +2051,190 @@ public:
 	double GetRemainingBudget(std::string instance) const;
 };
 
+struct alpha_vector
+{
+	int action;
+	vector<double> values;
+};
+
 struct policy{
+    vector<alpha_vector> vectors;
     std::string policyFile;
     std::string currrentState;
 	std::map<std::string, std::string> obsStrToNum;
 	bool wasInit = false;
+
+    std::map<int, int> state_hash_to_vec_ind;
+
+	int get_best_action_by_alpha_vector(map<int, int> belief_hash_count)
+	{
+		int max_action = -1;
+		int max_value = -99999999;
+		for(alpha_vector vec : vectors)
+		{
+			double value=0;
+			int count = 0;
+			for (auto it = belief_hash_count.cbegin(); it != belief_hash_count.cend() /* not hoisted */; /* no increment */)
+			{  
+				if (state_hash_to_vec_ind.find(it->first) == state_hash_to_vec_ind.end())
+				{
+					belief_hash_count.erase(it++);    // or ""it = m.erase(it)"" since C++11
+				}
+				else
+				{
+					int ind = state_hash_to_vec_ind[it->first];
+					value += vec.values[ind]*it->second;
+					count += it->second;
+					++it;
+				}
+			}
+			value = count > 0 ? value/(double)count : -99999999;
+			if(value > max_value)
+			{
+				max_value = value;
+				max_action = vec.action;
+			}
+		}
+		return max_action;
+	}
+	
+	std::string find_policy_file()
+	{
+		string best_policy_fname(""out.policy"");
+		char tmp[256];
+		getcwd(tmp, 256);
+		std::string workingDirPath(tmp);
+		workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
+		std::string pathToPoliciesDir(workingDirPath);
+		pathToPoliciesDir.append(""sarsop/src"");
+		vector<string> files;
+		for (const auto & entry : fs::directory_iterator(pathToPoliciesDir))
+		{
+			string ends_with("".policy"");
+			string file_p(entry.path().u8string());
+			if(file_p.size() >= ends_with.size() &&
+					file_p.compare(file_p.size() - ends_with.size(), ends_with.size(), ends_with) == 0)
+					{
+						string fname(file_p.substr(pathToPoliciesDir.size()+1));
+						if(fname == best_policy_fname) return file_p;
+						files.push_back(fname);
+					}
+		}
+		int max_time = -1;
+		string best_nfile;
+		for(string s:files)
+		{
+			if(s.size()>4)
+			{
+				string t(s.substr(4));
+				if(t.find(""_"") >=0) 
+				{
+					t = t.substr(t.find(""_"")+1);
+					if(t.find(""."") >=0) 
+					{
+						if(t.find(""."") >= 0)
+						{
+							t = t.substr(0,t.find("".""));
+							int time = stoi(t);
+							if(max_time < time)
+							{
+								max_time=time;
+								best_nfile = s;
+							}
+						}
+					}
+				}
+			}
+		}
+		if(max_time > 0)
+		{
+			pathToPoliciesDir.append(""/"");
+			string new_fname(pathToPoliciesDir);
+			new_fname.append(best_policy_fname);
+			string bf_path(pathToPoliciesDir);
+			bf_path.append(best_nfile);
+			//std::filesystem::copy(bf_path, new_fname);
+			return bf_path;
+		}
+		throw string(""exception ! No sarsop policy found!"");
+	} 
+ 
+
+	void load_policy_line(std::string line)
+	{
+		
+		if (line.rfind(""<Vector action"", 0) != 0) return;
+		else
+		{
+			alpha_vector vec; 
+			std::string str1(line);
+			std::string temp(""<Vector action=\"""");
+			str1 = str1.substr(temp.size());
+			str1 = str1.substr(0,str1.find(""\""""));
+			vec.action= stoi(str1);
+			std::string str(line);
+			str = str.substr(str.find("">"")+1);
+			str = str.substr(0,str.find(""<""));
+
+			std::stringstream sstr(str);
+			std::vector<std::string> s_hashes;
+			int ind = 0;
+			while(sstr.good())
+			{
+				std::string substr;
+				getline(sstr, substr, ' ');
+				std::string s_val = substr.substr(0, substr.find("" ""));
+				remove(s_val.begin(), s_val.end(), ' '); 
+				if(s_val.size() > 0)
+				{
+				double value = stod(s_val);
+				vec.values.push_back(value);
+				}
+			}
+			vectors.push_back(vec);
+		}
+	}
+
+	void init_policy_vec()
+	{ 
+		if(wasInit)
+			return;
+		wasInit = true;
+
+		char tmp[256];
+		getcwd(tmp, 256);
+		std::string workingDirPath(tmp);
+		workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
+		std::string stateMapFile(workingDirPath);
+		stateMapFile.append(""sarsop/src/state_to_hash.txt"");
+		std::ifstream ifs1(stateMapFile);
+		std::string state_map( (std::istreambuf_iterator<char>(ifs1) ),
+                       (std::istreambuf_iterator<char>()    ) );
+		std::stringstream sstr(state_map);
+		std::vector<std::string> s_hashes;
+		int ind = 0;
+		while(sstr.good())
+		{
+			std::string substr;
+			getline(sstr, substr, ',');
+			int hash =  stoi(substr.substr(0, substr.find("":"")));
+			state_hash_to_vec_ind.insert({hash, ind++});
+		}
+
+
+		std::string policyFilePath(find_policy_file());
+		std::ifstream ifs(policyFilePath);
+		std::string line;
+
+// std::string state_map2( (std::istreambuf_iterator<char>(ifs) ),
+//                        (std::istreambuf_iterator<char>()    ) );
+
+		while (std::getline(ifs, line))
+		{
+			load_policy_line(line);
+		} 
+	}
+
 	void init_policy()
 	{
 		if(wasInit)
@@ -2095,39 +2281,6 @@ struct policy{
 			obsInd = endObs;
 		}
 	}
-
-	int getCurrentAction()
-    {
-        std::string temp = ""\n"" + currrentState;
-            int stateInd = policyFile.find(temp.append("" [""));
-            int actStart = policyFile.find(""A ("", stateInd) + 3;
-            int actEnd = policyFile.find("")"", actStart);
-            return stoi(policyFile.substr(actStart, actEnd - actStart)); 
-    }
-
-    void updateStateByObs(std::string obs)
-    {
-		obs=obsStrToNum[obs];
-		std::string temp = ""\n"" + currrentState;
-		temp.append("" -> "");
-        bool found = false;
-        int stateInd=0;
-        while (stateInd >= 0)
-        {
-            stateInd = policyFile.find(temp,stateInd)+temp.size();
-            if(stateInd < temp.size())
-                throw std::runtime_error(""ERROR: action that reach this State does not expect such an observation!"");
-            int statrtObs = policyFile.find("" ("", stateInd) + 2;
-            int endObs = policyFile.find("")"", stateInd);
-
-            std::string curObs = policyFile.substr(statrtObs, endObs-statrtObs);
-            if(curObs == obs)
-            {
-                currrentState = policyFile.substr(stateInd, policyFile.find("" "", stateInd)-stateInd);
-                return;
-            }
-        }
-    } 
 };
 
 
@@ -2421,14 +2574,7 @@ bool Evaluator::RunStep(int step, int round) {
 
 	if(byExternalPolicy)
 	{
-		if(Globals::config.closedModelPolicyByGraph)
-		{
-			Evaluator::fixedPolicy.init_policy();
-		}
-		else
-		{
-			ClosedModelPolicy::loadAlphaVectorsFromPolicyFile();
-		}
+		Evaluator::fixedPolicy.init_policy_vec(); 
 	}
 
 	if(shutDown && !Globals::config.handsOnDebug)
@@ -2459,8 +2605,15 @@ bool Evaluator::RunStep(int step, int round) {
 	int action = -1;
 
     if(byExternalPolicy)
-    {
-           action = Globals::config.closedModelPolicyByGraph ? Evaluator::fixedPolicy.getCurrentAction() : ClosedModelPolicy::getBestAction();
+    {   
+		vector<State*> particles = solver_->belief()->GetParticles();
+		map<int, int> states_hash_count;
+		for(State* par : particles)
+		{
+			int hash = State::GetStateHash(*par);
+			states_hash_count[hash] +=1;
+		}
+		action = Evaluator::fixedPolicy.get_best_action_by_alpha_vector(states_hash_count);   
     }
     else if(action_sequence_to_sim.size() == 0)
 	{
@@ -2511,7 +2664,7 @@ bool Evaluator::RunStep(int step, int round) {
     model_->PrintState(*state_);
 	std::map<std::string, std::string> localVariablesFromAction;
 
-	if(!byExternalPolicy && MongoDB_Bridge::currentActionSequenceId == 0)
+	if(MongoDB_Bridge::currentActionSequenceId == 0)
 	{
 		Evaluator::SaveBeliefToDB();
 	}
@@ -2544,23 +2697,10 @@ bool Evaluator::RunStep(int step, int round) {
 	*out_<<endl;
 
 	start_t = get_time_second();
-	if(byExternalPolicy)
-	{
-		if(Globals::config.closedModelPolicyByGraph)
-		{
-			Evaluator::fixedPolicy.updateStateByObs(obsStr);
-		}
-		
-        else
-		{
-			ClosedModelPolicy::updateBelief(obsStr, action);
-		}
-	}
-	else 
-	{
-		solver_->Update(action, obs, localVariablesFromAction);
-		Evaluator::SaveBeliefToDB();
-	}
+	
+    solver_->Update(action, obs, localVariablesFromAction);
+	Evaluator::SaveBeliefToDB();
+	
 	end_t = get_time_second();
 	logi << ""[RunStep] Time spent in Update(): "" << (end_t - start_t) << endl;
 
@@ -2948,6 +3088,8 @@ public static string GetClosedModelCppFile(PLPsData data)
 {
     string file = @"
 
+#include <filesystem>
+namespace fs = std::filesystem;
 #include ""closed_model.h"" 
 namespace despot {
       bool AlphaVectorPolicy::isInit = false;
@@ -3117,11 +3259,24 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
      //map<std::string, map<int,map<int, double>>> obsActNState_ObservationModel;//map<observation, map<action,map<nextState, Probability>>>
  
         char tmp[256];
-                getcwd(tmp, 256);
-                std::string workinDirPath(tmp);
-                workinDirPath = workinDirPath.substr(0, workinDirPath.find(""build""));
+        getcwd(tmp, 256);
+        std::string workinDirPath(tmp);
+        workinDirPath = workinDirPath.substr(0, workinDirPath.find(""build""));
         std::string fpath(workinDirPath);
         fpath.append(Globals::config.pomdpFilePath);
+        
+        std::string stateMapFile(workinDirPath);
+        stateMapFile.append(""sarsop/src/state_to_hash.txt"");
+        std::ofstream fs_states;
+        //remove(stateMapFile.c_str());
+        fs_states.open(stateMapFile, std::ios_base::app);
+
+        std::string metadata_path(workinDirPath);
+        metadata_path.append(""sarsop/src/policy_metadata.txt"");
+        std::ofstream fs_metadata;
+        fs_metadata.open(metadata_path, std::ios_base::app);
+        fs_metadata << ""domain_hash "" << Globals::config.domainHash << "" search_depth "" << Globals::config.search_depth;
+        fs_metadata.close();
         std::ofstream fs;
         remove(fpath.c_str());
         fs.open(fpath, std::ios_base::app); //std::ios_base::app
@@ -3131,14 +3286,18 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         fs << endl;
         fs << ""states:"";
         int count = 0;
+        bool first = true;
         for (auto &stateN : states)
-        {
+        { 
             std::string stateName= std::to_string(count++).insert(0, ""s_"");
             POMDP_ClosedModel::closedModel.statesToPomdpFileStates[stateN] = stateName;
             fs << "" "" << stateName;
 
+            fs_states << (first ? """" : "","") << stateN << "":"" << stateName;
+            first = false;
             stateToPolicyIndex[stateN] = count - 1;
         }
+        fs_states.close();
         fs << endl;
         fs << endl;
         fs << ""actions: "";
@@ -3170,12 +3329,26 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         fs << endl; 		
         fs << endl;
         fs << ""start:"" << endl;
+        double total=0;
+        int precision = 4;
         for (auto & stateN : POMDP_ClosedModel::closedModel.statesToPomdpFileStates)
         {  
             double prob = (double)POMDP_ClosedModel::closedModel.initialBStateParticle[stateN.first] / (double)POMDP_ClosedModel::closedModel.initialBStateSamplesCount;
+            prob = (floor(prob*pow(10,precision)))/pow(10,precision);
+            total+=prob;
             initialBeliefState.push_back(prob);
+        }
+
+        if(total != 1.0)
+        {
+            int maxElementIndex = std::max_element(initialBeliefState.begin(),initialBeliefState.end()) - initialBeliefState.begin();
+            initialBeliefState[maxElementIndex]+=1.0-total;
+        }
+
+        for(double prob:initialBeliefState)
+        {
             std::stringstream stream;
-            stream << std::fixed << std::setprecision(1) << prob;
+            stream << std::fixed << std::setprecision(precision) << prob;
             std::string s = stream.str();
             
             fs << "" "" << s;
@@ -3183,7 +3356,7 @@ void POMDP_ClosedModel::GenerateModelFile(std::set<int> states, std::map<int, st
         fs << endl; 		
         fs << endl;
 
-        ClosedModelPolicy::loadInitialBeliefStateFromVector(initialBeliefState);
+        //ClosedModelPolicy::loadInitialBeliefStateFromVector(initialBeliefState);
 
         map<int, set<int>> actionStatesWithoutAnyTran;
         for (int act = 0; act < ActionManager::actions.size();act++)
@@ -3360,21 +3533,15 @@ void POMDP_ClosedModel::solveModel()
     std::string cmd = ""cd "";
   cmd.append(workinDirPath);
   cmd.append(""sarsop/src ; make ; ./pomdpsol "");
+  cmd.append(""--policy-interval 10 "");
   cmd.append(workinDirPath);
   cmd.append(""sarsop/examples/POMDP/auto_generate.pomdp"");
-  if(Globals::config.sarsopTimeLimitInSeconds > 0)
-  {
-      cmd.append("" --timeout "");
-      cmd.append(std::to_string(Globals::config.sarsopTimeLimitInSeconds));
-  }//   ./pomdpsol /home/or/Projects/sarsop/examples/POMDP/auto_generate.pomdp
-  if(Globals::config.closedModelPolicyByGraph)
-  {
-    cmd.append("" ; ./polgraph --policy-file out.policy --policy-graph autoGen.dot "");
-    cmd.append(workinDirPath);
-    cmd.append(""sarsop/examples/POMDP/auto_generate.pomdp"");
-    
-    //cmd.append("" ; dot -Tpdf autoGen.dot -o outfile_autoGen.pdf""); //uncomment if you want to generate a pdf graph
-  }
+//   if(Globals::config.sarsopTimeLimitInSeconds > 0)
+//   {
+//       cmd.append("" --timeout "");
+//       cmd.append(std::to_string(Globals::config.sarsopTimeLimitInSeconds));
+//   }//   ./pomdpsol /home/or/Projects/sarsop/examples/POMDP/auto_generate.pomdp
+
   std::string policyFilePath(workinDirPath);
   policyFilePath.append(""sarsop/src/out.policy"");
   remove(policyFilePath.c_str());
@@ -3397,6 +3564,37 @@ POMDP_ClosedModel POMDP_ClosedModel::closedModel;
 //"+data.ProjectNameWithCapitalLetter+@"
 void POMDP_ClosedModel::CreateAndSolveModel() const
 { 
+    string best_policy_fname(""out.policy"");
+		char tmp[256];
+		getcwd(tmp, 256);
+		std::string workingDirPath(tmp);
+		workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
+        std::string pathToPoliciesDir(workingDirPath);
+		pathToPoliciesDir.append(""sarsop/src"");
+		vector<string> files_to_delete;
+		for (const auto & entry : fs::directory_iterator(pathToPoliciesDir))
+		{
+			string ends_with("".policy"");
+			string file_p(entry.path().u8string());
+			string fname(file_p);
+            fname = fname.substr(pathToPoliciesDir.size()+1);
+            
+            if(file_p.size() >= ends_with.size() &&
+                file_p.compare(file_p.size() - ends_with.size(), ends_with.size(), ends_with) == 0)
+            {
+                files_to_delete.push_back(file_p);
+            }
+            if(fname == ""state_to_hash.txt"" || fname == ""policy_metadata.txt"")
+            {
+                files_to_delete.push_back(file_p);
+            }
+		}
+        for(string del : files_to_delete)
+        {
+            const char* ca = del.c_str();
+            std::remove(ca);
+        }
+
     int horizon = Globals::config.search_depth;
     int numOfSamplesForEachActionFromState = Globals::config.numOfSamplesPerActionStateWhenLearningTheModel;
 
@@ -3419,8 +3617,7 @@ void POMDP_ClosedModel::CreateAndSolveModel() const
     for (int i = 0; i < 1000; i++)
     {
         State *state = "+data.ProjectNameWithCapitalLetter+@"::gen_model.CreateStartState();
-        "+data.ProjectNameWithCapitalLetter+@"State &ir_state = static_cast<"+data.ProjectNameWithCapitalLetter+@"State &>(*state);
-        int hash = "+data.ProjectNameWithCapitalLetter+@"::gen_model.hasher(Prints::PrintState(ir_state));
+        int hash = State::GetStateHash(*state);
         if (states.insert(hash).second)
         {
             statesToProcessCurr.insert({hash, state});
@@ -3562,8 +3759,7 @@ public:
 class " + data.ProjectNameWithCapitalLetter + @": public DSPOMDP {
 public:
     static " + data.ProjectNameWithCapitalLetter + @" gen_model;
-    static std::hash<std::string> hasher;
-	virtual std::string PrintObs(int action, OBS_TYPE obs) const;
+    virtual std::string PrintObs(int action, OBS_TYPE obs) const;
 	virtual std::string PrintStateStr(const State &state) const;
 	virtual std::string GetActionDescription(int) const;
 	void UpdateStateByRealModuleObservation(State &state, int actionId, OBS_TYPE &observation) const;
@@ -3571,7 +3767,8 @@ public:
 					  OBS_TYPE &observation) const;
     void StepForModel(State& state, int actionId, double &reward,
                                     OBS_TYPE &observation, int& state_hash, int& next_state_hash, bool &isTerminal, double& precondition_reward, double& specialStateReward) const;
-	int NumActions() const;
+	int GetStateHash(State state) const;
+    int NumActions() const;
 	virtual double ObsProb(OBS_TYPE obs, const State& state, int actionId) const;
     void CreateAndSolveModel() const;
 	virtual State* CreateStartState(std::string type = ""DEFAULT"") const;
@@ -3698,6 +3895,11 @@ public static string GetPOMDPCPPFile(PLPsData data, bool forSingleFileModel = fa
 using namespace std;
 
 namespace despot {
+std::hash<std::string> State::hasher;
+int State::GetStateHash(State s)
+{
+	return hasher(Prints::PrintState(s));
+}
 
 BeliefStateVariables::BeliefStateVariables(vector<State *> bs)
    {
@@ -3955,6 +4157,7 @@ class BeliefStateVariables
  */
 class State: public MemoryObject {
 public:
+    static std::hash<std::string> hasher;
 	int state_id;
 	int scenario_id;
 	double weight;
@@ -3962,6 +4165,7 @@ public:
 	State();
 	State(int _state_id, double weight);
 	virtual ~State();
+	static int GetStateHash(State s);
 
 	friend std::ostream& operator<<(std::ostream& os, const State& state);
 
@@ -4242,11 +4446,9 @@ class ClosedModelPolicy {
         static vector<double> _currentBelief;
         static vector <std::pair<int, vector<double>>> alpha_vectors;
 
-    public:
-        static void loadAlphaVectorsFromPolicyFile();
+    public: 
         static void loadInitialBeliefStateFromVector(vector<double> bs);
-        static void updateBelief(string observation, int action);
-        static int getBestAction();
+        static void updateBelief(string observation, int action); 
                                                      //when the rule is true for any state
         static map<std::string, map<int, map<int, double>>> obsActNState_ObservationModel; //map<observation, map<action,map<nextState, Probability>>>
 
@@ -4996,67 +5198,6 @@ map<int, map<int, map<int, double>>> ClosedModelPolicy::nextStateActionPrevState
 
 vector <std::pair<int, vector<double>>> ClosedModelPolicy::alpha_vectors;
 
-void ClosedModelPolicy::loadAlphaVectorsFromPolicyFile()
-{
-    if(alpha_vectors.size() > 0)
-        return;
-    char tmp[256];
-    getcwd(tmp, 256);
-    std::string workingDirPath(tmp);
-    workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
-
-    std::string policyFilePath(workingDirPath);
-    policyFilePath.append(Globals::config.fixedPolicyFilePath);
-    std::ifstream pf(policyFilePath);
-    std::string policyFileContent((std::istreambuf_iterator<char>(pf)),
-                                  (std::istreambuf_iterator<char>()));
-
-    std::string t = ""<Vector "";
-    int vecInd = 0;
-    std::string actStr = ""action=\"""";
-
-    //get all alpha vectors
-    while (true)
-    {
-        vecInd = policyFileContent.find(t, vecInd) + t.size();
-        if (vecInd < t.size())
-        {
-            break;
-        }
-
-        int actionNum = -1;
-        vector<double> alpha_vec;
-
-        //go to action num  ""<Vector action=""4"" obsValue=""0""> ...""
-        int startActionInd = policyFileContent.find(actStr, vecInd) + actStr.size();
-        int endActionInd = policyFileContent.find(""\"""", startActionInd) + actStr.size();
-
-        stringstream actionNumS;
-        actionNum = stoi(policyFileContent.substr(startActionInd, endActionInd - startActionInd));
-
-        vecInd = policyFileContent.find("">"", vecInd) + 1;
-
-        //get vector values
-        while (true)
-        {
-
-            //remove spaces
-            while (policyFileContent[vecInd] == ' ')
-                vecInd++;
-            if (policyFileContent[vecInd] == '<')
-            {
-                break;
-            }
-            int endValInd = policyFileContent.find("" "", vecInd);
-            double val = std::stod(policyFileContent.substr(vecInd, endValInd - vecInd));
-            alpha_vec.push_back(val);
-            vecInd = endValInd;
-        }
-
-        std::pair<int, vector<double>> vec{actionNum, alpha_vec};
-        ClosedModelPolicy::alpha_vectors.push_back(vec);
-		} 
-}
 
 void ClosedModelPolicy::loadInitialBeliefStateFromVector(vector<double> bs)
 {
@@ -5095,23 +5236,6 @@ void ClosedModelPolicy::updateBelief(string observation, int action)
         _currentBelief[i] = prob_to_see_observation_in_state * go_to_state_prob;
     }
 }
-int ClosedModelPolicy::getBestAction()
-{
-    double maxValue= -DBL_MAX;
-    int maxAction = -1;
-    for (auto alphaVec : alpha_vectors)
-    {
-        double value = std::inner_product(_currentBelief.begin(), _currentBelief.end(), alphaVec.second.begin(), 0);
-        if(value > maxValue)
-        {
-            maxValue = value;
-            maxAction = alphaVec.first;
-        }
-    }
-    return maxAction;
-}
-
-
 
 }";
     return file;
@@ -6512,7 +6636,8 @@ public static string GetModelCppFile(PLPsData data, InitializeProject initProj)
 #include <float.h>
 #include <map>
 #include <tuple>
-
+#include <filesystem>
+namespace fs = std::filesystem;
 using namespace std;
 
 namespace despot {
@@ -6553,7 +6678,6 @@ bool AOSUtils::Bernoulli(double p)
     float rand = real_unfirom_dist(generator);
 	return rand < p;
 }
-std::hash<std::string> " + data.ProjectNameWithCapitalLetter + @"::hasher;
 /* ==============================================================================
  *" + data.ProjectNameWithCapitalLetter + @"Belief class
  * ==============================================================================*/
@@ -6697,9 +6821,42 @@ std::default_random_engine " + data.ProjectNameWithCapitalLetter + @"::generator
 
 
 Belief* " + data.ProjectNameWithCapitalLetter + @"::InitialBelief(const State* start, string type) const {
-    if(Globals::config.solveProblemWithClosedPomdpModel)
+    if(Globals::config.solveProblemWithClosedPomdpModel  && !Globals::config.useSavedSarsopPolicy)
     {
-        POMDP_ClosedModel::closedModel.CreateAndSolveModel();
+        bool best_policy_exists = false;
+        char tmp[256];
+		getcwd(tmp, 256);
+		std::string workingDirPath(tmp);
+		workingDirPath = workingDirPath.substr(0, workingDirPath.find(""build""));
+        workingDirPath.append(""sarsop/src/"");
+		std::string metadata_fpath(workingDirPath);
+        metadata_fpath.append(""policy_metadata.txt"");
+        ifstream meta_fs(metadata_fpath.c_str());
+        std::string hash; 
+        int search_depth;
+        string desc1, desc2; 
+		// std::string state_map( (std::istreambuf_iterator<char>(meta_fs) ),
+        //                (std::istreambuf_iterator<char>()    ) );
+		
+        meta_fs >> desc1 >> hash >> desc2 >> search_depth;
+        if(Globals::config.domainHash == hash && search_depth == Globals::config.search_depth)
+        {
+            for (const auto & entry : fs::directory_iterator(workingDirPath))
+            {
+                string f_name(entry.path().u8string());
+                f_name = f_name.substr(workingDirPath.size());
+                if (f_name == ""out.policy"")
+                {
+                    best_policy_exists=true;
+                    break;
+                }
+            }
+        }
+
+        if(!best_policy_exists)
+        {
+            POMDP_ClosedModel::closedModel.CreateAndSolveModel();
+        }
     }
 	int N = " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles;
 	vector<State*> particles(N);
@@ -6767,16 +6924,21 @@ int " + data.ProjectNameWithCapitalLetter + @"::NumActiveParticles() const {
 	return memory_pool_.num_allocated();
 }
 
+int " + data.ProjectNameWithCapitalLetter + @"::GetStateHash(State state) const
+{ 
+    return State::GetStateHash(state);
+}
+
 void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int actionId, double& reward,
         OBS_TYPE& observation, int &state_hash, int &next_state_hash, bool& isTerminal, double& precondition_reward, double& specialStateReward) const
     {
         reward = 0;
-        " + data.ProjectNameWithCapitalLetter + @"State &ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
-        state_hash = hasher(Prints::PrintState(ir_state));
+        //" + data.ProjectNameWithCapitalLetter + @"State &ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
+        state_hash = GetStateHash(state);
 
         bool meetPrecondition;
         precondition_reward = 0;
-        CheckPreconditions(ir_state, reward, meetPrecondition, actionId);
+        CheckPreconditions(state, reward, meetPrecondition, actionId);
         if(!meetPrecondition)
         {
             precondition_reward = reward;
@@ -6784,13 +6946,13 @@ void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int 
         
         isTerminal = " + data.ProjectNameWithCapitalLetter + @"::Step(state, 0.1, actionId, reward,
                    observation);
-        ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
+        //ir_state = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(state);
 
         specialStateReward = 0;
-        ProcessSpecialStates(ir_state, specialStateReward);
+        ProcessSpecialStates(state, specialStateReward);
         reward -= (precondition_reward + specialStateReward);//so that it will not consider the precondition penalty and special states reward
 
-        next_state_hash = hasher(Prints::PrintState(ir_state));
+        next_state_hash = GetStateHash(state);
     }
 " + GetCPPStepFunction(data) 
  + GetCheckPreconditionsForModelCpp(data) + Environment.NewLine +

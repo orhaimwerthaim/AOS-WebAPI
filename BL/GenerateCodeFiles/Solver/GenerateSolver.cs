@@ -30,6 +30,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public GenerateSolver(PLPsData data, InitializeProject initProj, Solver solverData)
         {
+            GenerateFilesUtils.DeleteAndCreateDirectory(conf.SolverPath + "/examples/cpp_models");
             int totalNumberOfActionsInProject;
             plpsData = data;
             projectNameWithCapitalFirstLetter = char.ToUpper(plpsData.ProjectName[0]) + plpsData.ProjectName.Substring(1);
