@@ -363,7 +363,10 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
                             fileContent = TranslateSdlToJson.Translate(Path.GetFileName(filePath), fileContent); 
                             string translatedSdlPathDir = Path.Combine(pLPsDirectoryPath, "translatedSDL");
                             if (!Directory.Exists(translatedSdlPathDir)) Directory.CreateDirectory(translatedSdlPathDir);
-                            string trFilePath = Path.Combine(translatedSdlPathDir, "translated_"+Path.GetFileName(filePath).Replace(".","_") + ".json");
+                            string fileType = filePath.ToLower().EndsWith("ef") ? "EF" : filePath.ToLower().EndsWith("sd") ? "SD" : filePath.ToLower().EndsWith("am") ? "AM" : "";
+                            string filename = Path.GetFileName(filePath).Substring(0, Path.GetFileName(filePath).IndexOf("."));
+                            string translated_file_name = fileType == "EF" ? "Environment" : fileType == "" ? filename : filename + " " + fileType; 
+                            string trFilePath = Path.Combine(translatedSdlPathDir, translated_file_name + ".json");
                             GenerateFilesUtils.WriteTextFile(trFilePath, fileContent);
                         }
                         

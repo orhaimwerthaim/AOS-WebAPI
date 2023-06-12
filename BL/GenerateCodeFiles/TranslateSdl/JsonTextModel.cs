@@ -17,6 +17,11 @@ namespace WebApiCSharp.JsonTextModel
         public string Project{get;set;}
         public string Name{get;set;}
         public string Type{get;set;}
+        float Version{get;set;}
+        public PlpMain()
+        {
+            Version=1.0f;
+        }
 
     }
     public class ModuleResponse 
@@ -42,6 +47,11 @@ namespace WebApiCSharp.JsonTextModel
         public string ServiceName {get;set;}
         public string ServicePath {get;set;}
         public List<ServiceParameter> ServiceParameters {get;set;}
+
+        public RosService()
+        {
+            ServiceParameters = new List<ServiceParameter>();
+        }
     }
 
     public class ServiceParameter
