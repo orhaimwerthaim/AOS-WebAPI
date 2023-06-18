@@ -28,8 +28,7 @@ namespace WebApiCSharp.Models
             Preconditions_GlobalVariablePreconditionAssignments = new List<Assignment>();
             Preconditions_PlannerAssistancePreconditionsAssignments = new List<Assignment>();
             
-        }
-
+        } 
     }
   
 

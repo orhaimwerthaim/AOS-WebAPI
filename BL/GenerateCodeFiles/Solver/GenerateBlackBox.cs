@@ -64,14 +64,14 @@ namespace WebApiCSharp.GenerateCodeFiles
 //
 
             GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/Makefile", SolverFileTemplate.GetProjectExample_MakeFile());
-            GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/CMakeLists.txt", SolverFileTemplate.GetProjectExample_CMakeLists(plpsData.ProjectName, conf));
-            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/CMakeLists.txt", SolverFileTemplate.GetBasePath_CMakeLists(plpsData.ProjectName));
+            GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/CMakeLists.txt", SolverFileTemplate.GetProjectExample_CMakeLists(plpsData.ProjectName, conf, initProj));
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/CMakeLists.txt", SolverFileTemplate.GetBasePath_CMakeLists(plpsData.ProjectName, initProj));
 
 GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp.h", SolverFileTemplate.GetPomcpHeaderFile(data));
             
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/evaluator.cpp", SolverFileTemplate.GetEvaluatorCppFile(data, initProj));
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/simple_tui.cpp", SolverFileTemplate.GetSimpleTuiCppFile(data, initProj));
-            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/evaluator.h", SolverFileTemplate.GetEvaluatorHeaderFile(data));
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/evaluator.h", SolverFileTemplate.GetEvaluatorHeaderFile(data, initProj));
 
             GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/closed_model_policy.cpp", SolverFileTemplate.GetClosedModelPolicyCPpFile(data));
 
@@ -84,10 +84,10 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/globals.h", SolverFileTemplate.GetGlobalsFile(data, totalNumberOfActionsInProject));
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/main.cpp", SolverFileTemplate.GetMainFile(data));
             GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/" + data.ProjectName + ".cpp", SolverFileTemplate.GetModelCppFile(data, initProj));
-            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/" + data.ProjectName + ".h", SolverFileTemplate.GetModelHeaderFile(data));
+            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/" + data.ProjectName + ".h", SolverFileTemplate.GetModelHeaderFile(data, initProj));
 
-            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/closed_model.h", SolverFileTemplate.GetClosedModelHeaderFile(data));
-            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/closed_model.cpp", SolverFileTemplate.GetClosedModelCppFile(data));
+            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/closed_model.h", SolverFileTemplate.GetClosedModelHeaderFile(data, initProj));
+            GenerateFilesUtils.WriteTextFile(ProjectExamplePathSrc + "/closed_model.cpp", SolverFileTemplate.GetClosedModelCppFile(data, initProj));
     
             GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/src/solver/pomcp.cpp", SolverFileTemplate.GetPOMCP_File(conf.SolverGraphPDF_DirectoryPath, initProj.SolverConfiguration.PolicyGraphDepth, initProj, data));
 

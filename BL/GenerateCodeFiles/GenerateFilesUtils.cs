@@ -14,7 +14,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 {
     public class GenerateFilesUtils
     {
-        public static string RunBashCommand(string cmd, bool waitForExit = true)
+        public static string RunBashCommand(string cmd, bool waitForExit = true, string workingDir = null)
         {
             var escapedArgs = cmd.Replace("\"", "\\\"");
 
@@ -29,6 +29,21 @@ namespace WebApiCSharp.GenerateCodeFiles
             CreateNoWindow = true,
             }
             };
+            if(workingDir != null)
+            {
+              process =   new Process(){
+            StartInfo = new ProcessStartInfo
+            {
+            FileName = "/bin/bash",
+            Arguments = $"-c \"{escapedArgs}\"",
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory=workingDir
+            }
+            };
+            }
+            
             process.Start();
             if(waitForExit)
             {

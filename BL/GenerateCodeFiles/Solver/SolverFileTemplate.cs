@@ -59,7 +59,7 @@ clean:
 ";
         }
 
-        public static string GetProjectExample_CMakeLists(string projectName, Configuration conf)
+        public static string GetProjectExample_CMakeLists(string projectName, Configuration conf, InitializeProject initProj)
         {
             string file = @"cmake_minimum_required(VERSION 2.8.3)
 
@@ -73,7 +73,7 @@ add_executable(""${PROJECT_NAME}_" + projectName + @"""
 #src/state_var_types.cpp   
 src/" + projectName + @".cpp
 src/main.cpp
-src/closed_model.cpp
+"+(initProj.SolverConfiguration.UseSarsop ? "" : "#")+@"src/closed_model.cpp
 #src/mongoDB_Bridge.cpp
 )
 
@@ -110,7 +110,7 @@ install(TARGETS ""${PROJECT_NAME}_" + projectName + @"""
             return file;
         }
 
-        public static string GetBasePath_CMakeLists(string projectName)
+        public static string GetBasePath_CMakeLists(string projectName, InitializeProject initProj)
         {
             string file = @"cmake_minimum_required(VERSION 2.8.3)
 project(despot)
@@ -231,6 +231,31 @@ if(DESPOT_BUILD_EXAMPLES)
   add_subdirectory(examples/cpp_models/" + projectName + @")
  # add_subdirectory(examples/cpp_models/" + projectName + @"_working_toy)
 endif()
+
+
+";
+
+if(initProj.SolverConfiguration.UseML)
+{
+    file  += @"
+    #-----------------TORCH---------------------------------------------------------
+set(CMAKE_PREFIX_PATH ""/home/or/AOS/build-pytorch-from-source/pytorch-install"")
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS ""${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}"")
+ 
+target_link_libraries(""${PROJECT_NAME}"" ""${TORCH_LIBRARIES}"")
+set_property(TARGET ""${PROJECT_NAME}"" PROPERTY CXX_STANDARD 14)
+ 
+message(STATUS ""Find Torch VERSION: ${Torch_VERSION}"")
+add_definitions(-DTORCH_VERSION_MAJOR=${Torch_VERSION_MAJOR})
+add_definitions(-DTORCH_VERSION_MINOR=${Torch_VERSION_MINOR})
+add_definitions(-DTORCH_VERSION_PATCH=${Torch_VERSION_PATCH})
+#--------------------------------------------------------------------------------
+
+    ";
+}
+
+file +=@"
 
 
 install(TARGETS ""${PROJECT_NAME}""
@@ -1996,7 +2021,7 @@ int SimpleTUI::run(int argc, char *argv[]) {
             return file;
         }
 
-        public static string GetEvaluatorHeaderFile(PLPsData data)
+        public static string GetEvaluatorHeaderFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"#ifndef SIMULATOR_H
 #define SIMULATOR_H
@@ -2010,7 +2035,7 @@ int SimpleTUI::run(int argc, char *argv[]) {
 #include <algorithm>
 #include <cctype> 
 #include <filesystem>
-namespace fs = std::filesystem;
+"+(initProj.SolverConfiguration.UseSarsop ? "namespace fs = std::filesystem;" : "")+@" 
 using namespace std;
 namespace despot {
 
@@ -2050,7 +2075,9 @@ public:
 	void SetInitialBudget(std::string instance);
 	double GetRemainingBudget(std::string instance) const;
 };
+";
 
+file += !initProj.SolverConfiguration.UseSarsop ? "" : @"
 struct alpha_vector
 {
 	int action;
@@ -2283,6 +2310,9 @@ struct policy{
 	}
 };
 
+";
+
+file += @"
 
 /* =============================================================================
  * Evaluator class
@@ -2296,7 +2326,7 @@ class Evaluator {
 	std::vector<int> action_sequence_to_sim;
     void SaveBeliefToDB();
 protected:
-    policy fixedPolicy;
+"+(initProj.SolverConfiguration.UseSarsop ? "policy fixedPolicy;" : "")+@"
 	DSPOMDP* model_;
 	std::string belief_type_;
 	Solver* solver_;
@@ -2381,7 +2411,8 @@ public:
 class POMDPEvaluator: public Evaluator {
 protected:
 	Random random_;
-    policy fixedPolicy;
+    "+(initProj.SolverConfiguration.UseSarsop ? "policy fixedPolicy;" : "")+@"
+    
 public:
 	POMDPEvaluator(DSPOMDP* model, std::string belief_type, Solver* solver,
 		clock_t start_clockt, std::ostream* out, double target_finish_time = -1,
@@ -2574,7 +2605,7 @@ bool Evaluator::RunStep(int step, int round) {
 
 	if(byExternalPolicy)
 	{
-		Evaluator::fixedPolicy.init_policy_vec(); 
+        "+(initProj.SolverConfiguration.UseSarsop ? "Evaluator::fixedPolicy.init_policy_vec(); " : "")+@" 
 	}
 
 	if(shutDown && !Globals::config.handsOnDebug)
@@ -2613,7 +2644,8 @@ bool Evaluator::RunStep(int step, int round) {
 			int hash = State::GetStateHash(*par);
 			states_hash_count[hash] +=1;
 		}
-		action = Evaluator::fixedPolicy.get_best_action_by_alpha_vector(states_hash_count);   
+        "+(initProj.SolverConfiguration.UseSarsop ? "action = Evaluator::fixedPolicy.get_best_action_by_alpha_vector(states_hash_count);   " : "")+@" 
+		
     }
     else if(action_sequence_to_sim.size() == 0)
 	{
@@ -2989,7 +3021,7 @@ int main(int argc, char* argv[]) {
             return result;
         }
 
-public static string GetClosedModelHeaderFile(PLPsData data)
+public static string GetClosedModelHeaderFile(PLPsData data, InitializeProject initProj)
 {
     string file = @"
     #ifndef CLOSED_MODEL_H
@@ -3084,7 +3116,7 @@ namespace despot {
     return file;
 }
 
-public static string GetClosedModelCppFile(PLPsData data)
+public static string GetClosedModelCppFile(PLPsData data, InitializeProject initProj)
 {
     string file = @"
 
@@ -3700,7 +3732,7 @@ void POMDP_ClosedModel::CreateAndSolveModel() const
     return file;
 }
 
-        public static string GetModelHeaderFile(PLPsData data)
+        public static string GetModelHeaderFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"
 #ifndef " + data.ProjectNameWithCapitalLetter.ToUpper() + @"_H
@@ -3711,7 +3743,8 @@ void POMDP_ClosedModel::CreateAndSolveModel() const
 #include <random>
 #include <string>
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h>  
-#include ""closed_model.h""
+"+(initProj.SolverConfiguration.UseSarsop ? "#include \"closed_model.h\"" : "")+@"
+
 namespace despot {
 
 /* ==============================================================================
@@ -6855,7 +6888,7 @@ Belief* " + data.ProjectNameWithCapitalLetter + @"::InitialBelief(const State* s
 
         if(!best_policy_exists)
         {
-            POMDP_ClosedModel::closedModel.CreateAndSolveModel();
+            "+(initProj.SolverConfiguration.UseSarsop ? "POMDP_ClosedModel::closedModel.CreateAndSolveModel();" : "")+@"
         }
     }
 	int N = " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles;

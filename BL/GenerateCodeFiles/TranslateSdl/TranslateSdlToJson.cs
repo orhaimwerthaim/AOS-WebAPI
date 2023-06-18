@@ -448,11 +448,23 @@ namespace WebApiCSharp.JsonTextModel
                         {
                             List<string> bits = lineContent[i++].Substring("variable:".Length).Split(" ").ToList();
                             bits = bits.Select(x=> x.Replace(" ","")).Where(x=> x.Length > 0).ToList();
-                            if(bits.Count > 3 || bits.Count < 2)throw new Exception(errorStart + "'variable:' definition is 'variable: <type> <name> <optional_default_value>' the definition sent was '"+lineContent[i-1]+"'");
+                            if(bits.Count > 4 || bits.Count < 2)throw new Exception(errorStart + "'variable:' definition is 'variable: <type> <name> <optional_default_value> <optional_max_possible_value_for_ML>' the definition sent was '"+lineContent[i-1]+"'");
                             GlobalCompoundTypeVariable tt = new GlobalCompoundTypeVariable();
                             tt.Name = bits[1];
                             tt.Type = bits[0];
                             tt.Default = bits.Count > 2 ? bits[2] : null;
+                            float temp;
+                            if(bits.Count > 3)
+                            {
+                                if(float.TryParse(bits[3], out temp))
+                                {
+                                    tt.MaxPossibleValueForML = temp;
+                                }
+                                else
+                                {
+                                    throw new Exception(errorStart + "'variable:' definition is 'variable: <type> <name> <optional_default_value> <optional_max_possible_value_for_ML>', <optional_max_possible_value_for_ML> must be a decimal number!, the definition sent was '"+lineContent[i-1]+"'");
+                                }
+                            }
                             typeVariables.Add(tt);
                         }
                     }

@@ -123,6 +123,8 @@ public class EnvironmentGeneral
         public string Name {get;set;}
         public string Type {get;set;}
         public string Default {get;set;}
+
+        public float? MaxPossibleValueForML{get;set;} 
     }
     public class GlobalVariableDeclaration
     {
@@ -131,6 +133,8 @@ public class EnvironmentGeneral
         public string DefaultCode {get;set;} 
         public bool? IsArray{get;set;}
         public bool IsActionParameterValue{get;set;}
+
+        public float? MaxPossibleValueForML{get;set;}
     }
     public class CodeAssignment
     {
