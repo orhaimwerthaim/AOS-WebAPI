@@ -236,3 +236,12 @@ The AOS is automatically integrating the user code. The user only needs to send 
 #### Installtion Steps
 * run bash script ["AOS_ubuntu20_install_v7.bash"](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/AOS_ubuntu20_install_v7.bash) 
 * (optional) run bash script ["ROS1_noetic_install.bash"](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/ROS1_noetic_install.bash)
+
+
+## AOS GUI
+The GUI allows users:
+* To create new project documentation or edit existing ones (it only supports editing and creation of the JSON format)
+* Debug and visualize their model correctness, robot execution, and the progress of the belief state during execution.
+* [AOS-GUI github](https://github.com/orhaimwerthaim/AOS-GUI)
+* [AOS-GUI project page](https://lankrys.wixsite.com/aosproject)
+* [AOS-GUI video](https://www.youtube.com/watch?v=wsmd1NaOhPk)(less then three minutes)
