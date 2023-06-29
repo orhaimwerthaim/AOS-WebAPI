@@ -237,6 +237,8 @@ The AOS is automatically integrating the user code. The user only needs to send 
 * run bash script ["AOS_ubuntu20_install_v7.bash"](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/AOS_ubuntu20_install_v7.bash) 
 * (optional) run bash script ["ROS1_noetic_install.bash"](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/ROS1_noetic_install.bash)
 
+## AOS-ML-Server
+* see [AOS-ML-Server github](https://github.com/orhaimwerthaim/AOS-ML-Server/tree/main)
 
 ## AOS GUI
 The GUI allows users:
