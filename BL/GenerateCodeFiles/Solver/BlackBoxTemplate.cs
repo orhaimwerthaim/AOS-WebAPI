@@ -67,7 +67,27 @@ int SampleDiscrete(vector<float> weights)
     return -1;
 }
 
-bool SampleBernoulli(double p)
+int SampleDiscrete(vector<double> weights)
+{
+    float rand = real_unfirom_dist(generator);
+    float total = 0;
+    for (int i = 0; i < weights.size();i++)
+    {
+        total += weights[i];
+        if (rand < total)
+            return i;
+    }
+    return -1;
+}
+
+bool Bernoulli(double p)
+{
+    float rand = real_unfirom_dist(generator); 
+	
+	return rand <= p;
+}
+
+bool Bernoulli(float p)
 {
     float rand = real_unfirom_dist(generator); 
 	

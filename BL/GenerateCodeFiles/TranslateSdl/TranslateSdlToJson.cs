@@ -448,21 +448,28 @@ namespace WebApiCSharp.JsonTextModel
                         {
                             List<string> bits = lineContent[i++].Substring("variable:".Length).Split(" ").ToList();
                             bits = bits.Select(x=> x.Replace(" ","")).Where(x=> x.Length > 0).ToList();
-                            if(bits.Count > 4 || bits.Count < 2)throw new Exception(errorStart + "'variable:' definition is 'variable: <type> <name> <optional_default_value> <optional_max_possible_value_for_ML>' the definition sent was '"+lineContent[i-1]+"'");
+                            if(bits.Count > 4 || bits.Count < 2)throw new Exception(errorStart + "'variable:' definition is 'variable: <type> <name> <optional_default_value> <optional_ML_ignore_variable or optional_max_possible_value_for_ML>' the definition sent was '"+lineContent[i-1]+"'");
                             GlobalCompoundTypeVariable tt = new GlobalCompoundTypeVariable();
                             tt.Name = bits[1];
                             tt.Type = bits[0];
                             tt.Default = bits.Count > 2 ? bits[2] : null;
-                            float temp;
+                            float temp; 
                             if(bits.Count > 3)
                             {
                                 if(float.TryParse(bits[3], out temp))
                                 {
-                                    tt.MaxPossibleValueForML = temp;
+                                    tt.ML_MaxPossibleValue = temp;
                                 }
                                 else
                                 {
-                                    throw new Exception(errorStart + "'variable:' definition is 'variable: <type> <name> <optional_default_value> <optional_max_possible_value_for_ML>', <optional_max_possible_value_for_ML> must be a decimal number!, the definition sent was '"+lineContent[i-1]+"'");
+                                    if (bits[3].ToLower() == "ml_ignore")
+                                    {
+                                        tt.ML_IgnoreVariable = true;
+                                    }
+                                    else
+                                    {
+                                        throw new Exception(errorStart + "'variable:' definition is 'variable: <type> <name> <optional_default_value> <optional_ML_ignore_variable or optional_max_possible_value_for_ML>', <optional_ML_ignore_variable or optional_max_possible_value_for_ML> must be a decimal number or 'ml_ignore'!, the definition sent was '"+lineContent[i-1]+"'");
+                                    }
                                 }
                             }
                             typeVariables.Add(tt);
@@ -501,16 +508,40 @@ namespace WebApiCSharp.JsonTextModel
                     i++;
                     // var.Name = isActionParam ? lineContent[i++].Substring("action_parameter:".Length).Replace(" ","") :
                     //     lineContent[i++].Substring("state_variable:".Length).Replace(" ",""); 
-                    while(i < lineContent.Length && lineContent[i].Replace(" ","").Length == 0)i++;
-                    if(!IsFirstLevelSavedWord(lineContent[i]))
-                    {
+                    
+                    while(!IsFirstLevelSavedWord(lineContent[i]) && i < lineContent.Length)
+                    {   
+                        int startI = i;
+                        while(i < lineContent.Length && lineContent[i].Replace(" ","").Length == 0)i++;
                         if(lineContent[i].Replace(" ","")=="code:")
                         {
                             i++;
                             while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i])) codeLines.Add(lineContent[i++]);
                             codeLines = codeLines.Where(x=> x.Replace(" ","").Length > 0).ToList();
                         }
-                    }
+                        if(lineContent[i].Replace(" ","").StartsWith("ml_max_value:"))
+                        {
+                            string max_v = lineContent[i].Replace("ml_max_value:","").Replace(" ","");
+                            float t;
+                            if(float.TryParse(max_v, out t))
+                            {
+                                var.ML_MaxPossibleValue = t;
+                            }
+                            else
+                            {
+                                throw new Exception(errorStart + " 'ml_max_value:' must be in the form 'ml_max_value: <decimal number>', you wrote:"+lineContent[i]+"'");
+                            }
+                            i++; 
+                        }
+                        if(lineContent[i].Replace(" ","").StartsWith("ml_ignore:"))
+                        {
+                            string b_s = lineContent[i].Replace("ml_ignore:","").Replace(" ","");
+                            var.ML_IgnoreVariable = b_s.ToLower().Equals("true");
+                            i++; 
+                        }
+                        i = i == startI ? i+1 : i;
+
+                    } 
                     var.DefaultCode = codeLines.Count > 0 ? codeLines[0] : "";
                     var.IsActionParameterValue = isActionParam;
                 }

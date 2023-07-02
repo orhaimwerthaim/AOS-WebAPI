@@ -124,7 +124,14 @@ public class EnvironmentGeneral
         public string Type {get;set;}
         public string Default {get;set;}
 
-        public float? MaxPossibleValueForML{get;set;} 
+        public float? ML_MaxPossibleValue{get;set;} 
+
+        public bool ML_IgnoreVariable{get;set;}
+
+        public GlobalCompoundTypeVariable()
+        {
+            ML_IgnoreVariable=false;
+        }
     }
     public class GlobalVariableDeclaration
     {
@@ -134,7 +141,14 @@ public class EnvironmentGeneral
         public bool? IsArray{get;set;}
         public bool IsActionParameterValue{get;set;}
 
-        public float? MaxPossibleValueForML{get;set;}
+        public float? ML_MaxPossibleValue{get;set;}
+
+        public bool ML_IgnoreVariable{get;set;}
+
+        public GlobalVariableDeclaration()
+        {
+            ML_IgnoreVariable=false;
+        }
     }
     public class CodeAssignment
     {

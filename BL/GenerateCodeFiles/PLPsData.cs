@@ -633,21 +633,22 @@ public string GetModelHash()
                             oVar.Name = docVar["Name"].ToString();
                             oVar.Type = docVar["Type"].ToString();
                             oVar.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
-                            if(docVar.Contains("MaxPossibleValueForML"))
+                            if(docVar.Contains("ML_MaxPossibleValue"))
                             {
                                 float f;
-                                string s = docVar["MaxPossibleValueForML"].ToString();
+                                string s = docVar["ML_MaxPossibleValue"].ToString();
                                 if(float.TryParse(s, out f))
                                 {
-                                    oVar.MaxPossibleValueForML=f;
+                                    oVar.ML_MaxPossibleValue=f;
                                 }
                                 else
                                 {
-                                    errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", 'MaxPossibleValueForML' must be a decimal number!");
+                                    errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", 'ML_MaxPossibleValue' must be a decimal number!");
                                 }
                             }
 
-
+                            oVar.ML_IgnoreVariable = docVar.Contains("ML_IgnoreVariable") ? docVar["ML_IgnoreVariable"].AsBoolean : false;
+                                
                             oVar.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
 
                             if (oVar.UnderlineLocalVariableType != null && oVar.Type != ANY_VALUE_TYPE_NAME)
@@ -737,20 +738,22 @@ public string GetModelHash()
                 oVarDec.Default = docVar.Contains("Default") ? (docVar["Default"].ToString().Equals("") ? null : docVar["Default"].ToString()) : null;
                 oVarDec.DefaultCode = docVar.Contains("DefaultCode") ? (docVar["DefaultCode"].ToString().Equals("") ? null : docVar["DefaultCode"].ToString()) : null;
                 oVarDec.IsArray = docVar.Contains("IsArray") ? docVar["IsArray"].AsBoolean : false;
-                if(docVar.Contains("MaxPossibleValueForML"))
+                if(docVar.Contains("ML_MaxPossibleValue"))
                 {
                     float f;
-                    string s = docVar["MaxPossibleValueForML"].ToString();
+                    string s = docVar["ML_MaxPossibleValue"].ToString();
                     if(float.TryParse(s, out f))
                     {
-                        oVarDec.MaxPossibleValueForML=f;
+                        oVarDec.ML_MaxPossibleValue=f;
                     }
                     else
                     {
-                        errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", 'MaxPossibleValueForML' must be a decimal number!");
+                        errors.Add(GetPLPDescriptionForError("", PLP_TYPE_NAME_ENVIRONMENT) + ", 'ML_MaxPossibleValue' must be a decimal number!");
                     }
+                    oVarDec.ML_IgnoreVariable = docVar.Contains("ML_IgnoreVariable") ? docVar["ML_IgnoreVariable"].AsBoolean : false;
                 }
                 oVarDec.IsActionParameterValue = docVar.Contains("IsActionParameterValue") ? docVar["IsActionParameterValue"].AsBoolean : false;
+                oVarDec.ML_IgnoreVariable = oVarDec.IsActionParameterValue ? true : oVarDec.ML_IgnoreVariable;
 
                 oVarDec.UnderlineLocalVariableType = GetBsonStringField(docVar, "UnderlineLocalVariableType");
                 errors.AddRange(GetParameterizedGlobalVarData(oVarDec, docVar));
@@ -1452,10 +1455,17 @@ public string GetModelHash()
         public string Name;
         public string Type;
         public string Default;
-        public float? MaxPossibleValueForML;
+        public float? ML_MaxPossibleValue;
+
+        public bool ML_IgnoreVariable;
 
 
         public string UnderlineLocalVariableType;
+
+        public CompoundVarTypePLP_Variable()
+        {
+            ML_IgnoreVariable=false;
+        }
     }
 
     public class GlobalVariableDeclaration
@@ -1466,13 +1476,18 @@ public string GetModelHash()
         public string DefaultCode;
         public bool IsActionParameterValue;
         public bool IsArray;
-        public float? MaxPossibleValueForML;
+        public float? ML_MaxPossibleValue;
+
+        public bool ML_IgnoreVariable;
 
         public List<GlobalVariableDeclaration> SubCompoundFeilds = new List<GlobalVariableDeclaration>();
         public string StateVariableName;
         public string UnderlineLocalVariableType;
         public ParameterizedGlobalVariableData ParametersData = new ParameterizedGlobalVariableData(); 
-
+        public GlobalVariableDeclaration()
+        {
+            ML_IgnoreVariable=false;
+        }
         public string GetVariableDefinition()
         {
             if(IsArray)

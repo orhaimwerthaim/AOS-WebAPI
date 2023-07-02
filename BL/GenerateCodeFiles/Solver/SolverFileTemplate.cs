@@ -371,6 +371,83 @@ struct Config {
             return file;
         }
 
+
+public static string GetPythonDomainUtils(PLPsData data, InitializeProject initProj)
+{
+    string stateToObsFunc = "";
+
+    //string normelizeFunc = "";
+    
+    stateToObsFunc += GenerateFilesUtils.GetIndentationStr(0,4, "import numpy as np");
+    stateToObsFunc += GenerateFilesUtils.GetIndentationStr(0,4, "def state_to_obs(state):");
+    stateToObsFunc += GenerateFilesUtils.GetIndentationStr(1,4, "obs = {}");
+    // normelizeFunc += GenerateFilesUtils.GetIndentationStr(0,4, "def norm_obs(obs):"); 
+    // normelizeFunc += GenerateFilesUtils.GetIndentationStr(1,4, "return obs/[", false);
+    bool firstNormVal = true;
+    string obs_arr = "obs_arr = [";
+    foreach (GlobalVariableDeclaration oVar in data.GlobalVariableDeclarations)
+                {
+                    if(oVar.ML_IgnoreVariable)continue;
+                    List<string> varCppName = new List<string>();
+                    List<string> varPythonName = new List<string>();
+                    List<string> max_values = new List<string>();
+                    GetFlattenedStateVariablesForML(data, oVar, varCppName, false, true, max_values);
+                    GetFlattenedStateVariablesForML(data, oVar, varPythonName, true);
+                    for(int i=0; i < varCppName.Count;i++)
+                    { 
+                        obs_arr += (firstNormVal ? "" : ",") + varCppName[i] + "/" + max_values[i];
+                        stateToObsFunc += GenerateFilesUtils.GetIndentationStr(1, 4, "obs[\"" + varPythonName[i] + "\"]= " + varCppName[i]);
+                        //normelizeFunc +=(firstNormVal ? "" : ",") + max_values[i];
+                        firstNormVal=false;
+                    }
+                }
+                obs_arr += "]";
+    stateToObsFunc += GenerateFilesUtils.GetIndentationStr(1,4, obs_arr);
+    stateToObsFunc += GenerateFilesUtils.GetIndentationStr(1,4, "return np.array(obs_arr),obs");
+    
+    //normelizeFunc +=GenerateFilesUtils.GetIndentationStr(0, 4, "]"); 
+    return stateToObsFunc;// + GenerateFilesUtils.GetIndentationStr(0,4, "") + normelizeFunc;
+}
+public static string GetTorchModelHpp(PLPsData data, InitializeProject initProj)
+{
+    string file=@"
+    #ifndef TORCH_MODEL_HPP
+#define TORCH_MODEL_HPP
+#include <torch/script.h>
+#include <iostream> 
+#include <memory> 
+#include <despot/core/pomdp.h>
+#include <chrono>
+using namespace std;
+
+namespace torch_model{
+ torch::jit::script::Module module;
+bool wasInit=false;
+int counter=0;
+void Init()
+{
+  wasInit=true;
+  std::string path (""/home/or/ML_logs/backup/collectValuableToys:DQN:NormelizedState:BufferSize:1000000:net_arch:[128, 128]:epsilon_1_to_0.05_fraction_0.1:243C76B406518BA63BB915FB7EF2371A7CE20E853949D8A80E1D7C0AD84B2659.pt"");
+      try {
+    // Deserialize the ScriptModule from a file using torch::jit::load().
+    module = torch::jit::load(path);
+  }
+  catch (const c10::Error& e) {
+    std::cerr << ""error loading the model\n"";
+    return;
+  }
+}
+
+    ";
+    file += GetActionFromNNFunction(data, initProj);
+
+    file += @"
+    }
+#endif //TORCH_MODEL_HPP
+";
+    return file;
+}
+
 public static string GetMongoBridgeCppFile(PLPsData data)
 {
     string file = "";
@@ -600,11 +677,15 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
       int actionId = doc[""ActionID""].get_int32().value; 
 
       MongoDB_Bridge::manualActionsForSolverCollection.delete_one(filter.view());
+      if(actionId < 0)
+      {
+        exit(0);
+      }
       return actionId;
     }
     std::this_thread::sleep_for(200ms);
     }
-  return -1;
+  exit(0);
 }
 
 bsoncxx::oid MongoDB_Bridge::SendActionToExecution(int actionId, std::string actionName, std::string actionParameters)
@@ -779,14 +860,19 @@ auto now = std::chrono::system_clock::now();
 return file;
 }
         public static string GetPOMCP_File(string debugPDF_Path, int debugPDF_Depth, InitializeProject initProj, PLPsData data)
-        {
-            string file = @"#include <despot/solver/pomcp.h>
+        { 
+            string file = @"
+#include <despot/solver/pomcp.h>
 #include <despot/util/logging.h>
 #include <iostream>
 #include <fstream>
+ ";
+        if(initProj.SolverConfiguration.UseML)
+        {
+            file += "#include \"torch_model.hpp\"";
+        }
+ file+=@"
  
-
-using namespace std;
 
 using namespace std;
 
@@ -887,7 +973,7 @@ ValuedAction POMCP::Search(double timeout) {
         //New sample START
         int pos = std::rand()% particles_.size();
         State* particle = model_->Copy(particles_[pos]);
-        logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
+        //logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
 		Simulate(particle, root_, model_, prior_, simulatedActionSequence);
         model_->Free(particle);
         if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) {
@@ -900,13 +986,13 @@ ValuedAction POMCP::Search(double timeout) {
 		vector<State*> particles = belief_->Sample("+  (initProj.SolverConfiguration.NumOfParticles < 1000 ? initProj.SolverConfiguration.NumOfParticles.ToString() : "1000") +@");
 		for (int i = 0; i < particles.size(); i++) {
 			State* particle = particles[i];
-			logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
+			//logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
 			Simulate(particle, root_, model_, prior_, simulatedActionSequence);
  
 			
  
 			num_sims++;
-			logd << ""[POMCP::Search] "" << num_sims << "" simulations done"" << endl;
+			//logd << ""[POMCP::Search] "" << num_sims << "" simulations done"" << endl;
 			history_.Truncate(hist_size);
 
 			if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) {
@@ -994,9 +1080,9 @@ void POMCP::Update(int action, OBS_TYPE obs, std::map<std::string, std::string> 
 	history_.Add(action, obs);
 	belief_->Update(action, obs, localVariablesFromAction);
 
-	logi << ""[POMCP::Update] Updated belief, history and root with action ""
-		<< action << "", observation "" << obs
-		<< "" in "" << (get_time_second() - start) << ""s"" << endl;
+	//logi << ""[POMCP::Update] Updated belief, history and root with action ""
+	//	<< action << "", observation "" << obs
+	//	<< "" in "" << (get_time_second() - start) << ""s"" << endl;
 }
 
 int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant)
@@ -1024,8 +1110,8 @@ int POMCP::UpperBoundAction(const VNode* vnode, double explore_constant, const D
 	 }
 	 */
 	//TODO:: activate line below only on debug mode:
-	if(model)
-		logi << model->PrintStateStr(*belief->Sample(1)[0]);
+	//if(model)
+	//	logi << model->PrintStateStr(*belief->Sample(1)[0]);
 
 	for (int action = 0; action < qnodes.size(); action++) {
 		if (qnodes[action]->count() == 0)
@@ -1131,9 +1217,9 @@ double POMCP::Simulate(State* particle, RandomStreams& streams, VNode* vnode,
 	double explore_constant = prior->exploration_constant();
 
 	int action = POMCP::UpperBoundAction(vnode, explore_constant);
-	logd << *particle << endl;
-	logd << ""depth = "" << vnode->depth() << ""; action = "" << action << ""; ""
-		<< particle->scenario_id << endl;
+	//logd << *particle << endl;
+	//logd << ""depth = "" << vnode->depth() << ""; action = "" << action << ""; ""
+	//	<< particle->scenario_id << endl;
 
 	double reward;
 	OBS_TYPE obs;
@@ -1174,7 +1260,19 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 	double explore_constant = prior->exploration_constant();
 
 	int action = simulateActionSequence && simulateActionSequence->size() > vnode->depth() ? (*simulateActionSequence)[vnode->depth()] : UpperBoundAction(vnode, explore_constant);
-			
+	";
+    
+    if(initProj.SolverConfiguration.UseML)
+    {
+        file+=@"
+    float r = (float) std::rand()/RAND_MAX;	
+	if(r < 0.5)
+	{
+		action = torch_model::getActionFromNN(particle); 
+	} ";
+    }
+
+    file+=@"		
 	double reward;
 	OBS_TYPE obs;
 	bool terminal = model->Step(*particle, action, reward, obs);
@@ -1210,8 +1308,8 @@ double POMCP::Rollout(State* particle, RandomStreams& streams, int depth,
 
 	int action = prior->GetAction(*particle);
 
-	logd << *particle << endl;
-	logd << ""depth = "" << depth << ""; action = "" << action << endl;
+	//logd << *particle << endl;
+	//logd << ""depth = "" << depth << ""; action = "" << action << endl;
 
 	double reward;
 	OBS_TYPE obs;
@@ -1338,10 +1436,10 @@ ValuedAction DPOMCP::Search(double timeout) {
 	for (int i = 0; i < particles.size(); i++)
 		model_->Free(particles[i]);
 
-	logi << ""[DPOMCP::Search] Time: CPU / Real = ""
-		<< ((clock() - start_cpu) / CLOCKS_PER_SEC) << "" / ""
-		<< (get_time_second() - start_real) << endl << ""Tree size = ""
-		<< root_->Size() << endl;
+	//logi << ""[DPOMCP::Search] Time: CPU / Real = ""
+	//	<< ((clock() - start_cpu) / CLOCKS_PER_SEC) << "" / ""
+	//	<< (get_time_second() - start_real) << endl << ""Tree size = ""
+	//	<< root_->Size() << endl;
 
 	ValuedAction astar = OptimalAction(root_);
 	if (astar.action == -1) {
@@ -1364,12 +1462,12 @@ VNode* DPOMCP::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 	for (int i = 0; i < particles.size(); i++)
 		particles[i]->scenario_id = i;
 
-	logi << ""[DPOMCP::ConstructTree] # active particles before search = ""
-		<< model->NumActiveParticles() << endl;
+	//logi << ""[DPOMCP::ConstructTree] # active particles before search = ""
+	//	<< model->NumActiveParticles() << endl;
 	double start = clock();
 	int num_sims = 0;
 	while (true) {
-		logd << ""Simulation "" << num_sims << endl;
+	//	logd << ""Simulation "" << num_sims << endl;
 
 		int index = Random::RANDOM.NextInt(particles.size());
 		State* particle = model->Copy(particles[index]);
@@ -1382,10 +1480,10 @@ VNode* DPOMCP::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		}
 	}
 
-	logi << ""[DPOMCP::ConstructTree] OptimalAction = "" << OptimalAction(root)
-		<< endl << ""# Simulations = "" << root->count() << endl
-		<< ""# active particles after search = "" << model->NumActiveParticles()
-		<< endl;
+	//logi << ""[DPOMCP::ConstructTree] OptimalAction = "" << OptimalAction(root)
+	//	<< endl << ""# Simulations = "" << root->count() << endl
+	//	<< ""# active particles after search = "" << model->NumActiveParticles()
+	//	<< endl;
 
 	return root;
 }
@@ -1396,9 +1494,9 @@ void DPOMCP::Update(int action, OBS_TYPE obs, std::map<std::string, std::string>
 	history_.Add(action, obs);
 	belief_->Update(action, obs, localVariablesFromAction);;
 
-	logi << ""[DPOMCP::Update] Updated belief, history and root with action ""
-		<< action << "", observation "" << obs
-		<< "" in "" << (get_time_second() - start) << ""s"" << endl;
+	//logi << ""[DPOMCP::Update] Updated belief, history and root with action ""
+	//	<< action << "", observation "" << obs
+	//	<< "" in "" << (get_time_second() - start) << ""s"" << endl;
 }
 /*
 std::string POMCP::GenerateDotGraph(VNode* root, int depthLimit, const DSPOMDP* model)
@@ -1662,7 +1760,7 @@ Solver *SimpleTUI::InitializeSolver(DSPOMDP *model, string solver_type,
     ScenarioLowerBound *lower_bound =
         model->CreateScenarioLowerBound(lbtype, blbtype);
 
-    logi << ""Created lower bound "" << typeid(*lower_bound).name() << endl;
+    //logi << ""Created lower bound "" << typeid(*lower_bound).name() << endl;
 
     if (solver_type == ""DESPOT"") {
       string bubtype = options[E_BUBTYPE] ? options[E_BUBTYPE].arg : ""DEFAULT"";
@@ -1670,7 +1768,7 @@ Solver *SimpleTUI::InitializeSolver(DSPOMDP *model, string solver_type,
       ScenarioUpperBound *upper_bound =
           model->CreateScenarioUpperBound(ubtype, bubtype);
 
-      logi << ""Created upper bound "" << typeid(*upper_bound).name() << endl;
+      //logi << ""Created upper bound "" << typeid(*upper_bound).name() << endl;
 
       solver = new DESPOT(model, lower_bound, upper_bound);
     } else
@@ -1681,14 +1779,14 @@ Solver *SimpleTUI::InitializeSolver(DSPOMDP *model, string solver_type,
     BeliefLowerBound *lower_bound =
         static_cast<BeliefMDP *>(model)->CreateBeliefLowerBound(lbtype);
 
-    logi << ""Created lower bound "" << typeid(*lower_bound).name() << endl;
+    //logi << ""Created lower bound "" << typeid(*lower_bound).name() << endl;
 
     if (solver_type == ""AEMS"") {
       string ubtype = options[E_UBTYPE] ? options[E_UBTYPE].arg : ""DEFAULT"";
       BeliefUpperBound *upper_bound =
           static_cast<BeliefMDP *>(model)->CreateBeliefUpperBound(ubtype);
 
-      logi << ""Created upper bound "" << typeid(*upper_bound).name() << endl;
+      //logi << ""Created upper bound "" << typeid(*upper_bound).name() << endl;
 
       solver = new AEMS(model, lower_bound, upper_bound);
     } else
@@ -1698,7 +1796,7 @@ Solver *SimpleTUI::InitializeSolver(DSPOMDP *model, string solver_type,
     string ptype = options[E_PRIOR] ? options[E_PRIOR].arg : ""DEFAULT"";
     POMCPPrior *prior = model->CreatePOMCPPrior(ptype);
 
-    logi << ""Created POMCP prior "" << typeid(*prior).name() << endl;
+    //logi << ""Created POMCP prior "" << typeid(*prior).name() << endl;
 
     if (options[E_PRUNE]) {
       prior->exploration_constant(Globals::config.pruning_constant);
@@ -1882,14 +1980,14 @@ void SimpleTUI::RunEvaluator(DSPOMDP *model, Evaluator *simulator,
         break;
 
       double step_end_t = get_time_second();
-      logi << ""[main] Time for step: actual / allocated = ""
-           << (step_end_t - step_start_t) << "" / "" << EvalLog::allocated_time
-           << endl;
+      //logi << ""[main] Time for step: actual / allocated = ""
+        //   << (step_end_t - step_start_t) << "" / "" << EvalLog::allocated_time
+        //   << endl;
       simulator->UpdateTimePerMove(step_end_t - step_start_t);
-      logi << ""[main] Time per move set to "" << Globals::config.time_per_move
-           << endl;
-      logi << ""[main] Plan time ratio set to "" << EvalLog::plan_time_ratio
-           << endl;
+      //logi << ""[main] Time per move set to "" << Globals::config.time_per_move
+      //     << endl;
+      //logi << ""[main] Plan time ratio set to "" << EvalLog::plan_time_ratio
+      //     << endl;
     //  default_out << endl;
     }
 
@@ -6079,29 +6177,140 @@ namespace despot {
         }
 
 
+private static void GetCompundFieldDefinitionForML(string baseDef, PLPsData data, CompoundVarTypePLP compT, List<string> variablesDefinition, bool for_pythonStateToObs=false, bool getCppVarName = false, List<string> ML_maxPossibleValue = null)
+{
+    foreach(CompoundVarTypePLP_Variable comp_v in compT.Variables)
+    {
+        if(comp_v.ML_IgnoreVariable) continue;
+        bool isCompundType = data.GlobalCompoundTypes.Any(x => x.TypeName.Equals(comp_v.Type));    
+        if (isCompundType)
+        {
+            CompoundVarTypePLP subCompT = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(comp_v.Type)).First();
+            GetCompundFieldDefinitionForML(baseDef + comp_v.Name + ".", data, subCompT, variablesDefinition, for_pythonStateToObs, getCppVarName, ML_maxPossibleValue); 
+        }
+        else
+        {
+            if(for_pythonStateToObs)
+            {
+                if(comp_v.Type == "string") return; 
+                string varName = baseDef + comp_v.Name;
+                variablesDefinition.Add(varName);
+            }
+            else
+            {
+                if(comp_v.Type == "string") return; 
+                if(getCppVarName)
+                {
+                    variablesDefinition.Add(baseDef + comp_v.Name);
+                }
+                else
+                {
+                    string varName = baseDef + comp_v.Name;
+                    variablesDefinition.Add("((float)"+varName+"/(float)"+(comp_v.ML_MaxPossibleValue.HasValue ? comp_v.ML_MaxPossibleValue.Value : "1")+")" );
+                }
+            }
 
-        // private static string HandleC_Code_IAOS_SetNull_str(string codeLine)
-        // {
-        //     string code = codeLine;
-        //     string functionSign = PLPsData.AOS_SET_NULL_FUNCTION_NAME;
-        //     bool found = false;
-        //     do
-        //     {
-        //         int startIndex = code.IndexOf(functionSign);
-        //         found = startIndex > -1;
-        //         if (found)
-        //         {
-        //             int closeIndex = code.IndexOf(")", startIndex);
-        //             string start = code.Substring(0, startIndex);
-        //             string end = code.Substring(closeIndex + 1);
-        //             string variableName = code.Substring(startIndex, closeIndex - startIndex).Replace(functionSign, "").Replace("(", "").Replace(")", "");
-        //             code = start + variableName + " = false" + end;
-        //         }
-        //     } while (found);
-        //     return code;
-        // }
+            if(ML_maxPossibleValue != null)
+            {
+                ML_maxPossibleValue.Add(comp_v.ML_MaxPossibleValue.HasValue ? comp_v.ML_MaxPossibleValue.ToString() : "1");
+            }
+        }
+    } 
+}
+private static void GetFlattenedStateVariablesForML(PLPsData data, GlobalVariableDeclaration oVar, List<string> output, bool for_pythonStateToObs = false, bool getCppVarName = false, List<string> ML_maxPossibleValue = null)
+{
+    if(oVar.ML_IgnoreVariable)return;
+    bool isCompundType = data.GlobalCompoundTypes.Any(x => x.TypeName.Equals(oVar.Type));
+                
+                    if (isCompundType)
+                    {
+                        CompoundVarTypePLP compT = data.GlobalCompoundTypes.Where(x => x.TypeName.Equals(oVar.Type)).First();
+                        if(for_pythonStateToObs)
+                        {
+                            GetCompundFieldDefinitionForML(oVar.Name + "_", data, compT,output, for_pythonStateToObs, getCppVarName, ML_maxPossibleValue);
+                        }
+                        else
+                        {
+                            string firstDelimiter = getCppVarName ? "." : "->";
+                            GetCompundFieldDefinitionForML("state" + firstDelimiter + oVar.Name + ".", data, compT,output, for_pythonStateToObs, getCppVarName, ML_maxPossibleValue);
+                        }
+                        foreach(CompoundVarTypePLP_Variable comp_v in compT.Variables)
+                        {
+                            if(comp_v.ML_IgnoreVariable) continue;
 
-        //AOS_UN_INITIALIZED_NULL_FUNCTION_NAME
+                        } 
+                    }
+                    else
+                    {
+                        string varDef = "";
+                        if(for_pythonStateToObs)
+                        {
+                            if(oVar.Type == "string") return; 
+                            varDef = oVar.Name;    
+                        }
+                        else
+                        {
+                            if(oVar.Type == "string") return; 
+                            if(getCppVarName)
+                            {
+                                varDef = "state." + oVar.Name;
+                            }
+                            else
+                            {
+                                varDef = "((float)state->" + oVar.Name + "/(float)" 
+                                +(oVar.ML_MaxPossibleValue.HasValue ? oVar.ML_MaxPossibleValue.Value:"1")+")";
+                            }
+                                 
+                        }
+                        output.Add(varDef);
+                        
+                        if(ML_maxPossibleValue != null)
+                        {
+                            ML_maxPossibleValue.Add(oVar.ML_MaxPossibleValue.HasValue ? oVar.ML_MaxPossibleValue.ToString() : "1");
+                        }
+                    }
+}
+
+public static string GetActionFromNNFunction(PLPsData data, InitializeProject initProj) 
+        {
+            string result = @"
+            int getActionFromNN(despot::State* state)
+{
+  if(!wasInit)
+  {
+    counter=0;
+    torch_model::Init();
+  } 
+   counter++;
+   std::vector<torch::jit::IValue> inputs;
+   float state_as_vec[]={
+    ";
+            
+            int varCount = 0;
+                foreach (GlobalVariableDeclaration oVar in data.GlobalVariableDeclarations)
+                {
+                    if(oVar.ML_IgnoreVariable)continue;
+                    List<string> varDefinitions = new List<string>();
+                    GetFlattenedStateVariablesForML(data, oVar, varDefinitions);
+                    foreach(string s in varDefinitions)
+                    {
+                        string delimiter = varCount++ == 0 ? "" : ",";
+                        result += GenerateFilesUtils.GetIndentationStr(1, 4,  
+                            delimiter + s );
+                    }
+                }
+            result += @"}; 
+            torch::Tensor f = torch::from_blob(state_as_vec, {1,"+varCount+@"}); 
+            inputs.push_back(f);
+             torch::jit::IValue output = module.forward(inputs);
+             torch::Tensor t0 = output.toTuple()->elements()[0].toTensor();
+             auto sizes = t0.sizes();
+             int action = sizes.size() == 1 ? t0.argmax(0).item().toInt() : t0.argmax(1).item().toInt();
+    return action;
+    }";
+             
+            return result;
+        } 
         private static string HandleC_Code_AOS_SingleVariableFunctions_str(string codeLine, string functionSignature)
         {
             string code = codeLine;
