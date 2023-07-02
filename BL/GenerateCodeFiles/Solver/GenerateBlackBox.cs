@@ -65,7 +65,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
             GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/Makefile", SolverFileTemplate.GetProjectExample_MakeFile());
             GenerateFilesUtils.WriteTextFile(ProjectExamplePath + "/CMakeLists.txt", SolverFileTemplate.GetProjectExample_CMakeLists(plpsData.ProjectName, conf, initProj));
-            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/CMakeLists.txt", SolverFileTemplate.GetBasePath_CMakeLists(plpsData.ProjectName, initProj));
+            GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/CMakeLists.txt", SolverFileTemplate.GetBasePath_CMakeLists(plpsData.ProjectName, initProj, conf));
 
 GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp.h", SolverFileTemplate.GetPomcpHeaderFile(data));
             

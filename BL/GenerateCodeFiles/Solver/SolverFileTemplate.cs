@@ -110,7 +110,7 @@ install(TARGETS ""${PROJECT_NAME}_" + projectName + @"""
             return file;
         }
 
-        public static string GetBasePath_CMakeLists(string projectName, InitializeProject initProj)
+        public static string GetBasePath_CMakeLists(string projectName, InitializeProject initProj, Configuration conf)
         {
             string file = @"cmake_minimum_required(VERSION 2.8.3)
 project(despot)
@@ -239,7 +239,7 @@ if(initProj.SolverConfiguration.UseML)
 {
     file  += @"
     #-----------------TORCH---------------------------------------------------------
-set(CMAKE_PREFIX_PATH ""/home/or/AOS/build-pytorch-from-source/pytorch-install"")
+set(CMAKE_PREFIX_PATH """+conf.AOS_BasePath+@"/build-pytorch-from-source/pytorch-install"")
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS ""${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}"")
  

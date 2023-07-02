@@ -6,6 +6,7 @@ namespace WebApiCSharp.Models
 {
     public class Configuration
     {
+        public string AOS_BasePath{ get; set; }
         public string SolverPath{ get; set; }
         public string SolverGraphPDF_DirectoryPath{ get; set; } 
 
