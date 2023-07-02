@@ -408,7 +408,7 @@ public static string GetPythonDomainUtils(PLPsData data, InitializeProject initP
     //normelizeFunc +=GenerateFilesUtils.GetIndentationStr(0, 4, "]"); 
     return stateToObsFunc;// + GenerateFilesUtils.GetIndentationStr(0,4, "") + normelizeFunc;
 }
-public static string GetTorchModelHpp(PLPsData data, InitializeProject initProj)
+public static string GetTorchModelHpp(PLPsData data, InitializeProject initProj, Configuration conf)
 {
     string file=@"
     #ifndef TORCH_MODEL_HPP
@@ -427,7 +427,7 @@ int counter=0;
 void Init()
 {
   wasInit=true;
-  std::string path (""/home/or/ML_logs/backup/collectValuableToys:DQN:NormelizedState:BufferSize:1000000:net_arch:[128, 128]:epsilon_1_to_0.05_fraction_0.1:243C76B406518BA63BB915FB7EF2371A7CE20E853949D8A80E1D7C0AD84B2659.pt"");
+  std::string path ("""+conf.SolverPath+@"/mdpNN.pt"");
       try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
     module = torch::jit::load(path);
@@ -1335,8 +1335,22 @@ double POMCP::Rollout(State* particle, int depth, const DSPOMDP* model,
 	}
 
 	//int action = prior->GetAction(*particle);
-	int action = simulateActionSequence && simulateActionSequence->size() > depth ? (*simulateActionSequence)[depth] : prior->GetAction(*particle);
 	
+	
+    ";
+    if(initProj.SolverConfiguration.UseML)
+    {
+        file += @"
+        int action = torch_model::getActionFromNN(particle); 
+        ";
+    }
+    else
+    {
+        file += @"
+        int action = simulateActionSequence && simulateActionSequence->size() > depth ? (*simulateActionSequence)[depth] : prior->GetAction(*particle);
+        ";
+    }
+    file += @"
 	double reward;
 	OBS_TYPE obs;
 	bool terminal = model->Step(*particle, action, reward, obs);
