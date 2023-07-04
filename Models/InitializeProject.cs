@@ -54,6 +54,7 @@ namespace WebApiCSharp.Models
         public int NumOfBeliefStateParticlesToSaveInDB { get; set; }
         public List<int> ActionsToSimulate { get; set; } 
         public bool IsInternalSimulation { get; set; }
+        public float SimulateByMdpRate {get;set;}
         public bool ManualControl { get; set; }
         
         public float PlanningTimePerMoveInSeconds{ get; set; }
@@ -61,6 +62,7 @@ namespace WebApiCSharp.Models
         public int Verbosity{ get; set; }
         public SolverConfiguration()
         {
+            SimulateByMdpRate=0.5f;
             limitClosedModelHorizon_stepsAfterGoalDetection=-1;
             NumOfSamplesPerStateActionToLearnModel = 20;
             UseSavedSarsopPolicy = false;

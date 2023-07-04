@@ -331,6 +331,7 @@ struct Config {
 	int limitClosedModelHorizon_stepsAfterGoalDetection;
     bool useSavedSarsopPolicy;
     std::string domainHash;
+	float treePolicyByMdpRate;
 	Config() : 
         handsOnDebug("+(initProj.SolverConfiguration.IsInternalSimulation && initProj.OnlyGenerateCode.HasValue && initProj.OnlyGenerateCode.Value ? "true" : "false")+@"),
         manualControl("+(initProj.SolverConfiguration.ManualControl ? "true" : "false") +@"),
@@ -357,6 +358,7 @@ struct Config {
 		noise(0.1),
         //Off=0,FATAL=1,ERROR=2,WARN=3,INFO=4,DEBUG=5,TRACE=6 
 		verbosity(" + initProj.SolverConfiguration.Verbosity.ToString() + @"),
+        treePolicyByMdpRate("+initProj.SolverConfiguration.SimulateByMdpRate+@"),
 		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
         saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @")
 		{
@@ -974,7 +976,10 @@ ValuedAction POMCP::Search(double timeout) {
         int pos = std::rand()% particles_.size();
         State* particle = model_->Copy(particles_[pos]);
         //logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
-		Simulate(particle, root_, model_, prior_, simulatedActionSequence);
+
+		float r = (float) std::rand()/RAND_MAX;	
+		bool byMDP = r < Globals::config.treePolicyByMdpRate;;
+		Simulate(particle, root_, model_, prior_, simulatedActionSequence, byMDP);
         model_->Free(particle);
         if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) {
 				done = true;
@@ -1252,7 +1257,7 @@ double POMCP::Simulate(State* particle, RandomStreams& streams, VNode* vnode,
 
 // static
 double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
-	POMCPPrior* prior, std::vector<int>* simulateActionSequence) {
+	POMCPPrior* prior, std::vector<int>* simulateActionSequence, bool byMDP) {
 	assert(vnode != NULL);
 	if (vnode->depth() >= Globals::config.search_depth)
 		return 0;
@@ -1260,19 +1265,22 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 	double explore_constant = prior->exploration_constant();
 
 	int action = simulateActionSequence && simulateActionSequence->size() > vnode->depth() ? (*simulateActionSequence)[vnode->depth()] : UpperBoundAction(vnode, explore_constant);
-	";
-    
+	
+	if(byMDP)
+	{"; 
     if(initProj.SolverConfiguration.UseML)
     {
         file+=@"
-    float r = (float) std::rand()/RAND_MAX;	
-	if(r < 0.5)
-	{
-		action = torch_model::getActionFromNN(particle); 
-	} ";
+		action = torch_model::getActionFromNN(particle); ";
+    }
+    else
+    {
+     file+=@"
+		action = prior->GetAction(*particle);";   
     }
 
     file+=@"		
+    } 
 	double reward;
 	OBS_TYPE obs;
 	bool terminal = model->Step(*particle, action, reward, obs);
@@ -1283,7 +1291,7 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 		map<OBS_TYPE, VNode*>& vnodes = qnode->children();
 		if (vnodes[obs] != NULL) {
 			reward += Globals::Discount()
-				* Simulate(particle, vnodes[obs], model, prior,simulateActionSequence);
+				* Simulate(particle, vnodes[obs], model, prior,simulateActionSequence, byMDP);
 		} else { // Rollout upon encountering a node not in curren tree, then add the node
 			vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
 				model);
@@ -5293,7 +5301,7 @@ public:
 	static int UpperBoundAction(const VNode* vnode, double explore_constant, const DSPOMDP* model, Belief* b);
 	static int UpperBoundAction(const VNode* vnode, double explore_constant);
     static double Simulate(State* particle, VNode* root, const DSPOMDP* model,
-		POMCPPrior* prior, std::vector<int>* simulateActionSequence);
+		POMCPPrior* prior, std::vector<int>* simulateActionSequence, bool byMDP);
 
  
 
