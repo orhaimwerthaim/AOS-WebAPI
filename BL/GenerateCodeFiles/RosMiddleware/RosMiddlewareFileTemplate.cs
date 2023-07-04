@@ -666,7 +666,7 @@ collActions = aosDB[""Actions""]
 
 
 def registerError(errorStr,trace, comments=None):
-    error = {""Component"": ""RosMiddleware"", ""Event"": errorStr,""Advanced"":trace,""LogLevel"":2,""LogLevelDesc"":""Error""
+    error = {""Component"": ""RosMiddleware"", ""Event"": errorStr,""Advanced"":trace,""LogLevel"":2,""LogLevelDesc"":""Error"",
              ""Time"": datetime.datetime.utcnow()}
     if comments is not None:
         error = {""Component"": ""RosMiddleware"", ""Error"": errorStr, ""Advanced"": str(comments) + "". ""+str(trace), ""Time"": datetime.datetime.utcnow()}
