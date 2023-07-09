@@ -21,8 +21,7 @@ namespace WebApiCSharp.GenerateCodeFiles
 
         public int Horizon { get; set; }
         public float Discount { get; set; }
-
-        public int NumberOfActions = -1;//correctly Initialized when generating the AOS-Solver files
+  
 
         public Dictionary<string, DistributionSample> DistributionSamples = new Dictionary<string, DistributionSample>();
         public Dictionary<string, PLP> PLPs = new Dictionary<string, PLP>();

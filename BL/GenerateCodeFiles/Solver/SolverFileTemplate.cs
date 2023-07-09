@@ -666,7 +666,7 @@ std::map<std::string, std::string> MongoDB_Bridge::WaitForActionResponse(bsoncxx
     while (true)
     {
       double time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
-      if(time_elapsed > 60*5)//stop waiting after 15 minutes 
+      if(time_elapsed > 60*35)//stop waiting after 15 minutes 
       {
         std::string msg(""Solver terminated. It stopped waiting for manual action after 5 minutes"");
         MongoDB_Bridge::AddLog(msg, 4);//FATAL logLevel Info
@@ -7035,7 +7035,7 @@ public:
         std::vector<double> weighted_preferred_actions_un_normalized;
 
         double heuristicValueTotal = 0;
-		for (int a = 0; a < " + data.NumberOfActions + @"; a++) {
+		for (int a = 0; a < ActionManager::actions.size(); a++) {
             weighted_preferred_actions_un_normalized.push_back(0);
 			double reward = 0;
 			bool meetPrecondition = false; 
@@ -7052,7 +7052,7 @@ public:
 
         if(heuristicValueTotal > 0)
         {
-            for (int a = 0; a < " + data.NumberOfActions + @"; a++) 
+            for (int a = 0; a < ActionManager::actions.size(); a++) 
             {
                 weighted_preferred_actions_.push_back(weighted_preferred_actions_un_normalized[a] / heuristicValueTotal);
             } 

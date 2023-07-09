@@ -77,7 +77,7 @@ GenerateFilesUtils.WriteTextFile(conf.SolverPath + "/include/despot/solver/pomcp
             GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/closed_model_policy.cpp", SolverFileTemplate.GetClosedModelPolicyCPpFile(data));
 
             GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/actionManager.cpp", SolverFileTemplate.GetActionManagerCPpFile(data, out totalNumberOfActionsInProject));
-            data.NumberOfActions = totalNumberOfActionsInProject;
+           
             GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/enum_map_" + data.ProjectName + ".cpp", SolverFileTemplate.GetEnumMapCppFile(data));
             //GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/state_var_types.cpp", SolverFileTemplate.GetStateVarTypesCppFile(data));
           //  GenerateFilesUtils.WriteTextFile(ProjectModelPrimitivesPath + "/state.cpp", SolverFileTemplate.GetStateCppFile(data));

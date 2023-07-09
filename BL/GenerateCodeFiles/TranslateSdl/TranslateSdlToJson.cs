@@ -52,7 +52,7 @@ namespace WebApiCSharp.JsonTextModel
                 prevI=i;
                 if(i==0)
                 {
-                    if(lineContent[i].StartsWith("project:"))
+                    if(lineContent[i].Trim().StartsWith("project:"))
                     {
                         string project = lineContent[i].Substring("project:".Length).Replace(" ","");
                         project = RemoveHiddenChar(project);
@@ -62,7 +62,7 @@ namespace WebApiCSharp.JsonTextModel
                     }
                     else throw new Exception(errorStart + "does not start with 'project: <project_name>'");
                 }
-                else if(lineContent[i].StartsWith("available_parameters_code:"))
+                else if(lineContent[i].Trim().StartsWith("available_parameters_code:"))
                 {
                     List<string> codeLines = new List<string>();
                     i++;
@@ -75,7 +75,7 @@ namespace WebApiCSharp.JsonTextModel
                     if(codeLines.Count == 0)throw new Exception(errorStart + "code is expected in the lines below 'available_parameters_code' ");
                     sdFile.PossibleParametersValue = new CodeAssignment[]{new CodeAssignment(){AssignmentCode = codeLines.ToArray()}};
                 }
-                else if(lineContent[i].StartsWith("parameter:"))
+                else if(lineContent[i].Trim().StartsWith("parameter:"))
                 {  
                     GlobalVariableModuleParameter p = new GlobalVariableModuleParameter();
                     string[] delimiters = {" ",":"};
@@ -87,7 +87,7 @@ namespace WebApiCSharp.JsonTextModel
                     GlobalVariableModuleParameters.Add(p);
                     sdFile.GlobalVariableModuleParameters = GlobalVariableModuleParameters.ToArray();
                 }
-                else if(lineContent[i].StartsWith("precondition:"))
+                else if(lineContent[i].Trim().StartsWith("precondition:"))
                 {
                     sdFile.Preconditions = sdFile.Preconditions == null ? new Preconditions() : sdFile.Preconditions; 
                     List<string> codeLines = new List<string>();
@@ -101,7 +101,7 @@ namespace WebApiCSharp.JsonTextModel
                     if(codeLines.Count == 0)throw new Exception(errorStart + "code is expected in the lines below 'precondition' ");
                     sdFile.Preconditions.GlobalVariablePreconditionAssignments = new CodeAssignment[]{new CodeAssignment(){AssignmentCode = codeLines.ToArray()}};
                 }
-                else if(lineContent[i].StartsWith("rollout_policy:"))
+                else if(lineContent[i].Trim().StartsWith("rollout_policy:"))
                 {
                     sdFile.Preconditions = sdFile.Preconditions == null ? new Preconditions() : sdFile.Preconditions; 
                     List<string> codeLines = new List<string>();
@@ -115,18 +115,18 @@ namespace WebApiCSharp.JsonTextModel
                     if(codeLines.Count == 0)throw new Exception(errorStart + "code is expected in the lines below 'rollout_policy' ");
                     sdFile.Preconditions.PlannerAssistancePreconditionsAssignments = new CodeAssignment[]{new CodeAssignment(){AssignmentCode = codeLines.ToArray()}};
                 }
-                else if(lineContent[i].StartsWith("violate_penalty:"))
+                else if(lineContent[i].Trim().StartsWith("violate_penalty:"))
                 {
                     string typeFirstLine = lineContent[i];
                     int penalty;
-                    if(int.TryParse(lineContent[i++].Substring("violate_penalty:".Length).Replace(" ",""), out penalty))
+                    if(int.TryParse(lineContent[i++].Trim().Substring("violate_penalty:".Length).Replace(" ",""), out penalty))
                     {
                         sdFile.Preconditions = sdFile.Preconditions == null ? new Preconditions() : sdFile.Preconditions;
                         sdFile.Preconditions.ViolatingPreconditionPenalty = penalty;
                     }
                     else throw new Exception(errorStart + "<int> is expected after 'violate_penalty:', you wrote'"+lineContent[i-1]+"'");
                 }
-                else if(lineContent[i].StartsWith("dynamic_model:"))
+                else if(lineContent[i].Trim().StartsWith("dynamic_model:"))
                 {
                      
                     List<string> codeLines = new List<string>();
@@ -163,7 +163,7 @@ namespace WebApiCSharp.JsonTextModel
                 prevI=i; 
                 if(i==0)
                 {
-                    if(lineContent[i].StartsWith("project:"))
+                    if(lineContent[i].Trim().StartsWith("project:"))
                     {
                         string project = lineContent[i].Substring("project:".Length).Replace(" ","");
                         project = RemoveHiddenChar(project);
@@ -173,7 +173,7 @@ namespace WebApiCSharp.JsonTextModel
                     }
                     else throw new Exception(errorStart + "does not start with 'project: <project_name>'");
                 }
-                else if(lineContent[i].StartsWith("response:"))
+                else if(lineContent[i].Trim().StartsWith("response:"))
                 {
                         ModuleResponse responses = new ModuleResponse();
                         amFile.ModuleResponse = responses;
@@ -184,12 +184,12 @@ namespace WebApiCSharp.JsonTextModel
                             if(i == prev2)i++;
                             prev2=i;
                             if(i > lineContent.Length-1)break;
-                            if(lineContent[i].StartsWith("response:"))
+                            if(lineContent[i].Trim().StartsWith("response:"))
                             {
                                 string response = lineContent[i++].Substring("response:".Length).Replace(" ","");
                                 while(i < lineContent.Length-2 && lineContent[i].Replace(" ","").Length == 0)i++;
                                 string responseCondition="";
-                                if (lineContent[i].StartsWith("response_rule:"))
+                                if (lineContent[i].Trim().StartsWith("response_rule:"))
                                 {
                                     responseCondition = lineContent[i++].Substring("response_rule:".Length);
                                 }
@@ -199,7 +199,7 @@ namespace WebApiCSharp.JsonTextModel
                                 responseRules.Add(res);
                                 responses.ResponseRules = responseRules.ToArray(); 
                             }
-                            else if(lineContent[i].StartsWith("response_local_variable:")) 
+                            else if(lineContent[i].Trim().StartsWith("response_local_variable:")) 
                                 responses.FromStringLocalVariable = lineContent[i++].Substring("response_local_variable:".Length).Replace(" ","");
                             else if(lineContent[i].Replace(" ","").Length == 0) i++;
                             else if(IsFirstLevelSavedWord(lineContent[i])) 
@@ -211,7 +211,7 @@ namespace WebApiCSharp.JsonTextModel
                                 break;
                             }
                         } 
-                }else if(lineContent[i].StartsWith("module_activation:"))
+                }else if(lineContent[i].Trim().StartsWith("module_activation:"))
                     {
                         ModuleActivation a = new ModuleActivation();
                         amFile.ModuleActivation = a;
@@ -227,23 +227,23 @@ namespace WebApiCSharp.JsonTextModel
                                 if(i==prev3)i++;prev3=i;
                                 if(i > lineContent.Length-1)break;
                                 
-                                if(lineContent[i].StartsWith("imports:"))
+                                if(lineContent[i].Trim().StartsWith("imports:"))
                                 {
                                     
                                     ic.Add(GetAmImport(errorStart, lineContent[i]));
                                     ross.ImportCode = ic.ToArray();
                                     i++;
                                 }
-                                else if (lineContent[i].StartsWith("path:")) ross.ServicePath = lineContent[i++].Substring("path:".Length);
-                                else if(lineContent[i].StartsWith("srv:")) ross.ServiceName = lineContent[i++].Substring("srv:".Length);
-                                else if(lineContent[i].StartsWith("parameter:"))
+                                else if (lineContent[i].Trim().StartsWith("path:")) ross.ServicePath = lineContent[i++].Substring("path:".Length);
+                                else if(lineContent[i].Trim().StartsWith("srv:")) ross.ServiceName = lineContent[i++].Substring("srv:".Length);
+                                else if(lineContent[i].Trim().StartsWith("parameter:"))
                                 {
                                     if(ross.ServiceParameters == null)ross.ServiceParameters = new List<ServiceParameter>();
                                     ServiceParameter p = new ServiceParameter();
                                     ross.ServiceParameters.Add(p);
                                     p.ServiceFieldName = lineContent[i++].Substring("parameter:".Length).Replace(" ","");
                                     while(i < lineContent.Length -2 && lineContent[i].Replace(" ","").Length==0)i++;
-                                    if(lineContent[i].StartsWith("code:"))
+                                    if(lineContent[i].Trim().StartsWith("code:"))
                                     {
                                         i++;
                                         p.AssignServiceFieldCode = lineContent[i++];
@@ -256,7 +256,7 @@ namespace WebApiCSharp.JsonTextModel
                                 }
                             }   
                         }  
-                    }else if(lineContent[i].StartsWith("local_variable:"))
+                    }else if(lineContent[i].Trim().StartsWith("local_variable:"))
                         {
                             amFile.LocalVariablesInitialization = amFile.LocalVariablesInitialization == null ? 
                                 new List<LocalVariableInitialization>() : amFile.LocalVariablesInitialization;
@@ -277,26 +277,26 @@ namespace WebApiCSharp.JsonTextModel
                                 if(i == prev4)i++;prev4=i;
                                 if(i > lineContent.Length-1)break;
  
-                                if(lineContent[i].StartsWith("imports:"))ic.Add(GetAmImport(errorStart, lineContent[i++])); 
-                                else if(lineContent[i].StartsWith("type:"))varType = lineContent[i++].Substring("type:".Length).Replace(" ","");
-                                else if(lineContent[i].StartsWith("initial_value:"))initial_value = lineContent[i++].Substring("initial_value:".Length).Replace(" ","");
-                                else if(lineContent[i].StartsWith("topic:"))
+                                if(lineContent[i].Trim().StartsWith("imports:"))ic.Add(GetAmImport(errorStart, lineContent[i++])); 
+                                else if(lineContent[i].Trim().StartsWith("type:"))varType = lineContent[i++].Substring("type:".Length).Replace(" ","");
+                                else if(lineContent[i].Trim().StartsWith("initial_value:"))initial_value = lineContent[i++].Substring("initial_value:".Length).Replace(" ","");
+                                else if(lineContent[i].Trim().StartsWith("topic:"))
                                 {
                                     topic = lineContent[i++].Substring("topic:".Length).Replace(" ","");
                                 }
-                                else if(lineContent[i].StartsWith("message_type:"))topicType = lineContent[i++].Substring("message_type:".Length).Replace(" ","");
-                                else if(lineContent[i].StartsWith("action_parameter:"))
+                                else if(lineContent[i].Trim().StartsWith("message_type:"))topicType = lineContent[i++].Substring("message_type:".Length).Replace(" ","");
+                                else if(lineContent[i].Trim().StartsWith("action_parameter:"))
                                 {
                                     from_action_parameter = lineContent[i++].Substring("action_parameter:".Length).Replace(" ","");
                                     break;
                                 }
-                                else if(lineContent[i].StartsWith("from_ros_reservice_response:"))
+                                else if(lineContent[i].Trim().StartsWith("from_ros_reservice_response:"))
                                 {
                                     string fromService = lineContent[i++].Substring("from_ros_reservice_response:".Length).Replace(" ","").ToLower();
                                     if (fromService != "true" && fromService != "false")throw new Exception(errorStart +"only 'from_ros_reservice_response: true' or 'from_ros_reservice_response: false' are allowed");
                                     bFromService = fromService == "true";
                                 }
-                                else if(lineContent[i].StartsWith("code:"))
+                                else if(lineContent[i].Trim().StartsWith("code:"))
                                 {
                                     i++;
                                     while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i]))
@@ -404,7 +404,7 @@ namespace WebApiCSharp.JsonTextModel
                 prevI=i;
                 if(i==0)
                 {
-                    if(lineContent[i].StartsWith("project:"))
+                    if(lineContent[i].Trim().StartsWith("project:"))
                     {
                         string project = lineContent[i].Substring("project:".Length).Replace(" ","");
                         project = RemoveHiddenChar(project);
@@ -414,7 +414,7 @@ namespace WebApiCSharp.JsonTextModel
                     }
                     else throw new Exception(errorStart + "does not start with 'project: <project_name>'");
                 }
-                else if(lineContent[i].StartsWith("horizon:"))
+                else if(lineContent[i].Trim().StartsWith("horizon:"))
                 {
                     int t;
                      if(Int32.TryParse(lineContent[i++].Substring("horizon:".Length).Replace(" ",""), out t))
@@ -424,7 +424,7 @@ namespace WebApiCSharp.JsonTextModel
                      }
                      else throw new Exception(errorStart + "horizon must by an int 'horizon: <int_value>') ");
                 }
-                else if(lineContent[i].StartsWith("discount:"))
+                else if(lineContent[i].Trim().StartsWith("discount:"))
                 {
                     float t;
                      if(float.TryParse(lineContent[i++].Substring("discount:".Length).Replace(" ",""), out t))
@@ -434,7 +434,7 @@ namespace WebApiCSharp.JsonTextModel
                      }
                      else throw new Exception(errorStart + "discount must by an int 'discount: <float_value>') ");
                 }
-                else if(lineContent[i].StartsWith("define_type:"))
+                else if(lineContent[i].Trim().StartsWith("define_type:"))
                 {
                     string typeFirstLine = lineContent[i];
                     string typeName = lineContent[i++].Substring("define_type:".Length).Replace(" ","");
@@ -443,8 +443,8 @@ namespace WebApiCSharp.JsonTextModel
                     while(!lineContent[i].Contains(" ") || !IsFirstLevelSavedWord(lineContent[i]))
                     {
                         while(i < lineContent.Length && lineContent[i].Replace(" ","").Length==0)i++;
-                        if(lineContent[i].StartsWith("enum_members:"))enumMembers = lineContent[i++].Substring("enum_members:".Length).Replace(" ","").Split(",").ToList();
-                        else if(lineContent[i].StartsWith("variable:"))
+                        if(lineContent[i].Trim().StartsWith("enum_members:"))enumMembers = lineContent[i++].Substring("enum_members:".Length).Replace(" ","").Split(",").ToList();
+                        else if(lineContent[i].Trim().StartsWith("variable:"))
                         {
                             List<string> bits = lineContent[i++].Substring("variable:".Length).Split(" ").ToList();
                             bits = bits.Select(x=> x.Replace(" ","")).Where(x=> x.Length > 0).ToList();
@@ -491,9 +491,9 @@ namespace WebApiCSharp.JsonTextModel
                         t.Type = "compound";
                         t.Variables = typeVariables.ToArray();
                     }
-                }else if(lineContent[i].StartsWith("state_variable:") || lineContent[i].StartsWith("action_parameter:"))
+                }else if(lineContent[i].Trim().StartsWith("state_variable:") || lineContent[i].Trim().StartsWith("action_parameter:"))
                 {
-                    bool isActionParam = lineContent[i].StartsWith("action_parameter:");
+                    bool isActionParam = lineContent[i].Trim().StartsWith("action_parameter:");
                     GlobalVariableDeclaration var = new GlobalVariableDeclaration();
                     List<string> codeLines = new List<string>();
                     state_vars.Add(var);
@@ -519,7 +519,7 @@ namespace WebApiCSharp.JsonTextModel
                             while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i])) codeLines.Add(lineContent[i++]);
                             codeLines = codeLines.Where(x=> x.Replace(" ","").Length > 0).ToList();
                         }
-                        if(lineContent[i].Replace(" ","").StartsWith("ml_max_value:"))
+                        if(lineContent[i].Replace(" ","").Trim().StartsWith("ml_max_value:"))
                         {
                             string max_v = lineContent[i].Replace("ml_max_value:","").Replace(" ","");
                             float t;
@@ -533,7 +533,7 @@ namespace WebApiCSharp.JsonTextModel
                             }
                             i++; 
                         }
-                        if(lineContent[i].Replace(" ","").StartsWith("ml_ignore:"))
+                        if(lineContent[i].Replace(" ","").Trim().StartsWith("ml_ignore:"))
                         {
                             string b_s = lineContent[i].Replace("ml_ignore:","").Replace(" ","");
                             var.ML_IgnoreVariable = b_s.ToLower().Equals("true");
@@ -545,7 +545,7 @@ namespace WebApiCSharp.JsonTextModel
                     var.DefaultCode = codeLines.Count > 0 ? codeLines[0] : "";
                     var.IsActionParameterValue = isActionParam;
                 }
-                else if(lineContent[i].StartsWith("initial_belief:"))
+                else if(lineContent[i].Trim().StartsWith("initial_belief:"))
                 {
                     i++;
                     List<string> codeLines = new List<string>();
@@ -553,7 +553,7 @@ namespace WebApiCSharp.JsonTextModel
                     CodeAssignment code = new CodeAssignment(){AssignmentCode=codeLines.ToArray()};
                     efFile.InitialBeliefStateAssignments = new CodeAssignment[]{code};
                 }
-                // else if(lineContent[i].StartsWith("initial_belief:"))
+                // else if(lineContent[i].Trim().StartsWith("initial_belief:"))
                 // {
                 //     i++;
                 //     List<string> codeLines = new List<string>();
@@ -562,7 +562,7 @@ namespace WebApiCSharp.JsonTextModel
                 //     code.AssignmentCode = codeLines.ToArray();
                 //     efFile.InitialBeliefStateAssignments = new CodeAssignment[]{code};
                 // }
-                else if(lineContent[i].StartsWith("reward_code:"))
+                else if(lineContent[i].Trim().StartsWith("reward_code:"))
                 {
                     i++;
                     List<string> codeLines = new List<string>();
@@ -573,7 +573,7 @@ namespace WebApiCSharp.JsonTextModel
                     efFile.SpecialStates = SpecialStateCodes.ToArray();
                 }
 
-                else if(lineContent[i].StartsWith("extrinsic_code:"))
+                else if(lineContent[i].Trim().StartsWith("extrinsic_code:"))
                 {
                     i++;
                     List<string> codeLines = new List<string>();
@@ -590,6 +590,7 @@ namespace WebApiCSharp.JsonTextModel
         }
         private static bool IsFirstLevelSavedWord(string word)
         {
+            word=word.Trim();
             if(!word.Contains(":"))return false;
             return FirstLevelSavedWords.Where(x=> x == word.Substring(0, word.IndexOf(":")+1)).Count() > 0;
         }
