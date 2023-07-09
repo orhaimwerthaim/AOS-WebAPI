@@ -24,10 +24,10 @@
             <Keywords name="Folders in comment, open"></Keywords>
             <Keywords name="Folders in comment, middle"></Keywords>
             <Keywords name="Folders in comment, close"></Keywords>
-            <Keywords name="Keywords1">response: module_activation: local_variable: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: context_variable: response_local_variable: reward_code: initial_belief: init_context: action_parameter: define_type: horizon: discount: state_variable: available_parameters_code: rollout_policy: project:</Keywords>
-            <Keywords name="Keywords2">import: path: srv: response_rule: parameter: code: type: from_ros_reservice_response: topic: action_parameter: variable: max_value: enum_members: imports: initial_value: ml_ignore: ml_max_value: from_ros_reservice_response: message_type:</Keywords>
+            <Keywords name="Keywords1">response: module_activation: local_variable: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: response_local_variable: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: available_parameters_code: rollout_policy: project:</Keywords>
+            <Keywords name="Keywords2">import: path: srv: response_rule: parameter: code: type: from_ros_reservice_response: topic: action_parameter: variable: max_value: enum_members: imports: initial_value: from_ros_reservice_response: message_type:</Keywords>
             <Keywords name="Keywords3">ros_service from: import:</Keywords>
-            <Keywords name="Keywords4">__meetPrecondition __moduleResponse __reward __possibleParameters __moduleResponseStr __isGoalState</Keywords>
+            <Keywords name="Keywords4">__meetPrecondition __moduleResponse __reward __possibleParameters __moduleResponseStr __isGoalState __oneTimeRewardGiven</Keywords>
             <Keywords name="Keywords5"></Keywords>
             <Keywords name="Keywords6"></Keywords>
             <Keywords name="Keywords7"></Keywords>
