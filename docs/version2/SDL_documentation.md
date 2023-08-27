@@ -181,17 +181,8 @@ for (auto elem : setOfStr)
 }
 ```
 The example above defines 18 grounded actions for navigating fast or slow to each of the nine locations.</br>
-
-## Assisting the planner
-The engineer can guide the AOS to the direction of desired solutions.</br>
-
-One way is to define preconditions to activate a skill. Since the robot is not always fully aware of its current state, it cannot entirely revoke illegal actions (e.g., try driving when there is no fuel). Nevertheless, the user can define when a skill is illegal and penalize activating it by its relative weight in the current belief state distribution.</br> 
-
-Moreover, MCTS algorithms (supported by the AOS) build a search tree where each node is a distribution over states (belief state), and the leaf nodes are evaluated using a default (rollout) policy. The rollout policy is performed using a single state and is crucial to find a good solution. We can use the preconditions to revoke illegal skills.</br> 
-
-Furthermore, the user can define preferred action to define the rollout policy.</br>
-
-### GlobalVariablePreconditionAssignments
+ 
+### precondition:
 This section defines a skill' precondition given the grounded skill parameters and a known set of state variables.
 The multi-line code should assign a value to the system variable `__meetPrecondition` (default is true).
 It can use any state variable from `state`.</br>
@@ -235,7 +226,6 @@ The AOS runs simulations to decide the next best skill to apply. Next, the selec
 
 ## Abstraction Mapping (AM) file
 
-```
 ## response:
 `response:` section defines the translation between an actual execution outcome of a skill, to observations the AOS planning engine can reason about. The planning engine uses the SD documentation to simulate what might happen. The AM `response:` section is used to translate what really happened to the language used in the SD documentation.</br>
 The planning engine uses this information to update the robot's belief.</br>
@@ -304,10 +294,7 @@ This local variable definition has the following fields:
   -  `local_variable: <name>` is the local variable name.
   -  `type: <type>` this optional field is the type of the variable when converted to C++ (used for the "extrinsic actions" feature).
   -  `from_ros_reservice_response: true` declares that the value is taken from the service response.
-  -  ```
-code: 
-<user code>
-```
+  -  ```code:  \n <user code> ```
 is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is   -  `imports: from: <package> import: <import objects>` imports needed objects for receiving the service response (multiple import sections are allowed).
   
 Example:</br>
@@ -326,10 +313,7 @@ This type of local variable is constantly updated when certain public informatio
   -  `message_type: <topic message type>` is the type of the topic message ([see](http://wiki.ros.org/Topics)).
   -  `type: <c++ type>` this optional field is the type of the variable when converted to C++ (used for the "extrinsic actions" feature). 
   -
-  -  ```
-     code:
-     <user code>
-    ``` is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is the string code. Nevertheless, users can define it as an array of strings representing complex Python code (the indentations are preserved).
+  -  ```code: \n <user code> `` is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is the string code. Nevertheless, users can define it as an array of strings representing complex Python code (the indentations are preserved).
   -  `imports: from: <package> import: <import objects>` imports needed objects for receiving the topic message (multiple import sections are allowed).
 
 Example:</br>
