@@ -1,10 +1,11 @@
 
 # AOS SDL Documentation (version 2.0)
+* [The three sets of state variables](#the-three-sets-of-state-variables)
 * [Environment File](#environment-file)
 * [Skill Documentation (SD) file](#skill-documentation-sd-file)
 * [Abstraction Mapping (AM) file](#abstraction-mapping-am-file)
 * [Additional documentation language functionality](#additional-documentation-language-functionality)
-* 
+  
 The Skill Documentation Language (SDL) is an Action Description Language (ADL) to describe planning domains for autonomous robots.
 It works in the following way. A robotic engineer needs to document the behavior of each robot skill he implemented (e.g., navigation, object detection, arm manipulation, etc.), the environment the robot is working in, and the robot's objective (e.g., cleaning a room).
 SDL files are divided into three types: 1) an Environment File (EF) that describes skill-dependent aspects of the domain 2) Skill Documentation (SD) files, each describing skill-dependent aspects of the domain 3) Abstraction Mapping (AM) files, describing the mapping between the planning abstract model described in an SD file to a robot skill code. More specifically, it describes how to activate the code and translate the code execution to information the planning process can reason with.
