@@ -1,9 +1,10 @@
 
 # AOS SDL Documentation (version 2.0)
 * [Environment File](#environment-file)
-* [Additional documentation language functionality](#additional-documentation-language-functionality)
 * [Skill Documentation (SD) file](#skill-documentation-sd-file)
-
+* [Abstraction Mapping (AM) file](#abstraction-mapping-am-file)
+* [Additional documentation language functionality](#additional-documentation-language-functionality)
+* 
 The Skill Documentation Language (SDL) is an Action Description Language (ADL) to describe planning domains for autonomous robots.
 It works in the following way. A robotic engineer needs to document the behavior of each robot skill he implemented (e.g., navigation, object detection, arm manipulation, etc.), the environment the robot is working in, and the robot's objective (e.g., cleaning a room).
 SDL files are divided into three types: 1) an Environment File (EF) that describes skill-dependent aspects of the domain 2) Skill Documentation (SD) files, each describing skill-dependent aspects of the domain 3) Abstraction Mapping (AM) files, describing the mapping between the planning abstract model described in an SD file to a robot skill code. More specifically, it describes how to activate the code and translate the code execution to information the planning process can reason with.
@@ -224,9 +225,9 @@ The observation must correspond to the observations specified in the AM file.</b
 Observations are enumerable values when using the `__moduleResponse` system variable or strings when using `__moduleResponseStr`.</br> 
 The AOS runs simulations to decide the next best skill to apply. Next, the selected skill code is executed, and the AOS translates the execution outcome to an observation which is then used to update the distribution on the current state (current belief).</br>
 
-## Abstraction Mapping (AM) file
+# Abstraction Mapping (AM) file
 
-## response:
+#### response:
 `response:` section defines the translation between an actual execution outcome of a skill, to observations the AOS planning engine can reason about. The planning engine uses the SD documentation to simulate what might happen. The AM `response:` section is used to translate what really happened to the language used in the SD documentation.</br>
 The planning engine uses this information to update the robot's belief.</br>
 
