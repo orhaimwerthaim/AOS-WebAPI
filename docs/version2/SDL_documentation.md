@@ -233,6 +233,118 @@ The observation must correspond to the observations specified in the AM file.</b
 Observations are enumerable values when using the `__moduleResponse` system variable or strings when using `__moduleResponseStr`.</br> 
 The AOS runs simulations to decide the next best skill to apply. Next, the selected skill code is executed, and the AOS translates the execution outcome to an observation which is then used to update the distribution on the current state (current belief).</br>
 
+## Abstraction Mapping (AM) file
+
+```
+## response:
+`response:` section defines the translation between an actual execution outcome of a skill, to observations the AOS planning engine can reason about. The planning engine uses the SD documentation to simulate what might happen. The AM `response:` section is used to translate what really happened to the language used in the SD documentation.</br>
+The planning engine uses this information to update the robot's belief.</br>
+
+The `response:` describe a single possible observations a skill can return.</br>
+The response order is importent.</br>
+Each observation in the array has the following fields:</br>
+* `response:` defines the observation name. The SD `__moduleResponse` variable can only receive values defined as `response:`.
+* response_rule: defines when the skill returns the current response (code is in Python for ROS). The condition may depend on "Local Variable" values.
+Example:</br>
+```
+response: eSuccess
+response_rule: skillSuccess and goal_reached
+response: eFailed
+response_rule: True
+```
+The returned observation is the first `response:` that its `response_rule:` is met (they are ordered the same as defined).</br>
+
+Another not overlapping option is to define the observation as the value of a string local variable calculated during the skill execution.
+```
+response_local_variable: <local variable name>
+``` 
+Example:</br>
+```
+response_local_variable: obsr
+local_variable: obsr
+type: string
+from_ros_reservice_response: true  
+code: 
+obsr = __input.state
+```
+In the example above, we define the `obsr` local variable and designate it as the observation using the`
+response_local_variable: obsr`.
+
+
+#### module_activation:
+The `module_activation:` section describes how to activate the skill code.</br>
+The activation can use  SD's "parameters" copied to local variables.</br>
+Example:
+```
+module_activation: ros_service
+imports: from: panda_demo.srv import: *
+path: /mark_tic_tac_toe_cell_service
+srv: mark_cell
+parameter: cell
+code:
+str(cell_to_mark)
+```
+In the example above, the skill is a ROS service whose path is `/mark_tic_tac_toe_cell_service`, the service srv file name is `mark_cell`, the service has a single parameter named `cell` whose value is initialized using the code `str(cell_to_mark)`. </br> `cell_to_mark` is a local variable we use its value.</br>
+We are importing the service objects.
+
+#### local_variable:
+The `local_variable:` section is used to define local variables.</br>
+Local variables can take their value from three possible sources:</br>
+* SD file skill parameters. Only this type of local variable can be used to activate the skill since the other local variables' value is calculated when the skill execution ends.
+  -  `local_variable: <local variable name>` is the name of the local variable.
+  -  `action_parameter: <name>` sets the name of the skill parameter defined in the SD `parameter:` section.
+  
+Example:</br>
+```
+local_variable: cell_to_mark
+action_parameter: oCellP
+```
+* Skill-code returned value. Using the value returned from the skill code. The user can define a Python function to manipulate the returned value to something more meaningful or convenient. </br>
+This local variable definition has the following fields:
+  -  `local_variable: <name>` is the local variable name.
+  -  `type: <type>` this optional field is the type of the variable when converted to C++ (used for the "extrinsic actions" feature).
+  -  `from_ros_reservice_response: true` declares that the value is taken from the service response.
+  -  ```
+code: 
+<user code>
+```
+is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is   -  `imports: from: <package> import: <import objects>` imports needed objects for receiving the service response (multiple import sections are allowed).
+  
+Example:</br>
+```
+local_variable: obsr
+type: string
+from_ros_reservice_response: true  
+code: 
+obsr = __input.state
+```
+* Public data published in the robot framework (e.g., ROS topics). 
+This type of local variable is constantly updated when certain public information is published in the robot framework(e.g., when a ROS topic message is published). It can capture events that occur during the skill execution. It's last value will be used when the skill observation is calculated. </br>This type of local variable is defined using the following fields:
+  -  `local_variable: <name>` is the local variable name.
+  -  `topic: <topic path>` is the topic path.\
+  -  `initial_value: <initial value>` defines the value used to initialize the variable.
+  -  `message_type: <topic message type>` is the type of the topic message ([see](http://wiki.ros.org/Topics)).
+  -  `type: <c++ type>` this optional field is the type of the variable when converted to C++ (used for the "extrinsic actions" feature). 
+  -
+  -  ```
+     code:
+     <user code>
+    ``` is the Python code for assigning the local variable value from the ROS service response (returned value). The reserved word `__input` is used to reference the service returned value. This field value is the string code. Nevertheless, users can define it as an array of strings representing complex Python code (the indentations are preserved).
+  -  `imports: from: <package> import: <import objects>` imports needed objects for receiving the topic message (multiple import sections are allowed).
+
+Example:</br>
+```
+local_variable: goal_reached
+topic: /rosout
+message_type: Log
+imports: from: rosgraph_msgs.msg import: Log
+type: bool 
+initial_value: False
+code:
+if goal_reached == True:
+    return True
+```
+
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
