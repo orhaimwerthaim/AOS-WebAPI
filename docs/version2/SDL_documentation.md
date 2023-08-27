@@ -87,6 +87,7 @@ state.grid={2,222,3};
 In some cases, the initial state of the robot is not deterministic. Users can generatively describe the initial state distribution using C++ code.
 Conceptually, the initial state distribution is described by using this code to sample an infinite number of states representing the initial state distribution.
 C++ code is usually deterministic, yet SDL provides methods to sample from known distributions.
+state variables are reffered to by `state.<state variable name>` e.g., `state.x`. The initial belief can assign the `state.` set of state variables. Their definition code sets their initial value.
 ```
 bool p = 0.8;
 bool sample = AOS.Bernoulli(p);
@@ -98,7 +99,7 @@ vector<float> weights{0.1,0.2,0.6,0.1};
 int sample = AOSUtils::SampleDiscrete(weights);
 ```
 The variable `sample` receives a sampled index integer where the weight for each index is described by `weights`.
-The `initial_belief:` code can be described in multiple lines to define temporal variables. The initial value of state variables is set by their definition.
+The `initial_belief:` code can be described in multiple lines to define temporal variables. The initial value of state variables is set by their definition and .
 e.g.,
 ```
 initial_belief:
@@ -136,4 +137,19 @@ An example that describes a 5% chance for a specific change to occur at each ste
 extrinsic_code:
 if (AOS.Bernoulli(0.05)) state_.robotLocation.discrete = -1;
 ```
+## SDL code syntax
+SDL uses C++ code with some small extensions.
+1. Sampling from known distributions:
+```
+bool p = 0.8;
+bool sample = AOS.Bernoulli(p);
+```
+The variable `sample` receives a sampled value from a Bernoulli distribution with a parameter `p`. The Bernoulli parameter must range from 0.0 to 1.0.
 
+```
+vector<float> weights{0.1,0.2,0.6,0.1};
+int sample = AOSUtils::SampleDiscrete(weights);
+```
+The variable `sample` receives a sampled index integer where the weight for each index is described by `weights`.
+
+2.
