@@ -148,6 +148,123 @@ An example that describes a 5% chance for a specific change to occur at each ste
 extrinsic_code:
 if (AOS.Bernoulli(0.05)) state_.robotLocation.discrete = -1;
 ```
+# Skills documentation
+Each skill is documented using two files. First, a Skill Documentation (SD) file to describe the high level of the skill. Second, an Abstraction Mapping (AM) file to describe how to activate the skill code and how to translate the outcome of the skill execution to something the AOS can reason with for decision-making. 
+
+# Skill Documentation (SD) file
+The SD file structure is:</br>
+```
+{
+    "PlpMain": {},
+    "GlobalVariableModuleParameters": [ ], 
+    "Preconditions": {
+        "GlobalVariablePreconditionAssignments": [],
+        "PlannerAssistancePreconditionsAssignments": [],
+        "ViolatingPreconditionPenalty": 0
+    },
+    "DynamicModel": {
+        "NextStateAssignments": [ ]
+    }
+}
+```
+See [environment file template](https://github.com/orhaimwerthaim/AOS-WebAPI/blob/master/docs/version2/File%20Templates/SD.json)
+
+## PlpMain-SD
+See6 [PlpMain](#plpmain) for detailed explanation.</br>
+Example:</br>
+```
+"PlpMain": {
+        "Project": "cleaning_robot1",
+        "Name": "navigate",
+        "Type": "PLP",
+        "Version": 1.2
+    },
+```
+## GlobalVariableModuleParameters
+This section uses to define the parameters sent to a skill. The skill parameters are the context under which the skill operates. Possible parameters are, for example, 1) an enum value for navigation modes like 'fast' navigation vs. 'safe' navigation or 2) the navigation destination.
+Formally the "GlobalVariableModuleParameters" is an array of parameter items, each containing the following fields:</br>
+* "Name" is the string name to refer to the parameter. 
+* "Type" is a string indicating the parameter type. </br>
+
+The AOS considers activating a skill with each of the possible combinations of state variables marked as 'ActionParameterValue.' So if we have a skill with two parameters of type 'int' and three state variables of type int marked as 'ActionParameterValue,' the AOS will run simulations to select the best combination out of the six possible combinations. </br>
+
+Example:</br>
+```
+"GlobalVariableModuleParameters": [
+        {
+            "Name": "oDestination",
+            "Type": "tLocation"
+        },
+	{
+            "Name": "oNavigationMode",
+            "Type": "int"
+        }
+    ], 
+```
+The example above shows that user-defined types such as 'tLocation' can be used as skill parameters.</br>
+
+
+## Assisting the planner
+The engineer can guide the AOS to the direction of desired solutions.</br>
+
+One way is to define preconditions to activate a skill. Since the robot is not always fully aware of its current state, it cannot entirely revoke illegal actions (e.g., try driving when there is no fuel). Nevertheless, the user can define when a skill is illegal and penalize activating it by its relative weight in the current belief state distribution.</br> 
+
+Moreover, MCTS algorithms (supported by the AOS) build a search tree where each node is a distribution over states (belief state), and the leaf nodes are evaluated using a default (rollout) policy. The rollout policy is performed using a single state and is crucial to find a good solution. We can use the preconditions to revoke illegal skills.</br> 
+
+Furthermore, the user can define preferred action to define the rollout policy.</br>
+
+### GlobalVariablePreconditionAssignments
+This section is used to define when a skill with given parameters met the preconditions (default is true). This field is an [Assinment block](#assignments-blocks), the should assign a value to the reserved variable `__meetPrecondition` and it can use (not change) any state variable from `state` (see [The three sets of state variables](#the-three-sets-of-state-variables)).</br>
+
+Example:</br>
+```
+"Preconditions": {
+	"GlobalVariablePreconditionAssignments": [
+            {
+                "AssignmentCode": "__meetPrecondition = oDestination != state.robotLocation;"
+            }
+          ],
+	"ViolatingPreconditionPenalty":-1.5
+}
+```
+The "ViolatingPreconditionPenalty" is a decimal field that allows engineers to tune how undesirable it is to activate a particular skill when its preconditions are not met.</br>
+
+### PlannerAssistancePreconditionsAssignments
+In this section, the user can define a default (rollout) policy. This field is an [Assinment block](#assignments-blocks) that should set the value of the reserved variable `__heuristicValue`. The code assignment can be conditioned on variable from `state` (but cannot change their value. See [The three sets of state variables](#the-three-sets-of-state-variables)). </br>
+The default policy will draw between all available skills and parameter assignments. The weight of each skill will be its computed `__heuristicValue` </br>
+Example (taken from the [push skill SD file](https://github.com/orhaimwerthaim/AOS-mini-project/blob/main/collectValuableToys_base/navigate.json) of the box-pushing domain found in the [AOS experiments GitHub](https://github.com/orhaimwerthaim/AOS-experiments)):</br>
+```
+"Preconditions":{
+	"PlannerAssistancePreconditionsAssignments": [
+            {
+                "AssignmentName": "__heuristicValue for second agent joint push with first agent",
+                "AssignmentCode": "if(oIsJointPush == JointPush && !state.isAgentOneTurn && oDirection == state.JointPushDirection)__heuristicValue=100;"
+            },
+            {
+                "AssignmentName": "__heuristicValue push box when possible (don't ovverride first rule)",
+                "AssignmentCode": "if(__heuristicValue == 0) __heuristicValue=1;"
+            }
+        ]
+}
+```
+The default heuristic value for a skill is zero. This feature is ignored if no heuristic value is defined for any skill.</br>
+
+## DynamicModel
+The DynamicModel defines the high-level behavior of a skill. More specifically, the transition reward and observation models, how a skill changes the state, what costs (or rewards) are applied and which observations are returned. The "NextStateAssignments" is an [assignments block]() that sets the next state (`state__`), reward (`__reward` reserved variable), and observation (`__moduleResponse` reserved variable) conditioned on the previose state (`state`), the state after extrinsic changes (`state_`) and if the preconditions were met (`__meetPrecondition`). 
+
+Example:</br>
+```{r, attr.source='.numberLines'}
+"DynamicModel": {
+        "NextStateAssignments": [
+            {
+                "AssignmentCode": [" state__.robotLocation.discrete = !__meetPrecondition || AOS.Bernoulli(0.1) ? -1: oDesiredLocation.discrete;",
+		" if(state__.robotLocation.discrete == oDesiredLocation.discrete){ state__.robotLocation.x = oDesiredLocation.x; state__.robotLocation.y = oDesiredLocation.y; state__.robotLocation.z = oDesiredLocation.z;}",
+		"__moduleResponse = (state__.robotLocation.discrete == -1 && AOS.Bernoulli(0.8)) ? eFailed : eSuccess;",
+		"__reward = state_.robotLocation.discrete == -1 ? -5 : -(sqrt(pow(state.robotLocation.x-oDesiredLocation.x,2.0)+pow(state.robotLocation.y-oDesiredLocation.y,2.0)))*10;",
+                "if (state__.robotLocation.discrete == -1) __reward =  -10;"
+                ]
+           }]}
+```
 
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
