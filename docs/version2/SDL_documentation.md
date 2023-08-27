@@ -81,3 +81,58 @@ state_variable: int grid []
 code:
 state.grid={2,222,3};
 ```
+
+#### initial_belief:
+In some cases, the initial state of the robot is not deterministic. Users can generatively describe the initial state distribution using C++ code.
+Conceptually, the initial state distribution is described by using this code to sample an infinite number of states representing the initial state distribution.
+C++ code is usually deterministic, yet SDL provides methods to sample from known distributions.
+```
+bool p = 0.8;
+bool sample = AOS.Bernoulli(p);
+```
+The variable `sample` receives a sampled value from a Bernoulli distribution with a parameter `p`. The Bernoulli parameter must range from 0.0 to 1.0.
+
+```
+vector<float> weights{0.1,0.2,0.6,0.1};
+int sample = AOSUtils::SampleDiscrete(weights);
+```
+The variable `sample` receives a sampled index integer where the weight for each index is described by `weights`.
+The `initial_belief:` code can be described in multiple lines to define temporal variables. The initial value of state variables is set by their definition.
+e.g.,
+```
+initial_belief:
+state.robotLocation.discrete = AOS.Bernoulli(0.5) ? 1 : (AOS.Bernoulli(0.2) ? 2 : 3);
+```
+
+#### reward_code:
+Moreover, users can define state-dependent rewards and terminal states in the `reward_code:` section. Users can use multi-line code and conditionally assign positive rewards for desired states (and vice versa) by assigning the `__reward` variable. Furthermore, users can define one-time rewards received once in a trajectory (by assigning the `__stopEvaluatingState` with true ), unlike other rewards that may describe a state that we want to maintain and to consistently deliver rewards when it is reached. Users can write multiple `reward_code:` sections to describe various one-time rewards.
+A terminal state is described by assigning `true` to the boolean variable `__isGoalState`. 
+e.g.,
+```
+reward_code:
+if (!state.v1.visited && state.v2.visited)
+{
+__reward=-50;
+__stopEvaluatingState =true;
+}
+reward_code:
+if (state.v1.visited && state.v2.visited && state.v3.visited)
+{
+__reward =7000;
+__isGoalState =true;
+}
+```
+
+#### extrinsic_code:
+Finally, the EF file can describe external changes not invoked by the robot's actions in a multi-line code section.
+These changes can be conditioned on the current robot state. e.g., a robot may slip in probability dependent on its current speed. The set of state variables after external changes is accessed by `state_.<variable name>` vs. the state before these changes with `state_.<variable name>`. 
+```
+extrinsic_code:
+<multi-line code>
+```
+An example that describes a 5% chance for a specific change to occur at each step:
+```
+extrinsic_code:
+if (AOS.Bernoulli(0.05)) state_.robotLocation.discrete = -1;
+```
+
