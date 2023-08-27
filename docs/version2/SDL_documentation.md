@@ -229,7 +229,9 @@ __reward = 0;
 ```
 
 ### SD observations must correspond to the AM observations
-The observation must correspond to the observations specified in the AM file. Observations are enumerable values. The AOS runs simulations to decide the next best skill to apply. Next, the selected skill code is executed, and the AOS translates the execution outcome to an observation which is then used to update the distribution on the current state (current belief).
+The observation must correspond to the observations specified in the AM file.</br> 
+Observations are enumerable values when using the `__moduleResponse` system variable or strings when using `__moduleResponseStr`.</br> 
+The AOS runs simulations to decide the next best skill to apply. Next, the selected skill code is executed, and the AOS translates the execution outcome to an observation which is then used to update the distribution on the current state (current belief).</br>
 
 ## Additional documentation language functionality
 ### Sample from Discrete distribution
