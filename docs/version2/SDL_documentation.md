@@ -105,7 +105,7 @@ C++ code is usually deterministic, yet SDL provides methods to sample from known
 state variables are reffered to by `state.<state variable name>` e.g., `state.x`. The initial belief can assign the `state.` set of state variables. Their definition code sets their initial value.</br>
 ```
 bool p = 0.8;
-bool sample = AOS.Bernoulli(p);
+bool sample = AOSUtils::Bernoulli(p);
 ```
 The variable `sample` receives a sampled value from a Bernoulli distribution with a parameter `p`.</br>
 The Bernoulli parameter must range from 0.0 to 1.0.</br>
@@ -119,7 +119,7 @@ The `initial_belief:` code can be described in multiple lines to define temporal
 e.g.,
 ```
 initial_belief:
-state.robotLocation.discrete = AOS.Bernoulli(0.5) ? 1 : (AOS.Bernoulli(0.2) ? 2 : 3);
+state.robotLocation.discrete = AOSUtils::Bernoulli(0.5) ? 1 : (AOSUtils::Bernoulli(0.2) ? 2 : 3);
 ```
 
 #### reward_code:
@@ -154,7 +154,7 @@ extrinsic_code:
 An example that describes a 5% chance for a specific change to occur at each step:
 ```
 extrinsic_code:
-if (AOS.Bernoulli(0.05)) state_.robotLocation.discrete = -1;
+if (AOSUtils::Bernoulli(0.05)) state_.robotLocation.discrete = -1;
 ```
 # Skills documentation
 Each skill is documented using two files. First, a Skill Documentation (SD) file to describe the high level of the skill. Second, an Abstraction Mapping (AM) file to describe how to activate the skill code and how to translate the outcome of the skill execution to something the AOS can reason with for decision-making. 
