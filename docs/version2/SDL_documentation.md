@@ -1,11 +1,17 @@
 
+# AOS SDL Documentation (version 2.0)
+* [Environment File](#environment-file)
+* [Additional documentation language functionality](#additional-documentation-language-functionality)
+* [Skill Documentation (SD) file](#skill-documentation-sd-file)
+
 The Skill Documentation Language (SDL) is an Action Description Language (ADL) to describe planning domains for autonomous robots.
 It works in the following way. A robotic engineer needs to document the behavior of each robot skill he implemented (e.g., navigation, object detection, arm manipulation, etc.), the environment the robot is working in, and the robot's objective (e.g., cleaning a room).
 SDL files are divided into three types: 1) an Environment File (EF) that describes skill-dependent aspects of the domain 2) Skill Documentation (SD) files, each describing skill-dependent aspects of the domain 3) Abstraction Mapping (AM) files, describing the mapping between the planning abstract model described in an SD file to a robot skill code. More specifically, it describes how to activate the code and translate the code execution to information the planning process can reason with.
 
-## Environment File (EF)
-We now describe how to formally write the files, starting with the EF.
-Each file (EF, SD, or AM) is described in different sections. Except for the project section that describes the project name and must appear first, the order of sections is insignificant.
+# Environment File
+We now describe how to formally write the files, starting with the Environment File (EF).</br>
+The file name should be `<project name>.ef`.</br>
+Each file (EF, SD, or AM) is described in different sections. Except for the project section that describes the project name and must appear first, the order of sections is insignificant.</br>
 ```
 project: <project name>
 ``` 		
@@ -13,7 +19,7 @@ e.g.,
 ```
 project: tic_tac_toe
 ``` 		  
-Next, in the EF file, users describe horizon, which means the number of steps the AOS' look-ahead when it selects the next action.
+Next, in the EF file, users describe horizon, which means the number of steps the AOS' look-ahead when it selects the next action.</br>
 ```
 horizon: <number of look-ahead steps>
 ``` 		
@@ -21,7 +27,7 @@ e.g.,
 ```
 horizon: 10
 ```
-The discount factor describes how less future rewards are worth.
+The discount factor describes how less future rewards are worth.</br>
 ```
 horizon: <decimal discount value>
 ``` 	
@@ -30,8 +36,9 @@ e.g.,
 discount: 0.99
 ``` 
 
-Users can define the state variables their environment is composed of. The state variable types can be string, float, doubt, int, double, or string. Moreover, users can define vectors of such types or define custom types as enums or structs.
-Enums are define by:
+Users can define the state variables their environment is composed of.</br> 
+The state variable types can be string, float, doubt, int, double, or string. Moreover, users can define vectors of such types or define custom types as enums or structs.</br>
+Enums are define by:</br>
 ```
 define_type:  <type name>
 enum_members: <enum values with a comma delimiter>
@@ -57,7 +64,7 @@ variable: double z 0.0
 variable: int discrete -1
 ```
 
-State variables are defined as follows (referring them for initialization is by 'state.<var name>'):
+State variables are defined as follows (referring them for initialization is by 'state.<var name>'):</br>
 ```
 state_variable: <type> <name>
 code:
@@ -84,22 +91,23 @@ state.grid={2,222,3};
 ```
 
 #### initial_belief:
-In some cases, the initial state of the robot is not deterministic. Users can generatively describe the initial state distribution using C++ code.
-Conceptually, the initial state distribution is described by using this code to sample an infinite number of states representing the initial state distribution.
-C++ code is usually deterministic, yet SDL provides methods to sample from known distributions.
-state variables are reffered to by `state.<state variable name>` e.g., `state.x`. The initial belief can assign the `state.` set of state variables. Their definition code sets their initial value.
+In some cases, the initial state of the robot is not deterministic. Users can generatively describe the initial state distribution using C++ code.</br>
+Conceptually, the initial state distribution is described by using this code to sample an infinite number of states representing the initial state distribution.</br>
+C++ code is usually deterministic, yet SDL provides methods to sample from known distributions.</br>
+state variables are reffered to by `state.<state variable name>` e.g., `state.x`. The initial belief can assign the `state.` set of state variables. Their definition code sets their initial value.</br>
 ```
 bool p = 0.8;
 bool sample = AOS.Bernoulli(p);
 ```
-The variable `sample` receives a sampled value from a Bernoulli distribution with a parameter `p`. The Bernoulli parameter must range from 0.0 to 1.0.
+The variable `sample` receives a sampled value from a Bernoulli distribution with a parameter `p`.</br>
+The Bernoulli parameter must range from 0.0 to 1.0.</br>
 
 ```
 vector<float> weights{0.1,0.2,0.6,0.1};
 int sample = AOSUtils::SampleDiscrete(weights);
 ```
-The variable `sample` receives a sampled index integer where the weight for each index is described by `weights`.
-The `initial_belief:` code can be described in multiple lines to define temporal variables. The initial value of state variables is set by their definition and .
+The variable `sample` receives a sampled index integer where the weight for each index is described by `weights`.</br>
+The `initial_belief:` code can be described in multiple lines to define temporal variables. The initial value of state variables is set by their definition.</br>
 e.g.,
 ```
 initial_belief:
@@ -107,8 +115,10 @@ state.robotLocation.discrete = AOS.Bernoulli(0.5) ? 1 : (AOS.Bernoulli(0.2) ? 2 
 ```
 
 #### reward_code:
-Moreover, users can define state-dependent rewards and terminal states in the `reward_code:` section. Users can use multi-line code and conditionally assign positive rewards for desired states (and vice versa) by assigning the `__reward` variable. Furthermore, users can define one-time rewards received once in a trajectory (by assigning the `__stopEvaluatingState` with true ), unlike other rewards that may describe a state that we want to maintain and to consistently deliver rewards when it is reached. Users can write multiple `reward_code:` sections to describe various one-time rewards.
-A terminal state is described by assigning `true` to the boolean variable `__isGoalState`. 
+Moreover, users can define state-dependent rewards and terminal states in the `reward_code:` section. </br>
+Users can use multi-line code and conditionally assign positive rewards for desired states (and vice versa) by assigning the `__reward` variable. Furthermore, users can define one-time rewards received once in a trajectory (by assigning the `__stopEvaluatingState` with true ), unlike other rewards that may describe a state that we want to maintain and to consistently deliver rewards when it is reached.</br>
+Users can write multiple `reward_code:` sections to describe various one-time rewards.</br>
+A terminal state is described by assigning `true` to the boolean variable `__isGoalState`. </br>
 e.g.,
 ```
 reward_code:
@@ -126,8 +136,9 @@ __isGoalState =true;
 ```
 
 #### extrinsic_code:
-Finally, the EF file can describe external changes not invoked by the robot's actions in a multi-line code section.
-These changes can be conditioned on the current robot state. e.g., a robot may slip in probability dependent on its current speed. The set of state variables after external changes is accessed by `state_.<variable name>` vs. the state before these changes with `state_.<variable name>`. 
+Finally, the EF file can describe external changes not invoked by the robot's actions in a multi-line code section.</br>
+These changes can be conditioned on the current robot state. e.g., a robot may slip in probability dependent on its current speed. </br>
+The set of state variables after external changes is accessed by `state_.<variable name>` vs. the state before these changes with `state_.<variable name>`. </br>
 ```
 extrinsic_code:
 <multi-line code>
@@ -137,19 +148,41 @@ An example that describes a 5% chance for a specific change to occur at each ste
 extrinsic_code:
 if (AOS.Bernoulli(0.05)) state_.robotLocation.discrete = -1;
 ```
-## SDL code syntax
-SDL uses C++ code with some small extensions.
-1. Sampling from known distributions:
-```
-bool p = 0.8;
-bool sample = AOS.Bernoulli(p);
-```
-The variable `sample` receives a sampled value from a Bernoulli distribution with a parameter `p`. The Bernoulli parameter must range from 0.0 to 1.0.
 
+## Additional documentation language functionality
+### Sample from Discrete distribution
+Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
+`int AOSUtils::SampleDiscrete(vector<double> weights)`</br>
+`int AOSUtils::SampleDiscrete(vector<float> weights)`</br>
+Example:</br>
 ```
-vector<float> weights{0.1,0.2,0.6,0.1};
-int sample = AOSUtils::SampleDiscrete(weights);
+vector<float> weights{0.25,0.25,0.4,0.1};
+int sampledVal = AOSUtils::SampleDiscrete(weights)
 ```
-The variable `sample` receives a sampled index integer where the weight for each index is described by `weights`.
+The sampled value will range from 0 to weights.size()-1 ({0,1,2,3} in the example above).</br>
+The total of the weights vector must be 1.0</br>
 
-2.
+### Sample from Bernoulli distribution
+The user can also sample from Bernoulli distribution using the following function:</br>
+`bool AOSUtils::Bernoulli(double p)`</br>
+```
+success = AOSUtils::Bernoulli(0.75)
+```
+### Iterate over all state variables of a specific type
+The user can iterate over all state variables of a specific custom compound
+ type. Pointers to all of the state variables of a specific type are stored inside a special autogenerated state variable called '<customTypeName>Objects' .
+For example if we have a custom compound
+ type called 'tLocation
+' with a subfield called 'continuous_location_x
+' of type float, a user can iterate over all these state variables to perform a calculation or change one of them.
+ Example:
+```
+bool hasLocationInRange=false;
+for(int i=0; i < state.tLocationObjects.size();i++)
+{
+	if(state.tLocationObjects[i]->continuous_location_x > 1 && state.tLocationObjects[i]->continuous_location_x < 2)
+    {
+      hasLocationInRange = true;
+    }
+}
+```
