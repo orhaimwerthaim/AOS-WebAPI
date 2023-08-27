@@ -9,6 +9,12 @@ The Skill Documentation Language (SDL) is an Action Description Language (ADL) t
 It works in the following way. A robotic engineer needs to document the behavior of each robot skill he implemented (e.g., navigation, object detection, arm manipulation, etc.), the environment the robot is working in, and the robot's objective (e.g., cleaning a room).
 SDL files are divided into three types: 1) an Environment File (EF) that describes skill-dependent aspects of the domain 2) Skill Documentation (SD) files, each describing skill-dependent aspects of the domain 3) Abstraction Mapping (AM) files, describing the mapping between the planning abstract model described in an SD file to a robot skill code. More specifically, it describes how to activate the code and translate the code execution to information the planning process can reason with.
 
+# The three sets of state variables
+The documentation describes how the state changes in each epoch conditioned on the selected skill. The state can change by either the robot's skills or extrinsic events. To assist the user in documenting complex behaviors flexibly, we introduce three sets of state variables, `state`, `state_`, and `state__`, each containing all of the defined state variables. </br>
+
+`state` stores the previous state values and cannot be changed (except in state variable definition and in the initial belief), `state_` is a copy of `state`, yet it can change by extrinsic events. Finally, `state__` is a copy of `state_` after the extrinsic events occur, and it can change by skill effects. 'extrinsic_code:' can only change variables in `state_` (can be conditioned on `state`), and skill's 'dynamic_model:' can only change `state__` (can be conditioned on `state` and `state_`).
+If we defined a state variable named `robotLocation`, it has three copies that can be referred to by either `state.robotLocation`, `state_.robotLocation`, or `state__.robotLocation`.
+
 # Environment File
 We now describe how to formally write the files, starting with the Environment File (EF).</br>
 The file name should be `<project name>.ef`.</br>
