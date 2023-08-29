@@ -473,7 +473,7 @@ namespace WebApiCSharp.JsonTextModel
                                 }
                             }
                             typeVariables.Add(tt);
-                        }
+                        }else break;
                     }
                     if(enumMembers.Count == 0 && typeVariables.Count ==0)throw new Exception(errorStart + "after '"+typeFirstLine+"' you must define 'variable: ...' or 'enum_members: ...'");
                     if(enumMembers.Count > 0 && typeVariables.Count >0)throw new Exception(errorStart + "you cannot define both 'variable: ...' and 'enum_members: ...' for the same type. see '"+typeFirstLine+"'");

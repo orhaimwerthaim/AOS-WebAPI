@@ -54,6 +54,19 @@ typedef bool anyValue;
 typedef unsigned long int OBS_TYPE;
 std::default_random_engine generator;
 std::uniform_real_distribution<float> real_unfirom_dist(0.0,1.0); 
+
+int get_hash(string str_)
+    {
+        const char *str = str_.c_str();
+        unsigned long hash = 0;
+        int c;
+
+        while (c = *str++)
+            hash = c + (hash << 6) + (hash << 16) - hash;
+
+        return hash; 
+    }
+
 int SampleDiscrete(vector<float> weights)
 {
     float rand = real_unfirom_dist(generator);

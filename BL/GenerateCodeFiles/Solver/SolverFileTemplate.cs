@@ -3871,6 +3871,8 @@ namespace despot {
  * " + data.ProjectNameWithCapitalLetter + @"State class
  * ==============================================================================*/
 
+
+
 class AOSUtils
 {
 	public:
@@ -3879,6 +3881,7 @@ class AOSUtils
     static int SampleDiscrete(vector<double>);
 	static std::default_random_engine generator;
     static std::uniform_real_distribution<float> real_unfirom_dist;
+	static int get_hash(string str);
 };
  
 
@@ -6662,8 +6665,8 @@ public static string GetActionFromNNFunction(PLPsData data, InitializeProject in
 
             
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "if(__moduleResponseStr != \"NoStrResponse\")");
-            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{");
-            result += GenerateFilesUtils.GetIndentationStr(2, 4, data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums responseHash = ("+ data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums)hasher(__moduleResponseStr);");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "{"); 
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums responseHash = ("+ data.ProjectNameWithCapitalLetter +"ResponseModuleAndTempEnums)AOSUtils::get_hash(__moduleResponseStr);");//hasher(__moduleResponseStr);
             result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(2, 4, "vecResponseEnumToString[responseHash] = __moduleResponseStr;")
                 : GenerateFilesUtils.GetIndentationStr(2, 4, "enum_map_"+data.ProjectName+"::vecResponseEnumToString[responseHash] = __moduleResponseStr;");
             result += forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(2, 4, "vecStringToResponseEnum[__moduleResponseStr] = responseHash;") 
@@ -6923,6 +6926,18 @@ int AOSUtils::SampleDiscrete(vector<float> weights)
     }
     return -1;
 }
+
+int AOSUtils::get_hash(string str_)
+    {
+        const char *str = str_.c_str();
+        unsigned long hash = 0;
+        int c;
+
+        while (c = *str++)
+            hash = c + (hash << 6) + (hash << 16) - hash;
+
+        return hash; 
+    }
 
 int AOSUtils::SampleDiscrete(vector<double> weights)
 {
