@@ -244,7 +244,6 @@ find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS ""${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}"")
  
 target_link_libraries(""${PROJECT_NAME}"" ""${TORCH_LIBRARIES}"")
-set_property(TARGET ""${PROJECT_NAME}"" PROPERTY CXX_STANDARD 14)
  
 message(STATUS ""Find Torch VERSION: ${Torch_VERSION}"")
 add_definitions(-DTORCH_VERSION_MAJOR=${Torch_VERSION_MAJOR})
