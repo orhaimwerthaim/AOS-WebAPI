@@ -101,7 +101,7 @@ state.grid={2,222,3};
 #### initial_belief:
 In some cases, the initial state of the robot is not deterministic. Users can generatively describe the initial state distribution using C++ code.</br>
 Conceptually, the initial state distribution is described by using this code to sample an infinite number of states representing the initial state distribution.</br>
-C++ code is usually deterministic, yet SDL provides methods to sample from known distributions.</br>
+C++ code is usually deterministic, yet SDL provides methods to sample from Discrete or Bernoulli distributions.</br>
 state variables are reffered to by `state.<state variable name>` e.g., `state.x`. The initial belief can assign the `state.` set of state variables. Their definition code sets their initial value.</br>
 ```
 bool p = 0.8;
@@ -338,6 +338,7 @@ if goal_reached == True:
 ```
 
 ## Additional documentation language functionality
+The AOS currently only supports Discrete and Bernoulli distributions.
 ### Sample from Discrete distribution
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
 `int AOSUtils::SampleDiscrete(vector<double> weights)`</br>
