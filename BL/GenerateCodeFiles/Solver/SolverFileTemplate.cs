@@ -331,6 +331,7 @@ struct Config {
     bool useSavedSarsopPolicy;
     std::string domainHash;
 	float treePolicyByMdpRate;
+	int rollouts_count;
 	Config() : 
         handsOnDebug("+(initProj.SolverConfiguration.IsInternalSimulation && initProj.OnlyGenerateCode.HasValue && initProj.OnlyGenerateCode.Value ? "true" : "false")+@"),
         manualControl("+(initProj.SolverConfiguration.ManualControl ? "true" : "false") +@"),
@@ -358,6 +359,7 @@ struct Config {
         //Off=0,FATAL=1,ERROR=2,WARN=3,INFO=4,DEBUG=5,TRACE=6 
 		verbosity(" + initProj.SolverConfiguration.Verbosity.ToString() + @"),
         treePolicyByMdpRate("+initProj.SolverConfiguration.SimulateByMdpRate+@"),
+		rollouts_count("+initProj.SolverConfiguration.RolloutsCount+@"),
 		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
         saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @")
 		{
@@ -1286,18 +1288,26 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 
 	QNode* qnode = vnode->Child(action);
 	if (!terminal) {
-		prior->Add(action, obs);
-		map<OBS_TYPE, VNode*>& vnodes = qnode->children();
-		if (vnodes[obs] != NULL) {
-			reward += Globals::Discount()
-				* Simulate(particle, vnodes[obs], model, prior,simulateActionSequence, byMDP);
-		} else { // Rollout upon encountering a node not in curren tree, then add the node
-			vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
-				model);
-			reward += Globals::Discount()
-				* Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
+        if(qnode->count() > Globals::config.rollouts_count)
+		{
+            prior->Add(action, obs);
+            map<OBS_TYPE, VNode*>& vnodes = qnode->children();
+            if (vnodes[obs] != NULL) {
+                reward += Globals::Discount()
+                    * Simulate(particle, vnodes[obs], model, prior,simulateActionSequence, byMDP);
+            } else { // Rollout upon encountering a node not in curren tree, then add the node
+                vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
+                    model);
+                reward += Globals::Discount()
+                    * Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
+            }
+            prior->PopLast();
 		}
-		prior->PopLast();
+		else
+		{
+			reward += Globals::Discount()
+					* Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
+		}
 	}
 
 	qnode->Add(reward);

@@ -58,11 +58,13 @@ namespace WebApiCSharp.Models
         public bool ManualControl { get; set; }
         
         public float PlanningTimePerMoveInSeconds{ get; set; }
+        public int RolloutsCount{get;set;}
 
         public int Verbosity{ get; set; }
         public SolverConfiguration()
         {
-            SimulateByMdpRate=0.5f;
+            SimulateByMdpRate=0.0f;
+            RolloutsCount = 100;
             limitClosedModelHorizon_stepsAfterGoalDetection=-1;
             NumOfSamplesPerStateActionToLearnModel = 20;
             UseSavedSarsopPolicy = false;
