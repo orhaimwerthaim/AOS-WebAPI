@@ -239,7 +239,7 @@ if(initProj.SolverConfiguration.UseML)
 {
     file  += @"
     #-----------------TORCH---------------------------------------------------------
-set(CMAKE_PREFIX_PATH """+conf.AOS_BasePath+@"/build-pytorch-from-source/pytorch-install"")
+set(CMAKE_PREFIX_PATH """+conf.AOS_BasePath+@"/pytorch-install"")
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS ""${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}"")
  

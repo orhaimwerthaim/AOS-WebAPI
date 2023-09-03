@@ -348,7 +348,7 @@ cmake --build "+homePath+@"/AOS/AOS-Solver/build --config Release --target despo
 
 
             
-            foreach (string filePath in fileEntries)
+            foreach (string filePath in fileEntries.OrderBy(x=>x))
             {
                 try
                 {
