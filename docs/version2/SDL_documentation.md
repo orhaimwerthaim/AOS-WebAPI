@@ -343,6 +343,7 @@ The AOS currently only supports Discrete and Bernoulli distributions.
 Users can describe sampling from discrete distribution by using the  SampleDiscrete function that takes a vectore of floats as weights.</br>
 `int AOSUtils::SampleDiscrete(vector<double> weights)`</br>
 `int AOSUtils::SampleDiscrete(vector<float> weights)`</br>
+The user must specifically declare the weight vector as vector<float> or vectordouble> so it won't be ambiguous.</br>
 Example:</br>
 ```
 vector<float> weights{0.25,0.25,0.4,0.1};
