@@ -162,7 +162,7 @@ add_library(""${PROJECT_NAME}"" SHARED
   src/core/pomdp.cpp
   src/core/solver.cpp
   src/core/upper_bound.cpp
-  
+  src/backward.cpp
   src/evaluator.cpp
   src/pomdpx/parser/function.cpp
   src/pomdpx/parser/parser.cpp
@@ -719,6 +719,7 @@ bsoncxx::oid MongoDB_Bridge::SendActionToExecution(int actionId, std::string act
 
 void MongoDB_Bridge::AddLog(std::string logMsg, int logLevel)
 {
+  MongoDB_Bridge::Init();
   std::string logLevelDesc;
   switch (logLevel)
   {
@@ -1685,6 +1686,7 @@ void POMCP::GenerateDebugJsonVnode(VNode* vnode, stringstream &ss, int depthLimi
         public static string GetSimpleTuiCppFile(PLPsData data, InitializeProject initProj)
         {
             string file = @"#include <despot/simple_tui.h>
+#include <despot/util/mongoDB_Bridge.h>
 #include <despot/model_primitives/" + data.ProjectName + @"/enum_map_" + data.ProjectName + @".h> 
 #include <despot/model_primitives/" + data.ProjectName + @"/actionManager.h> 
 using namespace std;
@@ -2005,7 +2007,17 @@ void SimpleTUI::RunEvaluator(DSPOMDP *model, Evaluator *simulator,
                   << endl;*/
       double step_start_t = get_time_second();
 
-      bool terminal = simulator->RunStep(i, round);
+      bool terminal =false;
+      try
+      {
+        terminal = simulator->RunStep(i, round);
+      }
+      catch(const std::exception& e)
+      { 
+        std::cout << ""ERROR: "" << e.what() << endl;
+        MongoDB_Bridge::AddLog(e.what(), 1);
+        throw e;
+      }
 
       if (terminal)
         break;
