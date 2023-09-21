@@ -22,4 +22,9 @@ dotnet build WebApiCSharp.csproj
 
 dotnet build ~/AOS/AOS-WebAPI/WebApiCSharp.csproj /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary
 
+echo 'reinstall the AOS Solver'
+cd ~/AOS
+yes|rm -r ~/AOS/AOS-Solver
+git clone https://github.com/orhaimwerthaim/AOS-Solver.git
+
 
