@@ -234,8 +234,8 @@ namespace WebApiCSharp.JsonTextModel
                                     ross.ImportCode = ic.ToArray();
                                     i++;
                                 }
-                                else if (lineContent[i].Trim().StartsWith("path:")) ross.ServicePath = lineContent[i++].Substring("path:".Length);
-                                else if(lineContent[i].Trim().StartsWith("srv:")) ross.ServiceName = lineContent[i++].Substring("srv:".Length);
+                                else if (lineContent[i].Trim().StartsWith("path:")) ross.ServicePath = lineContent[i++].Substring("path:".Length).Trim();
+                                else if(lineContent[i].Trim().StartsWith("srv:")) ross.ServiceName = lineContent[i++].Substring("srv:".Length).Trim();
                                 else if(lineContent[i].Trim().StartsWith("parameter:"))
                                 {
                                     if(ross.ServiceParameters == null)ross.ServiceParameters = new List<ServiceParameter>();

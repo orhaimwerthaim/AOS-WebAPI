@@ -6226,13 +6226,13 @@ private static void GetCompundFieldDefinitionForML(string baseDef, PLPsData data
         {
             if(for_pythonStateToObs)
             {
-                if(comp_v.Type == "string") return; 
+                if(comp_v.Type == "string") continue; 
                 string varName = baseDef + comp_v.Name;
                 variablesDefinition.Add(varName);
             }
             else
             {
-                if(comp_v.Type == "string") return; 
+                if(comp_v.Type == "string") continue; 
                 if(getCppVarName)
                 {
                     variablesDefinition.Add(baseDef + comp_v.Name);
