@@ -22,3 +22,4 @@ dotnet build WebApiCSharp.csproj
 
 dotnet build ~/AOS/AOS-WebAPI/WebApiCSharp.csproj /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary
 
+
