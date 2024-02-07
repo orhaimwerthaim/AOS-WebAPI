@@ -252,3 +252,4 @@ The GUI allows users:
 # Tutorial:
 * [Installing the AOS](https://youtu.be/LtvghBdEWNg)
 * [Verifying the AOS installation](https://youtu.be/Zm-KTZV180g)
+* [Verifying the model correctness using the GUI](https://youtu.be/wyLWg-b7Rww)
