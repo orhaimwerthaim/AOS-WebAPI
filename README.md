@@ -12,7 +12,8 @@
   - [Real Armadillo Robot](#real-armadillo-robot-experiments)
   - [TurtleBot3 Gazebo](#turtlebot3-gazebo-experiments)
   - [RDDLSim vs. AOS Sampling rates (link to external git)](https://github.com/orhaimwerthaim/AOS-experiments/tree/main/AdditionalExamples/compareRDDLSimToAOS)
-* [installation](#aos-installtion)  
+* [installation](#aos-installtion)
+* [Tutorial](#tutorial)
   
 
 # Experiments and Videos:
@@ -247,3 +248,7 @@ The GUI allows users:
 * [AOS-GUI github](https://github.com/orhaimwerthaim/AOS-GUI)
 * [AOS-GUI project page](https://lankrys.wixsite.com/aosproject)
 * [AOS-GUI video](https://www.youtube.com/watch?v=wsmd1NaOhPk)(less then three minutes)
+
+# Tutorial:
+* [Installing the AOS](https://youtu.be/LtvghBdEWNg)
+* [Verifying the AOS installation](https://youtu.be/Zm-KTZV180g)
