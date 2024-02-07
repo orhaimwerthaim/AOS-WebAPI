@@ -250,6 +250,7 @@ The GUI allows users:
 * [AOS-GUI video](https://www.youtube.com/watch?v=wsmd1NaOhPk)(less then three minutes)
 
 # Tutorial:
-* [Installing the AOS](https://youtu.be/LtvghBdEWNg)
-* [Verifying the AOS installation](https://youtu.be/Zm-KTZV180g)
-* [Verifying the model correctness using the GUI](https://youtu.be/wyLWg-b7Rww)
+* [Installing the AOS (5:51 minutes)](https://youtu.be/LtvghBdEWNg)
+* [Verifying the AOS installation(7:05 minutes)](https://youtu.be/Zm-KTZV180g)
+* [Verifying the model correctness using the GUI ((12:15 minutes))](https://youtu.be/wyLWg-b7Rww)
+* [AOS Tutorial: Debug your documentation model using VS code (15:41 minutes)](https://youtu.be/FE91GuK-O4A)
