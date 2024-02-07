@@ -254,3 +254,4 @@ The GUI allows users:
 * [Verifying the AOS installation(7:05 minutes)](https://youtu.be/Zm-KTZV180g)
 * [Verifying the model correctness using the GUI ((12:15 minutes))](https://youtu.be/wyLWg-b7Rww)
 * [AOS Tutorial: Debug your documentation model using VS code (15:41 minutes)](https://youtu.be/FE91GuK-O4A)
+* [AOS Tutorial: Highlight saved SDL words in my text editor (2:58 minutes)](https://youtu.be/1kv68lNGiP8)
