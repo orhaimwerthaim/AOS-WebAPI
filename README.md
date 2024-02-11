@@ -250,8 +250,10 @@ The GUI allows users:
 * [AOS-GUI video](https://www.youtube.com/watch?v=wsmd1NaOhPk)(less then three minutes)
 
 # Tutorial:
-* [Installing the AOS (5:51 minutes)](https://youtu.be/LtvghBdEWNg)
-* [Verifying the AOS installation(7:05 minutes)](https://youtu.be/Zm-KTZV180g)
-* [Verifying the model correctness using the GUI ((12:15 minutes))](https://youtu.be/wyLWg-b7Rww)
+* [AOS Tutorial: Introduction and Concepts-Hebrew(18:43 minutes)](https://youtu.be/5piEy69uNMQ)
+* [AOS Tutorial: Documentation Example-Hebrew(57:50 minutes)](https://youtu.be/39bA1JRR-6g)
+* [AOS Tutorial: Installing the AOS (5:51 minutes)](https://youtu.be/LtvghBdEWNg)
+* [AOS Tutorial: Verifying the AOS installation(7:05 minutes)](https://youtu.be/Zm-KTZV180g)
+* [AOS Tutorial: Verifying the model correctness using the GUI ((12:15 minutes))](https://youtu.be/wyLWg-b7Rww)
 * [AOS Tutorial: Debug your documentation model using VS code (15:41 minutes)](https://youtu.be/FE91GuK-O4A)
 * [AOS Tutorial: Highlight saved SDL words in my text editor (2:58 minutes)](https://youtu.be/1kv68lNGiP8)
