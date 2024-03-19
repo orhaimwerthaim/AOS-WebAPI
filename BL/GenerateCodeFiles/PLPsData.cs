@@ -32,6 +32,11 @@ namespace WebApiCSharp.GenerateCodeFiles
             get{return !(ExtrinsicChangesDynamicModel.Count() == 0);}
         }
 
+        public bool HasHeuristicStateValue {
+            get{return !(HeuristicStateValue.Count() == 0);}
+        }
+        
+
         public bool HasPrintStateFunc{get{return !(PrintStateFunc.Count() == 0);}}
         public bool HasDynamicModelChanges {
             get
@@ -53,6 +58,7 @@ namespace WebApiCSharp.GenerateCodeFiles
         public string ProjectNameWithCapitalLetter { get; set; }
         public List<Assignment> InitialBeliefAssignments = new List<Assignment>();
         public List<Assignment> ExtrinsicChangesDynamicModel = new List<Assignment>();
+        public List<Assignment> HeuristicStateValue = new List<Assignment>();
         public List<Assignment> PrintStateFunc = new List<Assignment>();
         public List<EnumVarTypePLP> GlobalEnumTypes = new List<EnumVarTypePLP>();
         public List<BaseGlobalVarType> BaseGlobalVarTypes = new List<BaseGlobalVarType>();
@@ -321,8 +327,13 @@ public string GetModelHash()
             {
                 codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
             }
-
+            
             foreach (Assignment assign in ExtrinsicChangesDynamicModel)
+            {
+                codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
+            }
+
+            foreach (Assignment assign in HeuristicStateValue)
             {
                 codeSections.Add(new KeyValuePair<string, string>(assign.AssignmentCode, PLP_TYPE_NAME_ENVIRONMENT));
             }
@@ -536,6 +547,15 @@ public string GetModelHash()
                 PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.eAfterExtrinsicChangesState);
             errors.AddRange(tempErrors);
             ExtrinsicChangesDynamicModel.AddRange(extrinsicChangesDynamicModel);
+
+
+
+            tempErrors.Clear();
+            List<Assignment> heuristicStateValue = !environmentPLP.Contains("HeuristicStateValue") ? new List<Assignment>() : LoadAssignment(environmentPLP["HeuristicStateValue"].AsBsonArray, environmentPLP_Name,
+                PLP_TYPE_NAME_ENVIRONMENT, out tempErrors, EStateType.ePreviousState);
+            errors.AddRange(tempErrors);
+            HeuristicStateValue.AddRange(heuristicStateValue);
+
 
 
             tempErrors.Clear();

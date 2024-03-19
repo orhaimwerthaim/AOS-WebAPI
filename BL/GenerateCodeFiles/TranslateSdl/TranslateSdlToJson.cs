@@ -16,7 +16,7 @@ namespace WebApiCSharp.JsonTextModel
 {
     public static class TranslateSdlToJson
     {
-        private static string[] FirstLevelSavedWords = "response: module_activation: rollout_policy: local_variable: available_parameters_code: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: response_local_variable: project: ".Split(" ");
+        private static string[] FirstLevelSavedWords = "response: module_activation: rollout_policy: local_variable: available_parameters_code: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: heuristic_code: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: response_local_variable: project: ".Split(" ");
         public static string Translate(string fileName, string fileContent)
         {
             string fileType = fileName.ToLower().Substring(fileName.LastIndexOf('.')+1);
@@ -581,8 +581,19 @@ namespace WebApiCSharp.JsonTextModel
                     CodeAssignment code = new CodeAssignment(){AssignmentCode = codeLines.ToArray()};
                     efFile.ExtrinsicChangesDynamicModel = new CodeAssignment[]{code};
                 }
+
+                else if(lineContent[i].Trim().StartsWith("heuristic_code:"))
+                {
+                    i++;
+                    List<string> codeLines = new List<string>();
+                    while(i < lineContent.Length && !IsFirstLevelSavedWord(lineContent[i])) codeLines.Add(lineContent[i++]);
+                    CodeAssignment code = new CodeAssignment(){AssignmentCode = codeLines.ToArray()};
+                    efFile.HeuristicStateValue = new CodeAssignment[]{code};
+                }
                 
             }           
+
+            
             string jsonString = JsonSerializer.Serialize<EfFile>(efFile);
             jsonString=RemoveNullsElements(jsonString);
             jsonString = PrettyJson(jsonString);

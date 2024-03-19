@@ -332,6 +332,13 @@ struct Config {
     std::string domainHash;
 	float treePolicyByMdpRate;
 	int rollouts_count;
+    int steps_counter;
+    int rollout_counter;
+    int heuristic_counter;
+    int heuristic_cache_counter;
+    int stream_id;
+    int stream_step;
+    int total_streams;
 	Config() : 
         handsOnDebug("+(initProj.SolverConfiguration.IsInternalSimulation && initProj.OnlyGenerateCode.HasValue && initProj.OnlyGenerateCode.Value ? "true" : "false")+@"),
         manualControl("+(initProj.SolverConfiguration.ManualControl ? "true" : "false") +@"),
@@ -361,7 +368,14 @@ struct Config {
         treePolicyByMdpRate("+initProj.SolverConfiguration.SimulateByMdpRate+@"),
 		rollouts_count("+initProj.SolverConfiguration.RolloutsCount+@"),
 		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
-        saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @")
+        saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @"),
+        steps_counter(0),
+        rollout_counter(-1),
+        heuristic_counter(0),
+        stream_id(0),
+        stream_step(0),
+        total_streams(100000),
+        heuristic_cache_counter(1)
 		{
 		
 	}
@@ -890,7 +904,7 @@ POMCPPrior::POMCPPrior(const DSPOMDP* model) :
 	double x = (40 / Globals::config.search_depth) > 1 ? (40 / Globals::config.search_depth) : 1;
 	exploration_constant_ = (model->GetMaxReward() - model->GetMinRewardAction().value) * x;
 }
-
+map<int,int> POMCPPrior::preferred_actions_cache_;
 POMCPPrior::~POMCPPrior() {
 }
 
@@ -906,12 +920,23 @@ const vector<double>& POMCPPrior::weighted_preferred_actions() const {
 	return weighted_preferred_actions_;
 }
 
-int POMCPPrior::GetAction(const State& state) {
-	ComputePreference(state);
+int POMCPPrior::GetAction(const State& state, const DSPOMDP* model) {
+    int stateHash = Prints::GetHash(Prints::PrintState(state));
+    map<int,int>::iterator it = POMCPPrior::preferred_actions_cache_.find(stateHash);
+
+    if ( it != POMCPPrior::preferred_actions_cache_.end() ) {
+        return it->second;
+        }
+
+	ComputePreference(state,model);
+    int action = -1;
 
 	if (weighted_preferred_actions_.size() != 0)
-		return Random::RANDOM.NextCategory(weighted_preferred_actions_);
-
+    {
+		action = Random::RANDOM.NextCategory(weighted_preferred_actions_);
+        POMCPPrior::preferred_actions_cache_.insert({stateHash, action});
+        return action;
+    }
 	if (preferred_actions_.size() != 0)
 		return Random::RANDOM.NextElement(preferred_actions_);
 
@@ -932,8 +957,9 @@ UniformPOMCPPrior::UniformPOMCPPrior(const DSPOMDP* model) :
 UniformPOMCPPrior::~UniformPOMCPPrior() {
 }
 
-void UniformPOMCPPrior::ComputePreference(const State& state) {
+void UniformPOMCPPrior::ComputePreference(const State& state, const DSPOMDP* model) {
 }
+double UniformPOMCPPrior::HeuristicValue(const State& state, const State& prev_state){return 0.0;}
 
 /* =============================================================================
  * POMCP class
@@ -982,65 +1008,26 @@ ValuedAction POMCP::Search(double timeout) {
 		float r = (float) std::rand()/RAND_MAX;	
 		bool byMDP = r < Globals::config.treePolicyByMdpRate;;
 		Simulate(particle, root_, model_, prior_, simulatedActionSequence, byMDP);
+        Globals::config.stream_id= Globals::config.stream_id+1 >= Globals::config.total_streams ? 0 
+            : Globals::config.stream_id+1;
+        Globals::config.stream_step=0;
+        num_sims++;
         model_->Free(particle);
         if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) {
 				done = true;
+                cout<<""Number of simulated traces:""<<num_sims << "", Simulated steps:"" <<
+                    Globals::config.steps_counter << "", Rollouts:"" << Globals::config.rollout_counter<< 
+                    "", heuristic Calcs:"" << Globals::config.heuristic_counter<<
+                    "", heuristic cache Calcs:"" << Globals::config.heuristic_cache_counter << endl;
+                Globals::config.steps_counter=0;
+                Globals::config.rollout_counter=0;
+                Globals::config.heuristic_counter=0;
 				break;
 			}
-        //New sample END  
-
-        /*  
-		vector<State*> particles = belief_->Sample("+  (initProj.SolverConfiguration.NumOfParticles < 1000 ? initProj.SolverConfiguration.NumOfParticles.ToString() : "1000") +@");
-		for (int i = 0; i < particles.size(); i++) {
-			State* particle = particles[i];
-			//logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
-			Simulate(particle, root_, model_, prior_, simulatedActionSequence);
- 
-			
- 
-			num_sims++;
-			//logd << ""[POMCP::Search] "" << num_sims << "" simulations done"" << endl;
-			history_.Truncate(hist_size);
-
-			if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) {
-				done = true;
-				break;
-			}
-		}
-
-		for (int i = 0; i < particles.size(); i++) {
-			model_->Free(particles[i]);
-		}
-
-		if (done)
-			break;
-            */
 	}
 
 	ValuedAction astar = OptimalAction(root_);
-	
-	
-	//TODO::remove only for debug
-	double explore_constant = prior_->exploration_constant();
-	std::cout << ""--------------------------------------------------------------SEARCH-ACTION--END---------------------------------------------------------------"" << endl;
-	//model_->PrintState(*belief_->Sample(1)[0]);
-	int action = UpperBoundAction(root_, explore_constant, model_, belief_);
-	//untill here
-	
-	
-	// logi << ""[POMCP::Search] Search statistics"" << endl
-	// 	<< ""OptimalAction = "" << astar << endl 
-	// 	<< ""# Simulations = "" << root_->count() << endl
-	// 	<< ""Time: CPU / Real = "" << ((clock() - start_cpu) / CLOCKS_PER_SEC) << "" / "" << (get_time_second() - start_real) << endl
-	// 	<< ""# active particles = "" << model_->NumActiveParticles() << endl
-	// 	<< ""Tree size = "" << root_->Size() << endl;
-
-	// if (astar.action == -1) {
-	// 	for (int action = 0; action < model_->NumActions(); action++) {
-	// 		cout << ""action "" << action << "": "" << root_->Child(action)->count()
-	// 			<< "" "" << root_->Child(action)->value() << endl;
-	// 	}
-	// }
+	 
     if(" + debugPDF_Depth + @" > 0)
     {
 	    //std::string dot = POMCP::GenerateDotGraph(root_," + debugPDF_Depth + @", model_);
@@ -1218,43 +1205,7 @@ VNode* POMCP::CreateVNode(int depth, const State* state, POMCPPrior* prior,
 
 double POMCP::Simulate(State* particle, RandomStreams& streams, VNode* vnode,
 	const DSPOMDP* model, POMCPPrior* prior) {
-	if (streams.Exhausted())
-		return 0;
-
-	double explore_constant = prior->exploration_constant();
-
-	int action = POMCP::UpperBoundAction(vnode, explore_constant);
-	//logd << *particle << endl;
-	//logd << ""depth = "" << vnode->depth() << ""; action = "" << action << ""; ""
-	//	<< particle->scenario_id << endl;
-
-	double reward;
-	OBS_TYPE obs;
-	bool terminal = model->Step(*particle, streams.Entry(particle->scenario_id),
-		action, reward, obs);
-
-	QNode* qnode = vnode->Child(action);
-	if (!terminal) {
-		prior->Add(action, obs);
-		streams.Advance();
-		map<OBS_TYPE, VNode*>& vnodes = qnode->children();
-		if (vnodes[obs] != NULL) {
-			reward += Globals::Discount()
-				* Simulate(particle, streams, vnodes[obs], model, prior);
-		} else { // Rollout upon encountering a node not in curren tree, then add the node
-			reward += Globals::Discount() 
-        * Rollout(particle, streams, vnode->depth() + 1, model, prior);
-			vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
-				model);
-		}
-		streams.Back();
-		prior->PopLast();
-	}
-
-	qnode->Add(reward);
-	vnode->Add(reward);
-
-	return reward;
+	return 0;
 }
 
 // static
@@ -1278,10 +1229,10 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
     else
     {
      file+=@"
-		action = prior->GetAction(*particle);";   
+		action = prior->GetAction(*particle, model);";   
     }
 
-    file+=@"		
+    file += @"		
     } 
 	double reward;
 	OBS_TYPE obs;
@@ -1299,15 +1250,38 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
             } else { // Rollout upon encountering a node not in curren tree, then add the node
                 vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
                     model);
-                reward += Globals::Discount()
-                    * Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
+                reward += Globals::Discount()";
+    if (data.HasHeuristicStateValue)
+    {
+	    file += @"
+* prior->HeuristicValue(*particle, *particle);
+";
+    }
+    else
+    {
+	    file += @"
+* Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
+";	    
+    }
+    file+=@" 
             }
             prior->PopLast();
 		}
 		else
 		{
-			reward += Globals::Discount()
-					* Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
+			reward += Globals::Discount()";
+    if (data.HasHeuristicStateValue)
+    {
+	    file += @"
+* prior->HeuristicValue(*particle, *particle);";
+    }
+    else
+    {
+	    file += @"
+* Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);";
+    }
+
+    file += @"					
 		}
 	}
 
@@ -1320,42 +1294,34 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 // static
 double POMCP::Rollout(State* particle, RandomStreams& streams, int depth,
 	const DSPOMDP* model, POMCPPrior* prior) {
-	if (streams.Exhausted()) {
-		return 0;
-	}
-
-	int action = prior->GetAction(*particle);
-
-	//logd << *particle << endl;
-	//logd << ""depth = "" << depth << ""; action = "" << action << endl;
-
-	double reward;
-	OBS_TYPE obs;
-	bool terminal = model->Step(*particle, streams.Entry(particle->scenario_id),
-		action, reward, obs);
-	if (!terminal) {
-		prior->Add(action, obs);
-		streams.Advance();
-		reward += Globals::Discount()
-			* Rollout(particle, streams, depth + 1, model, prior);
-		streams.Back();
-		prior->PopLast();
-	}
-
-	return reward;
+	return 0;
 }
 
 // static
 double POMCP::Rollout(State* particle, int depth, const DSPOMDP* model,
 	POMCPPrior* prior, std::vector<int>* simulateActionSequence) {
+    Globals::config.rollout_counter++;
 	if (depth >= Globals::config.search_depth) {
-		return 0;
+";
+    if (data.HasHeuristicStateValue)
+    {
+	    file += @"
+        State& state = *particle;
+        return prior->HeuristicValue(state, state);";
+    }
+    else
+    {
+	    file += @"
+return 0;";
+    }
+    file += @" 
 	}
 
-	//int action = prior->GetAction(*particle);
+	//int action = prior->GetAction(*particle, model);
 	
 	
     ";
+    
     if(initProj.SolverConfiguration.UseML)
     {
         file += @"
@@ -1365,7 +1331,7 @@ double POMCP::Rollout(State* particle, int depth, const DSPOMDP* model,
     else
     {
         file += @"
-        int action = simulateActionSequence && simulateActionSequence->size() > depth ? (*simulateActionSequence)[depth] : prior->GetAction(*particle);
+        int action = simulateActionSequence && simulateActionSequence->size() > depth ? (*simulateActionSequence)[depth] : prior->GetAction(*particle, model);
         ";
     }
     file += @"
@@ -1400,7 +1366,7 @@ ValuedAction POMCP::Evaluate(VNode* root, vector<State*>& particles,
 		while (!streams.Exhausted()) {
 			int action =
 				(cur != NULL) ?
-					UpperBoundAction(cur, 0) : prior->GetAction(*particle);
+					UpperBoundAction(cur, 0) : prior->GetAction(*particle, model);
 
 			double reward;
 			OBS_TYPE obs;
@@ -1455,33 +1421,7 @@ void DPOMCP::belief(Belief* b) {
 }
 
 ValuedAction DPOMCP::Search(double timeout) {
-	double start_cpu = clock(), start_real = get_time_second();
-
-	vector<State*> particles = belief_->Sample(Globals::config.num_scenarios);
-
-	RandomStreams streams(Globals::config.num_scenarios,
-		Globals::config.search_depth);
-
-	root_ = ConstructTree(particles, streams, model_, prior_, history_,
-		timeout);
-
-	for (int i = 0; i < particles.size(); i++)
-		model_->Free(particles[i]);
-
-	//logi << ""[DPOMCP::Search] Time: CPU / Real = ""
-	//	<< ((clock() - start_cpu) / CLOCKS_PER_SEC) << "" / ""
-	//	<< (get_time_second() - start_real) << endl << ""Tree size = ""
-	//	<< root_->Size() << endl;
-
-	ValuedAction astar = OptimalAction(root_);
-	if (astar.action == -1) {
-		for (int action = 0; action < model_->NumActions(); action++) {
-			cout << ""action "" << action << "": "" << root_->Child(action)->count()
-				<< "" "" << root_->Child(action)->value() << endl;
-		}
-	}
-
-	delete root_;
+	ValuedAction astar;
 	return astar;
 }
 
@@ -3897,12 +3837,16 @@ namespace despot {
 class AOSUtils
 {
 	public:
+    static float GetRandom();
+    static vector<vector<float>*> *streams;
 	static bool Bernoulli(double);
     static int SampleDiscrete(vector<float>);
     static int SampleDiscrete(vector<double>);
 	static std::default_random_engine generator;
     static std::uniform_real_distribution<float> real_unfirom_dist;
 	static int get_hash(string str);
+    static map<int, double> heuristics_values_cache;
+    static map<int, string> heuristics_values_cache_checker;
 };
  
 
@@ -4389,7 +4333,7 @@ public:
 class StatePolicy {
 public:
 	virtual ~StatePolicy();
-	virtual int GetAction(const State& state) const = 0;
+	virtual int GetAction(const State& state, const DSPOMDP* model) const = 0;
 };
 
 /* =============================================================================
@@ -4674,6 +4618,7 @@ public:
 class Prints
 {
 	public:
+    static int GetHash(string s);
 " + GetPrintEnvironmentEnumPrintFunctionDeclarations(data) + @"
 	static std::string PrintActionDescription(ActionDescription*);
     static std::string PrintActionDescription(int actionId);
@@ -5234,6 +5179,8 @@ public:
 	POMCPPrior(const DSPOMDP* model);
 	virtual ~POMCPPrior();
 
+    static map<int,int> preferred_actions_cache_;
+
 	inline void exploration_constant(double constant) {
 		exploration_constant_ = constant;
 	}
@@ -5270,13 +5217,13 @@ public:
 		history_.Truncate(0);
 	}
 
-	virtual void ComputePreference(const State& state) = 0;
-
+	virtual void ComputePreference(const State& state, const DSPOMDP* model) = 0; 
+    virtual double HeuristicValue(const State& state, const State& prev_state) = 0;
 	const std::vector<int>& preferred_actions() const;
 	const std::vector<int>& legal_actions() const;
     const std::vector<double>& weighted_preferred_actions() const;
 
-	int GetAction(const State& state);
+	int GetAction(const State& state, const DSPOMDP* model);
 };
 
 /* =============================================================================
@@ -5288,7 +5235,8 @@ public:
 	UniformPOMCPPrior(const DSPOMDP* model);
 	virtual ~UniformPOMCPPrior();
 
-	void ComputePreference(const State& state);
+	void ComputePreference(const State& state, const DSPOMDP* model);
+    double HeuristicValue(const State& state, const State& prev_state);
 };
 
 /* =============================================================================
@@ -5457,6 +5405,18 @@ if(!forSingleFileModel)
 }
 file +=@"
 }
+
+int Prints::GetHash(string str_)
+    {
+        const char *str = str_.c_str();
+        unsigned long hash = 0;
+        int c;
+
+        while (c = *str++)
+            hash = c + (hash << 6) + (hash << 16) - hash;
+
+        return hash; 
+    }
 std::string Prints::PrintActionDescription(int actionId)
 {
     return Prints::PrintActionDescription(ActionManager::actions[actionId]);
@@ -6424,6 +6384,46 @@ public static string GetActionFromNNFunction(PLPsData data, InitializeProject in
 
             return result;
         }
+
+        //HeuristicValueByState
+        public static string GetHeuristicValueByStateForModelCpp(PLPsData data, bool forSingleFileModel=false)
+        {
+            string result = forSingleFileModel ? 
+                GenerateFilesUtils.GetIndentationStr(0, 4, "void HeuristicValue(const State& state, const State& prev_state)") : 
+                GenerateFilesUtils.GetIndentationStr(0, 4, "double HeuristicValue(const State& state, const State& prev_state)");
+            result += @"
+    {
+        string stateStr = Prints::PrintState(state);
+        int stateHash = AOSUtils::get_hash(stateStr);
+        
+        map<int,double>::iterator it =AOSUtils::heuristics_values_cache.find(stateHash);
+        double __heuristicValue = -1000000;
+        if(it != AOSUtils::heuristics_values_cache.end())
+        {
+            //element found;
+            __heuristicValue = it->second;
+
+            map<int,string>::iterator it2 =AOSUtils::heuristics_values_cache_checker.find(stateHash);
+            assert(stateStr.compare(it2->second) == 0);
+            Globals::config.heuristic_cache_counter++;
+            return __heuristicValue;
+        }
+
+        Globals::config.heuristic_counter++;
+        
+        ";
+
+            result += GetAssignmentsCode(data, PLPsData.PLP_TYPE_NAME_ENVIRONMENT, data.HeuristicStateValue, 2, 4);
+            
+                     
+            
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "assert(__heuristicValue != -1000000);//value not set by user");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "return __heuristicValue;");
+            result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
+
+
+            return result;
+        }
         public static string GetCheckPreconditionsForModelCpp(PLPsData data, bool forSingleFileModel=false)
         {
             string result = forSingleFileModel ? GenerateFilesUtils.GetIndentationStr(0, 4, "void CheckPreconditions(const State& state, double &reward, bool &__meetPrecondition, int actionId)")
@@ -6630,6 +6630,7 @@ public static string GetActionFromNNFunction(PLPsData data, InitializeProject in
                         result += GenerateFilesUtils.GetIndentationStr(indentCount + i, indentSize, "}");
                     }
                 }
+                   
                 foreach (string codeLine in assign.AssignmentCode.Split(";"))
                 {
                     if (codeLine.Length > 0)
@@ -6637,7 +6638,7 @@ public static string GetActionFromNNFunction(PLPsData data, InitializeProject in
                         result += GenerateFilesUtils.GetIndentationStr(indentCount, indentSize, HandleCodeLine(data, codeLine, fromFile) + ";");
                     }
                 }
-            }
+            } 
             return result;
         }
         public static string GetModuleDynamicModelFunction(PLPsData data, bool forSingleFileModel=false)
@@ -6906,8 +6907,8 @@ private static string RegisterLocalVariablesForBeliefUpdate(PLPsData data)
 }
         
 public static string GetModelCppFile(PLPsData data, InitializeProject initProj)
-        {
-            string file = @"#include """ + data.ProjectName + @".h""
+{
+	string file = @"#include """ + data.ProjectName + @".h""
 #include <despot/core/pomdp.h> 
 #include <stdlib.h>
 #include <despot/solver/pomcp.h>
@@ -6930,14 +6931,37 @@ using namespace std;
 
 namespace despot {
 
-"+data.ProjectNameWithCapitalLetter+@" "+data.ProjectNameWithCapitalLetter+@"::gen_model;
+" + data.ProjectNameWithCapitalLetter + @" " + data.ProjectNameWithCapitalLetter + @"::gen_model;
 
 std::uniform_real_distribution<float> AOSUtils::real_unfirom_dist(0.0,1.0);
+vector<vector<float>*> *AOSUtils::streams = new vector<vector<float>*>;
 std::default_random_engine AOSUtils::generator(std::random_device{}());
+map<int, double> AOSUtils::heuristics_values_cache;
+map<int, string> AOSUtils::heuristics_values_cache_checker;
+
+float AOSUtils::GetRandom()
+{
+    float rand=-1;
+    if(Globals::config.stream_id+1 > streams->size())
+    {
+        AOSUtils::streams->push_back(((new vector<float>)));
+        Globals::config.stream_id = streams->size()-1;
+    }
+    if(Globals::config.stream_step+1 > AOSUtils::streams->at(Globals::config.stream_id)->size())
+    {
+        rand = real_unfirom_dist(generator);    
+        AOSUtils::streams->at(Globals::config.stream_id)->push_back(rand);
+    }
+    rand = AOSUtils::streams->at(Globals::config.stream_id)->at(Globals::config.stream_step);
+    assert(rand >= 0 && rand <= 1);
+    Globals::config.stream_step++;
+    return rand;
+}
 
 int AOSUtils::SampleDiscrete(vector<float> weights)
 {
-    float rand = real_unfirom_dist(generator);
+    //float rand = real_unfirom_dist(generator);
+    float rand = AOSUtils::GetRandom();
     float total = 0;
     for (int i = 0; i < weights.size();i++)
     {
@@ -6962,7 +6986,8 @@ int AOSUtils::get_hash(string str_)
 
 int AOSUtils::SampleDiscrete(vector<double> weights)
 {
-    float rand = real_unfirom_dist(generator);
+    //float rand = real_unfirom_dist(generator);
+    float rand = AOSUtils::GetRandom();
     float total = 0;
     for (int i = 0; i < weights.size();i++)
     {
@@ -6975,17 +7000,20 @@ int AOSUtils::SampleDiscrete(vector<double> weights)
 
 bool AOSUtils::Bernoulli(double p)
 {
-    float rand = real_unfirom_dist(generator);
-	return rand < p;
+    //float rand = real_unfirom_dist(generator);
+	float rand = AOSUtils::GetRandom();
+    return rand < p;
 }
 /* ==============================================================================
  *" + data.ProjectNameWithCapitalLetter + @"Belief class
  * ==============================================================================*/
-int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = " + initProj.SolverConfiguration.NumOfParticles + @";
+int " + data.ProjectNameWithCapitalLetter + @"Belief::num_particles = " + initProj.SolverConfiguration.NumOfParticles +
+	              @";
 std::string " + data.ProjectNameWithCapitalLetter + @"Belief::beliefFromDB = """";
 int " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex = -1;
 
-" + data.ProjectNameWithCapitalLetter + @"Belief::" + data.ProjectNameWithCapitalLetter + @"Belief(vector<State*> particles, const DSPOMDP* model,
+" + data.ProjectNameWithCapitalLetter + @"Belief::" + data.ProjectNameWithCapitalLetter +
+	              @"Belief(vector<State*> particles, const DSPOMDP* model,
 	Belief* prior) :
 	ParticleBelief(particles, model, prior),
 	" + data.ProjectName + @"_(static_cast<const " + data.ProjectNameWithCapitalLetter + @"*>(model)) {
@@ -6997,13 +7025,14 @@ int " + data.ProjectNameWithCapitalLetter + @"Belief::currentInitParticleIndex =
 		 return Prints::PrintActionDescription(ActionManager::actions[actionId]);
 	 }
 
-void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_TYPE obs, map<std::string, std::string> localVariables) {
+void " + data.ProjectNameWithCapitalLetter +
+	              @"Belief::Update(int actionId, OBS_TYPE obs, map<std::string, std::string> localVariables) {
 	history_.Add(actionId, obs);
 
     ActionType &actType = ActionManager::actions[actionId]->actionType;
-"+RegisterLocalVariablesForBeliefUpdate(data)+@"
+" + RegisterLocalVariablesForBeliefUpdate(data) + @"
 
-"+AssignLocalVariablesValue(data)+@"
+" + AssignLocalVariablesValue(data) + @"
 
 	vector<State*> updated;
 	double reward;
@@ -7019,9 +7048,11 @@ void " + data.ProjectNameWithCapitalLetter + @"Belief::Update(int actionId, OBS_
 			{
                 if(!Globals::IsInternalSimulation())
                 {
-				" + data.ProjectNameWithCapitalLetter + @"State &state__ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particles_[cur]);
-                " + data.ProjectNameWithCapitalLetter + @"State &state___ = static_cast<" + data.ProjectNameWithCapitalLetter + @"State &>(*particle);
-"+AddStateGivenObservationModel(data)+@"
+				" + data.ProjectNameWithCapitalLetter + @"State &state__ = static_cast<" +
+	              data.ProjectNameWithCapitalLetter + @"State &>(*particles_[cur]);
+                " + data.ProjectNameWithCapitalLetter + @"State &state___ = static_cast<" +
+	              data.ProjectNameWithCapitalLetter + @"State &>(*particle);
+" + AddStateGivenObservationModel(data) + @"
 
                 }
 				updated.push_back(particle);
@@ -7063,26 +7094,75 @@ public:
 		" + data.ProjectName + @"_(model) {
 	}
 
-	void ComputePreference(const State& state) {
-		const " + data.ProjectNameWithCapitalLetter + @"State& " + data.ProjectName + @"_state = static_cast<const " + data.ProjectNameWithCapitalLetter + @"State&>(state);
+    "
+	              + GetHeuristicValueByStateForModelCpp(data) + Environment.NewLine
+	              + @"
+	void ComputePreference(const State& state, const DSPOMDP* model) {
+		bool print=false;
+		const " + data.ProjectNameWithCapitalLetter + @"State& " + data.ProjectName + @"_state = static_cast<const " +
+	              data.ProjectNameWithCapitalLetter + @"State&>(state);
 		weighted_preferred_actions_.clear();
         legal_actions_.clear();
 		preferred_actions_.clear();
         std::vector<double> weighted_preferred_actions_un_normalized;
 
-        double heuristicValueTotal = 0;
+        OBS_TYPE t;
 		for (int a = 0; a < ActionManager::actions.size(); a++) {
             weighted_preferred_actions_un_normalized.push_back(0);
 			double reward = 0;
 			bool meetPrecondition = false; 
-			" + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(" + data.ProjectName + @"_state, reward, meetPrecondition, a);
+			" + data.ProjectNameWithCapitalLetter + @"::CheckPreconditions(" + data.ProjectName +
+	              @"_state, reward, meetPrecondition, a);
             if(meetPrecondition)
             {
                 legal_actions_.push_back(a);
-                double __heuristicValue; 
-                " + data.ProjectNameWithCapitalLetter + @"::ComputePreferredActionValue(" + data.ProjectName + @"_state, __heuristicValue, a);
-                heuristicValueTotal += __heuristicValue;
+                double __heuristicValue =0; ";
+	if (data.HasHeuristicStateValue)
+	{
+		file += @"
+				double tries = 1;
+                for(int j=0;j<tries;j++)
+                {
+                    State* s = model->Copy(&state);
+                    State s1 = *s;
+                    double action_reward=0;
+                    model->Step(s1,0.1, a,action_reward,t);
+
+                    double t = " + data.ProjectNameWithCapitalLetter + @"POMCPPrior::HeuristicValue(s1, state);
+                    t+=action_reward;
+                    __heuristicValue += t/tries;
+                    model->Free(s);
+                }
+";
+	}
+	else
+	{
+		file += @"
+			" + data.ProjectNameWithCapitalLetter + @"::ComputePreferredActionValue(" + data.ProjectName + @"_state, __heuristicValue, a);
+";
+	}
+	file+=@"   
                 weighted_preferred_actions_un_normalized[a]=__heuristicValue;
+            }
+        }
+
+        double min_h=1000000;
+        for (int i = 0; i < legal_actions_.size(); i++)
+        {
+            int a=legal_actions_[i];
+            double t = weighted_preferred_actions_un_normalized[a];
+            if(print)      cout << ""actionID:"" << a << "", "" << ""heuristicValue:"" << weighted_preferred_actions_un_normalized[a]  << endl;
+            min_h = min_h < t ? min_h : t;
+        }
+        min_h *= min_h > 0 ? 0.9 : 1.1;
+        double heuristicValueTotal = 0;
+        for (int i = 0; i < legal_actions_.size(); i++)
+        {
+            int a=legal_actions_[i];
+            if(weighted_preferred_actions_un_normalized[a] >= min_h)
+            {
+                weighted_preferred_actions_un_normalized[a] -= min_h;
+                heuristicValueTotal += weighted_preferred_actions_un_normalized[a];
             }
         }
 
@@ -7257,6 +7337,7 @@ void " + data.ProjectNameWithCapitalLetter + @"::StepForModel(State& state, int 
 " + GetCPPStepFunction(data) 
  + GetCheckPreconditionsForModelCpp(data) + Environment.NewLine +
  GetComputePreferredActionValueForModelCpp(data) + Environment.NewLine +
+
  GetSampleModuleExecutionTimeFunction(data) + Environment.NewLine +
  GetExtrinsicChangesDynamicModelFunction(data) + Environment.NewLine +
  GetModuleDynamicModelFunction(data) + Environment.NewLine +
@@ -7280,6 +7361,7 @@ public static string GetCPPStepFunction(PLPsData data, bool forSingleFileModel=f
 {
     string file = "bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
 	OBS_TYPE& observation) const {
+    Globals::config.steps_counter++;
     observation = default_moduleResponse;
     reward = 0;
 	Random random(rand_num);

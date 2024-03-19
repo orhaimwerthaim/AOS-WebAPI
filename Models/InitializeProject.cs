@@ -64,7 +64,7 @@ namespace WebApiCSharp.Models
         public SolverConfiguration()
         {
             SimulateByMdpRate=0.0f;
-            RolloutsCount = 100;
+            RolloutsCount = -1;
             limitClosedModelHorizon_stepsAfterGoalDetection=-1;
             NumOfSamplesPerStateActionToLearnModel = 20;
             UseSavedSarsopPolicy = false;

@@ -171,6 +171,8 @@ public class EnvironmentGeneral
         public CodeAssignment[] InitialBeliefStateAssignments{get;set;}
         public SpecialStateCode[] SpecialStates{get;set;}
         public CodeAssignment[] ExtrinsicChangesDynamicModel{get;set;}
+
+        public CodeAssignment[] HeuristicStateValue{get;set;}
         public EfFile()
         {
             this.PlpMain = new PlpMain();
