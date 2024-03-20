@@ -54,6 +54,17 @@ namespace WebApiCSharp.Controllers
                 initProj.RosTarget.TargetProjectInitializationTimeInSeconds ??= 5;
             }
 
+            if (initProj.SolverConfiguration.PlanningTimePerMoveInSimulatedStepsCount <= 0 &&
+                initProj.SolverConfiguration.PlanningTimePerMoveInSeconds <= 0)
+            {
+                initProj.SolverConfiguration.PlanningTimePerMoveInSimulatedStepsCount = 1000000;
+            }
+            else if(initProj.SolverConfiguration.PlanningTimePerMoveInSimulatedStepsCount > 0 &&
+                    initProj.SolverConfiguration.PlanningTimePerMoveInSeconds > 0)
+            {
+                errors.Add("You cannot specify both 'SolverConfiguration.PlanningTimePerMoveInSimulatedStepsCount' and 'SolverConfiguration.PlanningTimePerMoveInSimulatedStepsCount'");
+                return StatusCode(501, new { Errors = errors, Remarks = remarks });
+            }
             if(initProj.SolverConfiguration.LoadBeliefFromDB && BeliefStateService.GetNumOfStatesSavedInCurrentBelief() == 0)
             {
                 errors.Add("The request contains SolverConfiguration.LoadBeliefFromDB=='true', but there is no saved belief.");

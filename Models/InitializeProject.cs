@@ -58,6 +58,8 @@ namespace WebApiCSharp.Models
         public bool ManualControl { get; set; }
         
         public float PlanningTimePerMoveInSeconds{ get; set; }
+        public int PlanningTimePerMoveInSimulatedStepsCount{ get; set; }
+        
         public int RolloutsCount{get;set;}
 
         public int Verbosity{ get; set; }
@@ -74,7 +76,8 @@ namespace WebApiCSharp.Models
             UseML=false;
             NumOfBeliefStateParticlesToSaveInDB = 1;
             NumOfParticles = 5000;
-            PlanningTimePerMoveInSeconds = 2;
+            PlanningTimePerMoveInSeconds = -1;
+            PlanningTimePerMoveInSimulatedStepsCount = -1;
             ActionsToSimulate = new List<int>();
             IsInternalSimulation = false;
             ManualControl = false;

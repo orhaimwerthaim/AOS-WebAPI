@@ -332,13 +332,16 @@ struct Config {
     std::string domainHash;
 	float treePolicyByMdpRate;
 	int rollouts_count;
-    int steps_counter;
+    int action_executed_count;
+    int simulator_steps_counter;
     int rollout_counter;
     int heuristic_counter;
     int heuristic_cache_counter;
     int stream_id;
     int stream_step;
-    int total_streams;
+    int total_streams; 
+	int min_simulator_steps;
+	int temp;
 	Config() : 
         handsOnDebug("+(initProj.SolverConfiguration.IsInternalSimulation && initProj.OnlyGenerateCode.HasValue && initProj.OnlyGenerateCode.Value ? "true" : "false")+@"),
         manualControl("+(initProj.SolverConfiguration.ManualControl ? "true" : "false") +@"),
@@ -356,8 +359,10 @@ struct Config {
 		domainHash("""+data.GetModelHash()+@"""),
         root_seed(42),
 		time_per_move(" + initProj.SolverConfiguration.PlanningTimePerMoveInSeconds + @"),
+		min_simulator_steps(" + initProj.SolverConfiguration.PlanningTimePerMoveInSimulatedStepsCount + @"),
 		num_scenarios(500),
 		pruning_constant(0),
+		temp(-1),
 		xi(0.95),
 		sim_len(1000),
 		default_action(""""),
@@ -369,13 +374,14 @@ struct Config {
 		rollouts_count("+initProj.SolverConfiguration.RolloutsCount+@"),
 		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
         saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @"),
-        steps_counter(0),
+        simulator_steps_counter(0),
         rollout_counter(-1),
         heuristic_counter(0),
         stream_id(0),
         stream_step(0),
         total_streams(100000),
-        heuristic_cache_counter(1)
+        heuristic_cache_counter(1),
+        action_executed_count(0)
 		{
 		
 	}
@@ -968,7 +974,7 @@ double UniformPOMCPPrior::HeuristicValue(const State& state, const State& prev_s
 POMCP::POMCP(const DSPOMDP* model, POMCPPrior* prior, Belief* belief) :
 	Solver(model, belief),
 	root_(NULL) {
-	reuse_ = false;
+	reuse_ = true;
 	prior_ = prior;
 	assert(prior_ != NULL);
 }
@@ -978,28 +984,31 @@ void POMCP::reuse(bool r) {
 }
 
 ValuedAction POMCP::Search(double timeout) {
-	double start_cpu = clock(), start_real = get_time_second();
+double start_cpu = clock(), start_real = get_time_second();
 
-	if (root_ == NULL) {
-		State* state = belief_->Sample(1)[0];
-		root_ = CreateVNode(0, state, prior_, model_);
-		model_->Free(state);
-	}
+if (root_ == NULL) {
+	State* state = belief_->Sample(1)[0];
+	root_ = CreateVNode(0, state, prior_, model_);
+	model_->Free(state);
+}
 	 
-	static const int actArr[] = {};
-	//static const int actArr[] = {0,4,1,5};//when an action sequence is required to simulate
+static const int actArr[] = {};
+//static const int actArr[] = {0,4,1,5};//when an action sequence is required to simulate
 	
-	std::vector<int> actionSeq (actArr, actArr + sizeof(actArr) / sizeof(actArr[0]) );
+std::vector<int> actionSeq (actArr, actArr + sizeof(actArr) / sizeof(actArr[0]) );
 	 
-	std::vector<int>*	simulatedActionSequence = actionSeq.size() > 0 ? &actionSeq : NULL;	 
-	 
+std::vector<int>*	simulatedActionSequence = actionSeq.size() > 0 ? &actionSeq : NULL;	  
 
-	int hist_size = history_.Size();
-	bool done = false;
-	int num_sims = 0;
+int hist_size = history_.Size();
+bool done = false;
+int num_sims = 0;
 
-    std::vector<State*> particles_ = (static_cast<const ParticleBelief*>(belief_))->particles_;//new sample
-	while (true) {
+std::vector<State*> particles_ = (static_cast<const ParticleBelief*>(belief_))->particles_;//new sample
+Globals::config.simulator_steps_counter=0;
+Globals::config.rollout_counter=0;
+Globals::config.heuristic_counter=0;
+	
+while (true) {
         //New sample START
         int pos = std::rand()% particles_.size();
         State* particle = model_->Copy(particles_[pos]);
@@ -1013,15 +1022,17 @@ ValuedAction POMCP::Search(double timeout) {
         Globals::config.stream_step=0;
         num_sims++;
         model_->Free(particle);
-        if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) {
+        bool after_timeout = Globals::config.min_simulator_steps > 0 && 
+			Globals::config.simulator_steps_counter > Globals::config.min_simulator_steps ||
+			Globals::config.min_simulator_steps <= 0 && ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout);
+
+       // if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) 
+		if(after_timeout){
 				done = true;
                 cout<<""Number of simulated traces:""<<num_sims << "", Simulated steps:"" <<
-                    Globals::config.steps_counter << "", Rollouts:"" << Globals::config.rollout_counter<< 
+                    Globals::config.simulator_steps_counter << "", Rollouts:"" << Globals::config.rollout_counter<< 
                     "", heuristic Calcs:"" << Globals::config.heuristic_counter<<
                     "", heuristic cache Calcs:"" << Globals::config.heuristic_cache_counter << endl;
-                Globals::config.steps_counter=0;
-                Globals::config.rollout_counter=0;
-                Globals::config.heuristic_counter=0;
 				break;
 			}
 	}
@@ -1411,7 +1422,7 @@ ValuedAction POMCP::Evaluate(VNode* root, vector<State*>& particles,
 
 DPOMCP::DPOMCP(const DSPOMDP* model, POMCPPrior* prior, Belief* belief) :
 	POMCP(model, prior, belief) {
-	reuse_ = false;
+	reuse_ = true;
 }
 
 void DPOMCP::belief(Belief* b) {
@@ -2950,6 +2961,7 @@ double POMDPEvaluator::EndRound() {
 
 bool POMDPEvaluator::ExecuteAction(int action, double& reward, OBS_TYPE& obs, std::map<std::string, std::string>& localVariablesFromAction, std::string& obsStr) {
 	MongoDB_Bridge::currentActionSequenceId++;
+    Globals::config.action_executed_count++;
 	ActionDescription &actDesc = *ActionManager::actions[action];
     ActionType acType(actDesc.actionType);
 	std::string actionParameters = actDesc.GetActionParametersJson_ForActionExecution();
@@ -3035,7 +3047,7 @@ void POMDPEvaluator::UpdateTimePerMove(double step_time) {
         {
             string file = @"struct globals
 {
-    static constexpr double MAX_IMMEDIATE_REWARD = " + data.MaxReward + @";
+    static constexpr double MAX_IMMEDIATE_REWARD = 40;//" + data.MaxReward + @";
     static constexpr double MIN_IMMEDIATE_REWARD = " + data.MinReward + @";
     static constexpr int NUM_OF_ACTIONS = " + totalNumberOfActionsInProject + @"; 
 };
@@ -7361,7 +7373,7 @@ public static string GetCPPStepFunction(PLPsData data, bool forSingleFileModel=f
 {
     string file = "bool " + data.ProjectNameWithCapitalLetter + @"::Step(State& s_state__, double rand_num, int actionId, double& reward,
 	OBS_TYPE& observation) const {
-    Globals::config.steps_counter++;
+    Globals::config.simulator_steps_counter++;
     observation = default_moduleResponse;
     reward = 0;
 	Random random(rand_num);
