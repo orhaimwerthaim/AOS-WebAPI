@@ -27,4 +27,6 @@ cd ~/AOS
 yes|rm -r ~/AOS/AOS-Solver
 git clone https://github.com/orhaimwerthaim/AOS-Solver.git
 
+/usr/bin/cmake --build /home/or/AOS/AOS-Solver/build --config Debug --target all 
+
 
