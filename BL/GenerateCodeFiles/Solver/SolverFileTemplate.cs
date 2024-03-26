@@ -2800,6 +2800,14 @@ bool Evaluator::RunStep(int step, int round) {
 		std::string logMsg(""Received observation:""+ Prints::PrintObs(obs));
 		MongoDB_Bridge::AddLog(logMsg, eLogLevel::INFO);
 	}
+
+	if(Globals::config.internalSimulation && Globals::config.verbosity >= eLogLevel::INFO)
+	{
+		ostringstream s; 
+		s << ""Simulated state reward: "" << reward;
+		MongoDB_Bridge::AddLog(s.str(), eLogLevel::INFO);
+	}
+
     logi << endl
 		 << ""After:"" << endl;
 	model_->PrintState(*state_);
