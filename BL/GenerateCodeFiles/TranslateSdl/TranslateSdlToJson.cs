@@ -17,15 +17,17 @@ namespace WebApiCSharp.JsonTextModel
     public static class TranslateSdlToJson
     {
         private static string[] FirstLevelSavedWords = "response: module_activation: rollout_policy: local_variable: available_parameters_code: parameter: precondition: violate_penalty: dynamic_model: extrinsic_code: heuristic_code: reward_code: initial_belief: action_parameter: define_type: horizon: discount: state_variable: response_local_variable: project: ".Split(" ");
-        public static string Translate(string fileName, string fileContent)
+ 
+        public static string Translate(string fileName, string fileContent, out List<string> errors)
         {
+            errors = new List<string>();
             string fileType = fileName.ToLower().Substring(fileName.LastIndexOf('.')+1);
             switch(fileType)
             {
                 case "sd":
                 return TranslateSD(fileName.Substring(0, fileName.LastIndexOf('.')), fileContent);
                 case "am":
-                return TranslateAM(fileName.Substring(0, fileName.LastIndexOf('.')), fileContent);
+                return TranslateAM(fileName.Substring(0, fileName.LastIndexOf('.')), fileContent, out errors);
                 case "ef":
                 return TranslateEF(fileName.Substring(0, fileName.LastIndexOf('.')), fileContent);
                 default:
@@ -147,13 +149,14 @@ namespace WebApiCSharp.JsonTextModel
             jsonString = PrettyJson(jsonString);
             return jsonString;
         }
-         public static string TranslateAM(string skillName, string fileContent)
-        {
+         public static string TranslateAM(string skillName, string fileContent, out List<string> errors)
+         {
+             errors = new List<string>();
             string errorStart = "AM file of skill '"+skillName+"': ";
             AmFile amFile = new AmFile();
             amFile.GlueFramework="ROS";
              
-            string[] lineContent = fileContent.Split('\n');
+            string[] lineContent = fileContent.Split('\n'); 
             int i=0;
             int prevI = -1;
             while(i<lineContent.Length)
@@ -215,8 +218,15 @@ namespace WebApiCSharp.JsonTextModel
                     {
                         ModuleActivation a = new ModuleActivation();
                         amFile.ModuleActivation = a;
-                        string activationType = lineContent[i++].Substring("module_activation: ".Length).Replace(" ", "");
-                        if(activationType == "ros_service")
+                        string activationStr = "module_activation: ";
+                        string activationType = lineContent[i].Length <= activationStr.Length ? "" : lineContent[i].Substring("module_activation: ".Length).Replace(" ", "");
+                        i++;
+                        if (!activationType.StartsWith("ros_service"))
+                        {
+                            errors.Add("'module_activation' should be of type 'ros_service', you should write 'module_activation: ros_service'");
+                            return null;
+                        }
+                        else //(activationType == "ros_service")
                         {
                             RosService ross = new RosService();
                             List<ImportCode> ic = new List<ImportCode>();
@@ -293,6 +303,7 @@ namespace WebApiCSharp.JsonTextModel
                                 else if(lineContent[i].Trim().StartsWith("from_ros_reservice_response:"))
                                 {
                                     string fromService = lineContent[i++].Substring("from_ros_reservice_response:".Length).Replace(" ","").ToLower();
+                                    
                                     if (fromService != "true" && fromService != "false")throw new Exception(errorStart +"only 'from_ros_reservice_response: true' or 'from_ros_reservice_response: false' are allowed");
                                     bFromService = fromService == "true";
                                 }
