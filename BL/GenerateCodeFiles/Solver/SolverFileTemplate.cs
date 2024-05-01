@@ -334,6 +334,7 @@ struct Config {
 	int rollouts_count;
     int action_executed_count;
     int simulator_steps_counter;
+	int simulated_traces_counter;
     int rollout_counter;
     int heuristic_counter;
     int heuristic_cache_counter;
@@ -375,6 +376,7 @@ struct Config {
 		internalSimulation(" + initProj.SolverConfiguration.IsInternalSimulation.ToString().ToLower() + @"),
         saveBeliefToDB(" + (initProj.SolverConfiguration.NumOfParticles > 0).ToString().ToLower() + @"),
         simulator_steps_counter(0),
+		simulated_traces_counter(0),
         rollout_counter(-1),
         heuristic_counter(0),
         stream_id(0),
@@ -1005,6 +1007,7 @@ int num_sims = 0;
 
 std::vector<State*> particles_ = (static_cast<const ParticleBelief*>(belief_))->particles_;//new sample
 Globals::config.simulator_steps_counter=0;
+Globals::config.simulated_traces_counter=0;
 Globals::config.rollout_counter=0;
 Globals::config.heuristic_counter=0;
 	
@@ -1015,7 +1018,8 @@ while (true) {
         //logd << ""[POMCP::Search] Starting simulation "" << num_sims << endl;
 
 		float r = (float) std::rand()/RAND_MAX;	
-		bool byMDP = r < Globals::config.treePolicyByMdpRate;;
+		bool byMDP = r < Globals::config.treePolicyByMdpRate;
+		Globals::config.simulated_traces_counter++;
 		Simulate(particle, root_, model_, prior_, simulatedActionSequence, byMDP);
         Globals::config.stream_id= Globals::config.stream_id+1 >= Globals::config.total_streams ? 0 
             : Globals::config.stream_id+1;
@@ -1031,8 +1035,9 @@ while (true) {
 				done = true;
                 cout<<""Number of simulated traces:""<<num_sims << "", Simulated steps:"" <<
                     Globals::config.simulator_steps_counter << "", Rollouts:"" << Globals::config.rollout_counter<< 
-                    "", heuristic Calcs:"" << Globals::config.heuristic_counter<<
-                    "", heuristic cache Calcs:"" << Globals::config.heuristic_cache_counter << endl;
+                    "", Simulated Traces Count:"" << Globals::config.simulated_traces_counter<<
+					"", Heuristic Calcs:"" << Globals::config.heuristic_counter<<
+                    "", Heuristic Cache Calcs:"" << Globals::config.heuristic_cache_counter << endl;
 				break;
 			}
 	}
@@ -1261,8 +1266,14 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
             } else { // Rollout upon encountering a node not in curren tree, then add the node
                 vnodes[obs] = CreateVNode(vnode->depth() + 1, particle, prior,
                     model);
-                reward += Globals::Discount()";
-    if (data.HasHeuristicStateValue)
+bool useRollout = ";
+    file += data.HasHeuristicStateValue ? "Globals::config.simulated_traces_counter % 4 == 0;" : "true;"; 
+file += @"
+double valFuncEstimate = useRollout ?
+					Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence)
+					: prior->HeuristicValue(*particle, *particle);
+                reward += Globals::Discount() * valFuncEstimate;";
+    /*if (data.HasHeuristicStateValue)
     {
 	    file += @"
 * prior->HeuristicValue(*particle, *particle);
@@ -1274,6 +1285,7 @@ double POMCP::Simulate(State* particle, VNode* vnode, const DSPOMDP* model,
 * Rollout(particle, vnode->depth() + 1, model, prior,simulateActionSequence);
 ";	    
     }
+    */
     file+=@" 
             }
             prior->PopLast();
@@ -6437,6 +6449,9 @@ public static string GetActionFromNNFunction(PLPsData data, InitializeProject in
             
                      
             
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "AOSUtils::heuristics_values_cache.insert({stateHash, __heuristicValue});");
+            result += GenerateFilesUtils.GetIndentationStr(2, 4, "AOSUtils::heuristics_values_cache_checker.insert({stateHash, stateStr});");
+            
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "assert(__heuristicValue != -1000000);//value not set by user");
             result += GenerateFilesUtils.GetIndentationStr(2, 4, "return __heuristicValue;");
             result += GenerateFilesUtils.GetIndentationStr(1, 4, "}");
@@ -7140,7 +7155,7 @@ public:
 	if (data.HasHeuristicStateValue)
 	{
 		file += @"
-				double tries = 1;
+				double tries = 3;
                 for(int j=0;j<tries;j++)
                 {
                     State* s = model->Copy(&state);
@@ -7174,7 +7189,24 @@ public:
             if(print)      cout << ""actionID:"" << a << "", "" << ""heuristicValue:"" << weighted_preferred_actions_un_normalized[a]  << endl;
             min_h = min_h < t ? min_h : t;
         }
-        min_h *= min_h > 0 ? 0.9 : 1.1;
+
+//new code start
+
+        double normalizer = (min_h < 0.5) ? abs(min_h) + 1 : 0;
+        min_h += normalizer;
+
+        double heuristicValueTotal = 0;
+        for (int i = 0; i < legal_actions_.size(); i++)
+        {
+            int a=legal_actions_[i];
+            if(weighted_preferred_actions_un_normalized[a] >= min_h)
+            {
+                weighted_preferred_actions_un_normalized[a] += normalizer - min_h*0.9;
+                heuristicValueTotal += weighted_preferred_actions_un_normalized[a];
+            }
+        }
+//new code end
+        /*min_h *= min_h > 0 ? 0.9 : 1.1;
         double heuristicValueTotal = 0;
         for (int i = 0; i < legal_actions_.size(); i++)
         {
@@ -7184,7 +7216,7 @@ public:
                 weighted_preferred_actions_un_normalized[a] -= min_h;
                 heuristicValueTotal += weighted_preferred_actions_un_normalized[a];
             }
-        }
+        }*/
 
         if(heuristicValueTotal > 0)
         {
